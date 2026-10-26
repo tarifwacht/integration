@@ -7,38 +7,54 @@
 [![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
 
-**Was hätte dein Strom mit einem anderen Tarif gekostet?**
-Tarifwacht ist eine Home-Assistant-Integration, die deinen tatsächlichen Strombezug Viertelstunde für Viertelstunde gegen beliebig viele Tarife rechnet – Festpreis und dynamisch – und zeigt, welcher günstiger gewesen wäre.
+🇩🇪 **Deutsch** · 🇬🇧 [English](https://github.com/tarifwacht/integration/blob/main/README.en.md)
 
-> **Beta.** Tarifwacht ist neu und wird gerade erprobt. Rückmeldungen gern als [Issue](https://github.com/tarifwacht/integration/issues).
+> ℹ️ **Beta.** Tarifwacht ist neu und wird gerade erprobt. Rückmeldungen sind sehr willkommen – siehe [Fehler melden](#fehler-melden).
+
+**Was hätte dein Strom mit einem anderen Tarif gekostet?** Tarifwacht rechnet deinen tatsächlichen Strombezug in Home Assistant Viertelstunde für Viertelstunde gegen beliebig viele Tarife – Festpreis, dynamisch, mit oder ohne Modul 3 – und zeigt, welcher günstiger gewesen wäre. Jeder dynamische Tarif bekommt dabei den Preis **genau dieser Viertelstunde**, nicht den Preis des Augenblicks, in dem der Zähler zufällig meldet.
+
+> **Keine Abrechnungs- oder Tarifberatung.** Die Werte sind eine Orientierung. Maßgeblich ist die Abrechnung deines Stromanbieters.
+
+Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines Home Assistant.
+
+<img alt="Gerät eines Tarifs mit Kosten, Durchschnittspreis und Differenz zum aktuellen Tarif" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/geraet.png" width="640">
 
 ## Was Tarifwacht kann
 
-- **Kosten je Tarif** (€): Verbrauchskosten und Kosten gesamt (mit Grundpreis) – für Energie-Dashboard und Langzeitstatistik.
+- **Kosten je Tarif** (€): Verbrauchskosten und Kosten gesamt (mit Grundpreis) – mit Langzeitstatistik für Statistik-Karten und Energie-Dashboard.
 - **Differenz zum aktuellen Tarif** (€) für jeden anderen Tarif. Positiv heißt: Dieser Tarif wäre teurer gewesen; negativ: günstiger.
 - **Durchschnittspreis** je Tarif (ct/kWh, mit Grundpreis) und **Günstigster Tarif** bisher.
-- **Strombezug** (kWh): die erfasste Menge, zum Abgleich mit deinem Zähler.
-- **Beliebig viele Tarife:** Festpreis, dynamisch mit einem Gesamtpreis-Sensor oder dynamisch aus Börsenpreis plus Netzentgelt, Steuern/Abgaben/Umlagen, Anbieteraufschlag und Mehrwertsteuer.
-- Bucht an Viertelstundengrenzen exakt: Ein Zählerdelta wird zeitanteilig auf die Viertelstunden verteilt, jede mit dem Preis **genau dieser Viertelstunde** aus der Prognose.
-- **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder geänderter Tarif (z. B. ein korrigierter Aufschlag) gilt deshalb für den ganzen Zeitraum.
-- Fällt der Zähler aus oder startet Home Assistant neu, wird der Verbrauch der Lücke nachgebucht statt verloren. Fehlt ein Preis, rechnet Tarifwacht nie mit 0 €.
+- **Beliebig viele Tarife:** Festpreis, dynamisch mit einem Gesamtpreis-Sensor oder dynamisch aus Börsenpreis plus Netzentgelt, Steuern/Abgaben, Anbieteraufschlag und Mehrwertsteuer.
+- **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
+- **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
-- Erkennt Zähler-Resets und unplausible Sprünge und bucht sie nicht.
+- **Vergleich für einen beliebigen Zeitraum** per Aktion, z. B. für den letzten Monat.
+- **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum.
+- **Verliert nichts:** Fällt der Zähler aus oder startet Home Assistant neu, wird der Verbrauch der Lücke nachgebucht. Fehlt ein Preis, rechnet Tarifwacht nie mit 0 €. Zähler-Resets und unplausible Sprünge werden erkannt und nicht gebucht.
+- **Schont SD-Karten:** schreibt nur einmal pro Viertelstunde (abgeschlossene Tage einmal am Tag ins Jahresarchiv) und aktualisiert die Sensoren höchstens einmal pro Minute.
 - Rein lokal: liest nur vorhandene Entitäten, keine Cloud.
-
-Zeiträume (Tag, Woche, Monat, Jahr) zeigen die Statistik-Karte oder das Energie-Dashboard – eigene Tages- oder Monatszähler braucht es nicht.
 
 ## Hinweise zum Vergleich
 
-- Der Vergleich unterstellt das **gleiche Verbrauchsverhalten**. Mit einem dynamischen Tarif verschieben viele ihren Verbrauch in günstige Stunden – das kann der Vergleich nicht abbilden.
+- Der Vergleich unterstellt das **gleiche Verbrauchsverhalten**. Mit einem dynamischen Tarif verschieben viele ihren Verbrauch in günstige Stunden – das kann der Vergleich nicht abbilden. Er zeigt also eher, was ein dynamischer Tarif *mindestens* bringt.
 - Erfasse **alle Preisbestandteile auf beiden Seiten** gleich, sonst ist der Vergleich verzerrt. Der Gesamtpreis eines dynamischen Tarifs ist Börsenpreis plus Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer und Anbieteraufschlag, dazu Mehrwertsteuer. Die Werte stehen in den Preisblättern von Anbieter und Netzbetreiber.
-- Die Werte sind eine Orientierung. Maßgeblich ist die Abrechnung deines Stromanbieters.
+- Home Assistant misst meist mit einem eigenen Zähler (Lesekopf, Energiemessgerät), der Anbieter mit dem Zähler des Netzbetreibers. Kleine Abweichungen sind normal.
 
 ## Voraussetzungen
 
 - Home Assistant 2026.3 oder neuer.
 - Ein **Bezugszähler**: fortlaufender Energiesensor (Wh, kWh oder MWh) für den Strom aus dem Netz, am besten der Zähler am Netzanschlusspunkt.
-- Für dynamische Tarife ein **Preissensor** in €/kWh, am besten mit Prognose je Viertelstunde – z. B. aus der Integration [EPEX Spot](https://github.com/mampfes/ha_epex_spot): der Gesamtpreis (`…_total_price`) oder der Börsenpreis (`…_market_price`), zu dem Tarifwacht die Aufschläge selbst addiert.
+- Für dynamische Tarife ein **Preissensor** in €/kWh, am besten mit Prognose je Viertelstunde oder Stunde:
+
+| Quelle (Integration) | Gesamtpreis | Börsenpreis | Status |
+|---|---|---|---|
+| [EPEX Spot](https://github.com/mampfes/ha_epex_spot) | `…_total_price` | `…_market_price` | erprobt |
+| [Nord Pool](https://github.com/custom-components/nordpool) (HACS) | Sensor mit MwSt. und Zusatzkosten | Sensor ohne MwSt. und Zusatzkosten | experimentell |
+| [ENTSO-E](https://github.com/JaccoR/hass-entso-e) (HACS) | Durchschnittspreis-Sensor mit Aufschlägen | Durchschnittspreis-Sensor ohne Aufschläge | experimentell |
+
+„Experimentell“ heißt: Das Format ist aus dem Quellcode der Integration und echten Marktdaten nachgebildet, aber noch nicht an einer laufenden Installation geprüft. Wenn du eine davon nutzt, freue ich mich über eine Rückmeldung mit der Diagnose-Datei. Die Nord-Pool-Integration von Home Assistant selbst liefert keine Prognose als Attribut und wird nicht unterstützt.
+
+Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich ändert. Läuft Home Assistant eine Zeit lang nicht, fehlen für diese Zeit aber die Preise – mit Prognose holt Tarifwacht sie nach.
 
 ## Installation
 
@@ -48,22 +64,143 @@ Zeiträume (Tag, Woche, Monat, Jahr) zeigen die Statistik-Karte oder das Energie
 
 ## Einrichtung
 
-1. **Bezugszähler:** Name und Zähler.
+1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler.
 2. **Tarife:** Arbeitspreis eines Festpreistarifs (ct/kWh, brutto) und ein Sensor mit dem Gesamtpreis eines dynamischen Tarifs, für beide optional der Grundpreis pro Monat. Daraus entstehen die ersten beiden Tarife; der Festpreis ist „Mein aktueller Tarif“.
 
-**Weitere Tarife:** *Tarifwacht → Tarif hinzufügen* und die Art wählen:
+### Weitere Tarife
+
+*Tarifwacht → Tarif hinzufügen* und die Art wählen:
+
+<img alt="Auswahl der Tarifart" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/tarif-art.png" width="480">
 
 | Art | Eingaben |
 |---|---|
 | Festpreis | Arbeitspreis (ct/kWh, brutto) |
-| Dynamisch: Gesamtpreis-Sensor | Sensor, der schon alle Bestandteile enthält |
-| Dynamisch: Börsenpreis plus Aufschläge | Börsenpreis-Sensor; Netzentgelt, Steuern/Abgaben/Umlagen, Anbieteraufschlag (je ct/kWh netto); Mehrwertsteuer (%) |
+| Dynamisch: Sensor mit Gesamtpreis | Sensor, der schon alle Bestandteile enthält |
+| Dynamisch: Börsenpreis plus Aufschläge | Börsenpreis-Sensor; Netzentgelt, Steuern/Abgaben, Anbieteraufschlag (je ct/kWh netto); Mehrwertsteuer (%) |
 
-Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Haken **Mein aktueller Tarif** – die anderen Tarife zeigen ihre Differenz zu diesem. Ändern: beim Tarif ⋮ → *Neu konfigurieren*; Tarifwacht rechnet dann den ganzen Zeitraum neu.
+Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Schalter **Mein aktueller Tarif** – die anderen Tarife zeigen ihre Differenz zu diesem.
+
+### Tarif ändern
+
+Beim Tarif auf das Zahnrad (*Konfigurieren*):
+
+- **Tarif bearbeiten:** Name, aktueller Tarif und Preise **ab Beginn** – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu.
+- **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt.
+- **Preisänderung entfernen:** danach gelten wieder die Preise davor.
+- **Modul 3** (nur bei „Börsenpreis plus Aufschläge“), siehe unten.
 
 Mehrere Zähler: je einen Eintrag anlegen. Name oder Zähler ändern: *Tarifwacht → ⋮ → Neu konfigurieren*.
 
+### Modul 3 (§ 14a EnWG)
+
+Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) kannst du beim Netzbetreiber Modul 3 wählen: ein Netzentgelt, das von der Uhrzeit abhängt. Ob sich das lohnt, zeigt ein zweiter Tarif mit denselben Preisen und eingeschaltetem Modul 3.
+
+<img alt="Modul 3 mit Niedrig- und Hochlastfenstern" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/modul3.png" width="480">
+
+- **Stufen:** Niedriglast (NT) und Hochlast (HT) in ct/kWh netto; außerhalb der Fenster gilt das normale Netzentgelt des Tarifs (Standardstufe).
+- **Quartale:** in welchen Quartalen die Fenster gelten; in den anderen gilt den ganzen Tag die Standardstufe.
+- **Zeitfenster:** Ortszeit im Viertelstundenraster, mehrere mit Komma getrennt, auch über Mitternacht – z. B. `23:00-06:00` oder `01:45-06:15, 22:30-24:00`.
+- Alle Werte stehen im Preisblatt deines Netzbetreibers. Ändern sie sich (meist zum Jahreswechsel), das neue Preisblatt als Preisänderung ab dem Stichtag eintragen.
+- Modul 3 gilt für den **gesamten** Netzbezug der Marktlokation, nicht nur für Wärmepumpe oder Wallbox. Das passt, solange das Gerät nicht über einen eigenen Zähler läuft.
+
+Grundlage: Festlegung der Bundesnetzagentur BK8-22/010-A; Einzelheiten und Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
+
+## Entitäten
+
+Am Gerät des Zählers (z. B. „Haus“):
+
+| Entität | Einheit | Bedeutung |
+|---|---|---|
+| Strombezug | kWh | erfasste Menge seit der Einrichtung – zum Abgleich mit deinem Zähler |
+| Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen |
+
+An jedem Tarif (z. B. „Haus Festpreis“):
+
+| Entität | Einheit | Bedeutung |
+|---|---|---|
+| Verbrauchskosten | € | Strombezug × Preis der jeweiligen Viertelstunde |
+| Kosten gesamt | € | Verbrauchskosten plus Grundpreis |
+| Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug |
+| Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst) |
+
+Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
+
+## Dashboard: Kosten je Monat
+
+Tages-, Monats- und Jahreswerte liefert die Langzeitstatistik – eigene Zähler braucht es nicht. Beispiel für eine Statistik-Karte (*Dashboard bearbeiten → Karte hinzufügen → Manuell*); die Entitäts-IDs hängen von deinen Namen ab:
+
+```yaml
+type: statistics-graph
+title: Stromkosten je Monat
+chart_type: bar
+period: month
+stat_types:
+  - change
+days_to_show: 365
+entities:
+  - entity: sensor.haus_festpreis_kosten_gesamt
+    name: Festpreis
+  - entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Dynamisch
+```
+
+## Vergleich für einen Zeitraum
+
+*Einstellungen → Werkzeuge → Aktionen* (früher *Entwicklerwerkzeuge → Aktionen*) → **Tarife vergleichen**, Zähler und Zeitraum wählen, „Antwort anzeigen“:
+
+```yaml
+action: tarifwacht.compare
+data:
+  config_entry: <Eintrag auswählen>
+  start: "2026-11-01 00:00:00"
+  end: "2026-12-01 00:00:00"
+```
+
+<img alt="Antwort der Aktion „Tarife vergleichen“" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
+
+Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif. Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant. Bekannt sind nur die Viertelstunden seit der Einrichtung.
+
+Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_variable`), z. B. für eine Monatsübersicht per Benachrichtigung.
+
+## Datenschutz
+
+Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Es wird nichts ins Internet übertragen. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
+
+## Was Tarifwacht nicht kann
+
+- **Keine Abrechnung:** Abweichungen zur Rechnung sind normal (anderer Zähler, Rundung, Abschläge).
+- **Kein verändertes Verhalten:** Der Vergleich rechnet deinen tatsächlichen Verbrauch – was du mit einem dynamischen Tarif verschieben würdest, sieht er nicht.
+- **Keine Rückrechnung vor der Einrichtung:** Alle Werte beginnen bei der Einrichtung.
+- **Keine Netzeinspeisung:** Tarifwacht rechnet nur den Bezug. Für die Einspeisung gibt es das Schwesterprojekt [Einspeisewacht](https://github.com/einspeisewacht/integration).
+- **Module 1 und 2** nach § 14a EnWG bildet Tarifwacht nicht eigens ab.
+
+## Fehlerbehebung
+
+Tarifwacht meldet Probleme unter *Einstellungen → Reparaturen*:
+
+- **Preissensor mit nicht unterstützter Einheit:** Der Sensor liefert z. B. ct/kWh oder €/MWh. Tarifwacht braucht €/kWh und ignoriert seine Preise bis dahin.
+- **Zähler mit nicht unterstützter Einheit:** Tarifwacht bucht nichts, bis der Zähler Wh, kWh oder MWh liefert.
+- **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos.
+
+Weiteres:
+
+- **Werte bleiben bei 0:** Liefert der Bezugszähler Werte? „Strombezug“ sollte mit deinem Zähler mitwachsen.
+- **Dynamische Kosten hinken hinterher:** Eine Viertelstunde wird erst gebucht, wenn ihr Preis bekannt ist. Mit Prognose ist das sofort der Fall; sonst siehe „Preise fehlen“.
+- **Diagnose:** *Tarifwacht → Eintrag → ⋮ → Diagnosedaten herunterladen*. **Debug-Protokoll:** *Tarifwacht → ⋮ → Debug-Protokoll aktivieren*.
+
 **Update von 0.1.0b1:** Die beiden Tarife werden zu eigenen Tarif-Einträgen, der Verbrauch seit der Einrichtung wird einmalig aus dem Verlauf (Recorder) nachgelesen. Die Sensoren behalten ihre Entitäts-IDs; „Mehrkosten dynamisch“ heißt jetzt „Differenz zum aktuellen Tarif“.
+
+## Entfernen
+
+1. *Einstellungen → Geräte & Dienste → Tarifwacht* → bei jedem Eintrag ⋮ → *Löschen*. Die gespeicherten Viertelstunden dieses Eintrags werden mit gelöscht.
+2. Optional: HACS → Tarifwacht → ⋮ → *Entfernen*, dann Home Assistant neu starten.
+
+Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten, bis du sie unter *Einstellungen → Werkzeuge → Statistik* (früher *Entwicklerwerkzeuge*) entfernst.
+
+## Fehler melden
+
+Bitte als [Issue](https://github.com/tarifwacht/integration/issues) – am besten mit Diagnose-Datei und den Versionen von Home Assistant und Tarifwacht. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
 
 ## Danke
 
@@ -71,4 +208,4 @@ Die Idee, den eigenen Verbrauch in Home Assistant direkt gegen beide Tarife zu r
 
 ## Lizenz
 
-MIT
+MIT. Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.

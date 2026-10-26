@@ -1,5 +1,10 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Preissensoren ohne Prognose:** Ihr aktueller Wert gilt jetzt für jede Viertelstunde, bis er sich ändert. Bisher bekam nur die Viertelstunde einen Preis, in der sich der Wert änderte – bei einem stündlich wechselnden Preis blieben drei von vier Viertelstunden ohne Preis.
+- README überarbeitet und auf Englisch (`README.en.md`): Preisänderungen, Modul 3, Preisquellen, Aktion „Tarife vergleichen“, Dashboard-Beispiel, Reparaturen, Datenschutz, Entfernen; Bilder mit einem Demo-Eintrag.
+
 ## 0.1.0b4 – 2026-10-26
 
 - **Aktion „Tarife vergleichen“** (`tarifwacht.compare`): Kosten aller Tarife in einem frei wählbaren Zeitraum, der günstigste zuerst – mit Verbrauchs- und Grundpreisanteil, Durchschnittspreis und Differenz zum aktuellen Tarif.

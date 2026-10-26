@@ -73,15 +73,20 @@ BACKFILL_MARGIN = timedelta(hours=1)
 LATE_PRICE_GRACE = timedelta(hours=1)
 
 
-def parse_price_state(state: State) -> ParsedPrices | None:
-    """Prices from a price sensor: known forecast attributes, else the state."""
+def parse_price_state(state: State, now: datetime | None = None) -> ParsedPrices | None:
+    """Prices from a price sensor: known forecast attributes, else the state.
+
+    A plain state is the price of the quarter hour `now` falls in (by default
+    the one of its last update); the quarter-hour tick carries it on.
+    """
     if (parsed := parse_price_attributes(state.attributes)) is not None:
         return parsed
     try:
         price = float(state.state)
     except ValueError:
         return None
-    return ParsedPrices(prices={slot_start(state.last_updated): price}, format="state")
+    slot = slot_start(now or state.last_updated)
+    return ParsedPrices(prices={slot: price}, format="state")
 
 
 def price_unit_ok(state: State) -> bool:
@@ -386,6 +391,12 @@ class MeterRuntime:
 
     @callback
     def _on_tick(self, now: datetime) -> None:
+        # A sensor without a forecast only shows the current price and may
+        # keep it for an hour without a state change: it holds for the quarter
+        # hour that just began, too.
+        for entity in sorted(self.price_entities):
+            if state := self.hass.states.get(entity):
+                self._handle_price(state, now)
         self.engine.tick(now)
         self._update_issues(now)
         self._notify()
@@ -432,7 +443,7 @@ class MeterRuntime:
             self.wrong_price_unit[source] = unit
             return
         self.wrong_price_unit.pop(source, None)
-        if (parsed := parse_price_state(state)) is not None:
+        if (parsed := parse_price_state(state, now)) is not None:
             self.engine.on_prices(source, parsed, now)
 
     def _changed(self) -> None:

@@ -222,6 +222,28 @@ async def test_wrong_price_unit_is_ignored(
 
 
 @pytest.mark.freeze_time(START)
+async def test_state_only_price_holds_until_it_changes(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A price sensor without a forecast changes, e.g., only every hour."""
+    hass.states.async_set(PRICE, "0.30", {"unit_of_measurement": "€/kWh"})
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    freezer.move_to(datetime(2026, 10, 25, 16, 15, 1, tzinfo=UTC))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    # 17:00:30-17:29:30, half in each quarter hour, both at 0.30 €/kWh.
+    freezer.move_to(datetime(2026, 10, 25, 16, 29, 30, tzinfo=UTC))
+    hass.states.async_set(METER, "1001000", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(0.30)
+
+
+@pytest.mark.freeze_time(START)
 async def test_remove_entry(hass: HomeAssistant) -> None:
     entry = await setup(hass)
     assert await hass.config_entries.async_remove(entry.entry_id)
