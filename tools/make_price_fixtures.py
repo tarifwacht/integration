@@ -169,6 +169,8 @@ if __name__ == "__main__":
     ):
         path = FIXTURES / name
         path.write_text(
-            json.dumps(build(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            json.dumps(build(), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
         print("written", path.relative_to(ROOT))

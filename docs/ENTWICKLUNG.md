@@ -36,6 +36,19 @@ Fahrplan:
 
 Seitdem unabhängig weiterentwickelt; die Tarifwacht braucht die Einspeisewacht nicht. Bei Fehlerkorrekturen am Kern prüfen, ob die Schwester denselben Fehler hat. Eine gemeinsame Bibliothek erst, wenn sich der Kern in beiden Projekten als stabil erwiesen hat (eine Abhängigkeit mehr für die Nutzer).
 
+## 2a. Modul 3 – zeitvariables Netzentgelt (§ 14a EnWG)
+
+Recherchiert 2026-10-26 an Primärquellen; keine Rechts- oder Abrechnungsberatung.
+
+- **Grundlage:** BNetzA BK8-22/010-A vom 23.11.2023 (Tenor Ziff. 3, Anlage S. 62; [Festlegung](https://www.bundesnetzagentur.de/DE/Beschlusskammern/1_GZ/BK8-GZ/2022/2022_4-Steller/BK8-22-0010/BK8-22-0010-A_Festlegung_DL_BF.html)). Bis 26.10.2026 keine Änderungsfestlegung; BNetzA erwägt Weiterentwicklung im Rahmen von AgNes, frühestens 2027.
+- **Drei Stufen:** Standard (normaler Arbeitspreis des Netzentgelts), Hochlast HT (≤ 2 × Standard, mindestens 2 h täglich), Niedriglast NT (10–40 % des Standards) – Anlage Nr. 1/2. Erlösneutral gegenüber H0-Profil (Nr. 3).
+- **Quartale:** in mindestens zwei Quartalen, sonst ganztägig Standard; jede Stufe kommt an jedem Tag dieser Quartale vor (Tenor 3 c). Die Quartale wechseln teils jährlich (Netze BW: 2025 Q2–Q4, 2026 Q1–Q4). Abrechnung seit 01.04.2025.
+- **Umfang:** gilt für den **gesamten Netzbezug der Marktlokation** ([BNetzA-FAQ](https://www.bundesnetzagentur.de/DE/Vportal/Energie/SteuerbareVBE/Netzentgelt_table.html); Rz. 90–91) – passt zum Ein-Zähler-Ansatz, solange das Gerät nicht separat gezählt wird. Nur zusammen mit Modul 1, nicht mit Modul 2.
+- **Zeitfenster:** Ortszeit Europe/Berlin ohne Rücksicht auf die Zeitumstellung (UTILTS AHB 1.1, § 8.4); am Umstellungstag bekommt die doppelte Stunde beide Male ihre Stufe. Preisblätter: Viertelstunden-Raster (Pforzheim 01:45–06:15), Fenster über Mitternacht (EAM 23:00–06:00), mehrere Fenster je Stufe; keine Unterscheidung nach Wochentag oder Feiertag gefunden. BDEW-Anwendungshilfe V1.2: Fenster ganzjährig gleich.
+- **Was sich ändert:** nur der Arbeitspreis des Netzentgelts; Energie, Abgaben, Umlagen, Steuern, Grundpreis bleiben.
+- **Umsetzung:** Option der Tarifart „Börsenpreis plus Aufschläge“ (das Netzentgelt-Feld ist die Standardstufe). Gespeichert unter `modul3` = `{active, nt, ht, quarters, nt_windows, ht_windows}` (ct/kWh netto, Fenster als Text „HH:MM-HH:MM, …“); auch per Preisänderung ab einem Datum (neues Preisblatt). Geprüft: Format, Viertelstunden-Raster, keine Überschneidung, je Stufe mindestens ein Fenster, mindestens ein Quartal. Nicht erzwungen (Preisblatt hat Vorrang): Preisgrenzen NT/HT, Mindestdauer HT, mindestens zwei Quartale.
+- **Beispiele 2026 (netto ct/kWh), in den Tests:** Netze BW (Q1–Q4, NT 10–14 3,03, HT 17–22 11,06, sonst 7,57), Netzgesellschaft Düsseldorf (Q1+Q4, NT 04:30–05:00 3,16, HT 18–20 8,19, sonst 7,91).
+
 ## 3. Datenquellen – verifizierte Eigenheiten (geprüft 2026-10-26)
 
 ### Preis: EPEX Spot (mampfes), Quelle SMARD.de

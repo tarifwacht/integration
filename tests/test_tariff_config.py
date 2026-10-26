@@ -181,6 +181,7 @@ def test_market_tariff_grid_fee_change() -> None:
         CONF_LEVIES,
         CONF_MARGIN,
         CONF_VAT,
+        "modul3",
         CONF_BASE_PRICE,
         CONF_BASE_PERIOD,
     )

@@ -134,6 +134,7 @@
           "title": "Change tariff",
           "menu_options": {
             "edit": "Edit tariff (name, current tariff, prices from the start)",
+            "modul3": "Modul 3: time-variable grid fee (§ 14a EnWG)",
             "add_change": "Add a price change from a date",
             "remove_change": "Remove a price change"
           }
@@ -149,7 +150,17 @@
             "margin": "Supplier surcharge",
             "vat": "VAT",
             "base_price": "Base price",
-            "base_period": "Base price per"
+            "base_period": "Base price per",
+            "modul3_active": "Modul 3 active",
+            "nt": "Grid fee low-load level (NT)",
+            "ht": "Grid fee high-load level (HT)",
+            "quarters": "Quarters in which the windows apply",
+            "nt_windows": "Low-load windows (NT)",
+            "ht_windows": "High-load windows (HT)"
+          },
+          "data_description": {
+            "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
+            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
           }
         },
         "remove_change": {
@@ -157,6 +168,25 @@
           "description": "From then on the prices before that change apply again.",
           "data": {
             "from": "Price change from"
+          }
+        },
+        "modul3": {
+          "title": "Modul 3 ({tariff})",
+          "description": "With a controllable device (heat pump, wallbox) under § 14a EnWG Modul 3, the grid fee depends on the time of day: low-load (NT) and high-load (HT) windows, the standard grid fee of this tariff ({grid_fee} ct/kWh) at all other times. Applies to all grid purchase of the meter. Values from the start of the tariff; a new price sheet goes in as a price change.",
+          "data": {
+            "modul3_active": "Modul 3 active",
+            "nt": "Grid fee low-load level (NT)",
+            "ht": "Grid fee high-load level (HT)",
+            "quarters": "Quarters in which the windows apply",
+            "nt_windows": "Low-load windows (NT)",
+            "ht_windows": "High-load windows (HT)"
+          },
+          "data_description": {
+            "nt": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "ht": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "quarters": "Outside these quarters the standard grid fee applies all day.",
+            "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
+            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
           }
         }
       },
@@ -167,7 +197,12 @@
         "entity_missing": "The entity does not exist or has no state yet.",
         "price_unit": "The price sensor must report €/kWh.",
         "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state.",
-        "change_exists": "There is already a price change on this date."
+        "change_exists": "There is already a price change on this date.",
+        "window_format": "Please enter windows like 10:00-14:00, several separated by commas.",
+        "window_grid": "Windows must start and end on a quarter hour (:00, :15, :30, :45).",
+        "window_overlap": "The windows overlap.",
+        "window_required": "Each level needs at least one window a day.",
+        "quarters_required": "Please choose at least one quarter."
       }
     }
   },
@@ -176,6 +211,14 @@
       "options": {
         "month": "Month",
         "year": "Year"
+      }
+    },
+    "quarters": {
+      "options": {
+        "1": "Q1 (Jan–Mar)",
+        "2": "Q2 (Apr–Jun)",
+        "3": "Q3 (Jul–Sep)",
+        "4": "Q4 (Oct–Dec)"
       }
     }
   },

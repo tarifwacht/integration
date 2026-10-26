@@ -134,6 +134,7 @@
           "title": "Tarif ändern",
           "menu_options": {
             "edit": "Tarif bearbeiten (Name, aktueller Tarif, Preise ab Beginn)",
+            "modul3": "Modul 3: zeitvariables Netzentgelt (§ 14a EnWG)",
             "add_change": "Preisänderung ab einem Datum hinzufügen",
             "remove_change": "Preisänderung entfernen"
           }
@@ -149,7 +150,17 @@
             "margin": "Anbieteraufschlag",
             "vat": "Mehrwertsteuer",
             "base_price": "Grundpreis",
-            "base_period": "Grundpreis pro"
+            "base_period": "Grundpreis pro",
+            "modul3_active": "Modul 3 aktiv",
+            "nt": "Netzentgelt Niedriglaststufe (NT)",
+            "ht": "Netzentgelt Hochlaststufe (HT)",
+            "quarters": "Quartale, in denen die Zeitfenster gelten",
+            "nt_windows": "Zeitfenster Niedriglast (NT)",
+            "ht_windows": "Zeitfenster Hochlast (HT)"
+          },
+          "data_description": {
+            "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
+            "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
           }
         },
         "remove_change": {
@@ -157,6 +168,25 @@
           "description": "Danach gelten wieder die Preise vor dieser Änderung.",
           "data": {
             "from": "Preisänderung ab"
+          }
+        },
+        "modul3": {
+          "title": "Modul 3 ({tariff})",
+          "description": "Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) nach § 14a EnWG Modul 3 hängt das Netzentgelt von der Uhrzeit ab: Niedriglast- (NT) und Hochlastfenster (HT), sonst das normale Netzentgelt dieses Tarifs ({grid_fee} ct/kWh). Gilt für den gesamten Strombezug des Zählers. Werte ab Beginn des Tarifs; ein neues Preisblatt als Preisänderung eintragen.",
+          "data": {
+            "modul3_active": "Modul 3 aktiv",
+            "nt": "Netzentgelt Niedriglaststufe (NT)",
+            "ht": "Netzentgelt Hochlaststufe (HT)",
+            "quarters": "Quartale, in denen die Zeitfenster gelten",
+            "nt_windows": "Zeitfenster Niedriglast (NT)",
+            "ht_windows": "Zeitfenster Hochlast (HT)"
+          },
+          "data_description": {
+            "nt": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "ht": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "quarters": "Außerhalb dieser Quartale gilt den ganzen Tag das normale Netzentgelt.",
+            "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
+            "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
           }
         }
       },
@@ -167,7 +197,12 @@
         "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
         "price_unit": "Der Preissensor muss €/kWh liefern.",
         "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
-        "change_exists": "Zu diesem Datum gibt es schon eine Preisänderung."
+        "change_exists": "Zu diesem Datum gibt es schon eine Preisänderung.",
+        "window_format": "Bitte Zeitfenster wie 10:00-14:00 eingeben, mehrere mit Komma getrennt.",
+        "window_grid": "Zeitfenster müssen auf einer Viertelstunde beginnen und enden (:00, :15, :30, :45).",
+        "window_overlap": "Die Zeitfenster überschneiden sich.",
+        "window_required": "Jede Stufe braucht mindestens ein Zeitfenster am Tag.",
+        "quarters_required": "Bitte mindestens ein Quartal wählen."
       }
     }
   },
@@ -176,6 +211,14 @@
       "options": {
         "month": "Monat",
         "year": "Jahr"
+      }
+    },
+    "quarters": {
+      "options": {
+        "1": "Q1 (Jan–Mär)",
+        "2": "Q2 (Apr–Jun)",
+        "3": "Q3 (Jul–Sep)",
+        "4": "Q4 (Okt–Dez)"
       }
     }
   },

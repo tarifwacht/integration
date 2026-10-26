@@ -6,7 +6,7 @@ import json
 import tomllib
 from pathlib import Path
 
-from custom_components.tarifwacht.config_flow import _tariff_schema
+from custom_components.tarifwacht.config_flow import _modul3_fields, _tariff_schema
 from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
 from custom_components.tarifwacht.sensor import DIFFERENCE, ENERGY, TARIFF_SENSORS
 from custom_components.tarifwacht.tariff_config import change_fields
@@ -88,9 +88,19 @@ def test_reconfigure_step_matches_user_step() -> None:
 def test_price_change_fields_translated() -> None:
     step = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]["step"]
     fields = {"from"} | {key for kind in KINDS for key in change_fields(kind)}
+    # Modul 3 is stored as one value but entered in six fields.
+    fields = (fields - {"modul3"}) | set(step["modul3"]["data"])
     assert set(step["add_change"]["data"]) == fields
     assert set(step["reconfigure"]["menu_options"]) == {
         "edit",
+        "modul3",
         "add_change",
         "remove_change",
     }
+
+
+def test_modul3_fields_translated() -> None:
+    strings = load(INTEGRATION / "strings.json")
+    step = strings["config_subentries"]["tariff"]["step"]["modul3"]
+    assert set(step["data"]) == {str(key) for key in _modul3_fields()}
+    assert set(strings["selector"]["quarters"]["options"]) == {"1", "2", "3", "4"}

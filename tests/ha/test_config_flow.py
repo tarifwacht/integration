@@ -309,3 +309,51 @@ async def test_price_changes(hass: HomeAssistant) -> None:
     result = await configure_tariff(hass, result, {"from": "2027-01-01"})
     assert result["type"] is FlowResultType.ABORT
     assert "changes" not in entry.subentries[FIXED_SUBENTRY].data
+
+
+async def test_modul3(hass: HomeAssistant) -> None:
+    entry = added_entry(hass)
+    result = await start_tariff(hass, entry, "dynamic_market")
+    await configure_tariff(
+        hass,
+        result,
+        {
+            "name": "Börse",
+            "price_entity": MARKET,
+            "grid_fee": 7.57,
+            "levies": 4.0,
+            "margin": 2.0,
+            "vat": 19.0,
+            "base_period": "month",
+            "current": False,
+        },
+    )
+    subentry = next(s for s in entry.subentries.values() if s.title == "Börse")
+    result = await entry.start_subentry_reconfigure_flow(hass, subentry.subentry_id)
+    assert result["menu_options"] == ["edit", "modul3", "add_change"]
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "modul3"}
+    )
+    assert result["step_id"] == "modul3"
+    form = {
+        "modul3_active": True,
+        "nt": 3.03,
+        "ht": 11.06,
+        "quarters": ["1", "2", "3", "4"],
+        "nt_windows": "10:00-14:00",
+        "ht_windows": "13:00-22:00",
+    }
+    result = await configure_tariff(hass, result, form)
+    assert result["errors"] == {"ht_windows": "window_overlap"}
+    result = await configure_tariff(hass, result, {**form, "ht_windows": "17:10-22:00"})
+    assert result["errors"] == {"ht_windows": "window_grid"}
+    result = await configure_tariff(hass, result, {**form, "ht_windows": "17:00-22:00"})
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[subentry.subentry_id].data["modul3"] == {
+        "active": True,
+        "nt": 3.03,
+        "ht": 11.06,
+        "quarters": [1, 2, 3, 4],
+        "nt_windows": "10:00-14:00",
+        "ht_windows": "17:00-22:00",
+    }

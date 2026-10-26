@@ -29,6 +29,7 @@ from .const import (
     CONF_LEVIES,
     CONF_MARGIN,
     CONF_METER,
+    CONF_MODUL3,
     CONF_NAME,
     CONF_PRICE,
     CONF_PRICE_ENTITY,
@@ -39,6 +40,7 @@ from .const import (
     TARIFF_DYNAMIC,
     TARIFF_FIXED,
 )
+from .modul3 import modul3_from_data
 from .prices import PriceTable
 from .tariffs import BasePeriod, ComposedPrice, FixedPrice, PriceSource, Tariff
 
@@ -66,7 +68,7 @@ def change_fields(kind: str) -> tuple[str, ...]:
     if kind == KIND_FIXED:
         return (CONF_PRICE, *base)
     if kind == KIND_DYNAMIC_MARKET:
-        return (CONF_GRID_FEE, CONF_LEVIES, CONF_MARGIN, CONF_VAT, *base)
+        return (CONF_GRID_FEE, CONF_LEVIES, CONF_MARGIN, CONF_VAT, CONF_MODUL3, *base)
     return base
 
 
@@ -117,10 +119,18 @@ def _single_tariff(
     elif kind == KIND_DYNAMIC_TOTAL:
         prices = price_table(data[CONF_PRICE_ENTITY])
     elif kind == KIND_DYNAMIC_MARKET:
+        modul3 = modul3_from_data(
+            data.get(CONF_MODUL3) or {}, float(data.get(CONF_GRID_FEE) or 0), BERLIN
+        )
+        surcharge = surcharge_ct(data)
+        if modul3 is not None:
+            # The grid fee depends on the quarter hour.
+            surcharge -= float(data.get(CONF_GRID_FEE) or 0)
         prices = ComposedPrice(
             price_table(data[CONF_PRICE_ENTITY]),
-            surcharge_ct(data) / 100,
+            surcharge / 100,
             float(data.get(CONF_VAT) or 0) / 100,
+            grid_fee=modul3.fee if modul3 is not None else None,
         )
     else:
         raise ValueError(f"unknown tariff kind {kind}")

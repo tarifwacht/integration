@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import calendar
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from enum import StrEnum
@@ -39,10 +40,15 @@ class ComposedPrice:
     market: PriceSource
     surcharge: float
     vat: float
+    # Time-variable grid fee (Modul 3) in EUR/kWh; then not in `surcharge`.
+    grid_fee: Callable[[datetime], float] | None = None
 
     def get(self, slot: datetime) -> float | None:
         price = self.market.get(slot)
-        return None if price is None else (price + self.surcharge) * (1 + self.vat)
+        if price is None:
+            return None
+        fee = self.grid_fee(slot) if self.grid_fee is not None else 0.0
+        return (price + self.surcharge + fee) * (1 + self.vat)
 
 
 class BasePeriod(StrEnum):

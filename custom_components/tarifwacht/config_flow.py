@@ -44,6 +44,7 @@ from .const import (
     CONF_LEVIES,
     CONF_MARGIN,
     CONF_METER,
+    CONF_MODUL3,
     CONF_NAME,
     CONF_PRICE,
     CONF_PRICE_ENTITY,
@@ -57,6 +58,7 @@ from .const import (
     SUBENTRY_TARIFF,
 )
 from .meter import UNIT_FACTORS
+from .modul3 import WindowError, overlaps, parse_windows
 from .runtime import parse_price_state, price_unit_ok, tariff_subentries
 from .tariff_config import (
     change_fields,
@@ -287,6 +289,81 @@ def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+# Modul 3 form fields (stored together under "modul3").
+M3_ACTIVE = "modul3_active"
+M3_NT = "nt"
+M3_HT = "ht"
+M3_QUARTERS = "quarters"
+M3_NT_WINDOWS = "nt_windows"
+M3_HT_WINDOWS = "ht_windows"
+QUARTERS = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=["1", "2", "3", "4"],
+        multiple=True,
+        translation_key=M3_QUARTERS,
+        mode=selector.SelectSelectorMode.LIST,
+    )
+)
+
+
+def _modul3_fields() -> dict[Any, Any]:
+    return {
+        vol.Required(M3_ACTIVE): selector.BooleanSelector(),
+        vol.Optional(M3_NT): PRICE_NUMBER,
+        vol.Optional(M3_HT): PRICE_NUMBER,
+        vol.Optional(M3_QUARTERS): QUARTERS,
+        vol.Optional(M3_NT_WINDOWS): selector.TextSelector(),
+        vol.Optional(M3_HT_WINDOWS): selector.TextSelector(),
+    }
+
+
+def _modul3_suggested(modul3: dict[str, Any] | None) -> dict[str, Any]:
+    modul3 = modul3 or {}
+    return {
+        M3_ACTIVE: bool(modul3.get("active")),
+        M3_NT: modul3.get("nt"),
+        M3_HT: modul3.get("ht"),
+        M3_QUARTERS: [str(q) for q in modul3.get("quarters", [1, 2, 3, 4])],
+        M3_NT_WINDOWS: modul3.get("nt_windows", ""),
+        M3_HT_WINDOWS: modul3.get("ht_windows", ""),
+    }
+
+
+def _modul3_from_input(
+    user_input: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Stored Modul 3 values and form errors (only checked when active)."""
+    modul3 = {
+        "active": bool(user_input.get(M3_ACTIVE)),
+        "nt": float(user_input.get(M3_NT) or 0),
+        "ht": float(user_input.get(M3_HT) or 0),
+        "quarters": sorted(int(q) for q in user_input.get(M3_QUARTERS) or []),
+        "nt_windows": (user_input.get(M3_NT_WINDOWS) or "").strip(),
+        "ht_windows": (user_input.get(M3_HT_WINDOWS) or "").strip(),
+    }
+    errors: dict[str, str] = {}
+    if not modul3["active"]:
+        return modul3, errors
+    windows: dict[str, list[tuple[int, int]]] = {}
+    for field, key in ((M3_NT_WINDOWS, "nt_windows"), (M3_HT_WINDOWS, "ht_windows")):
+        try:
+            windows[field] = parse_windows(modul3[key])
+        except WindowError as err:
+            errors[field] = err.key
+            continue
+        if not windows[field]:
+            # Each level must occur every day (BK8-22/010-A, tenor 3 c).
+            errors[field] = "window_required"
+    if not errors and overlaps(windows[M3_NT_WINDOWS], windows[M3_HT_WINDOWS]):
+        errors[M3_HT_WINDOWS] = "window_overlap"
+    for field, key in ((M3_NT, "nt"), (M3_HT, "ht")):
+        if not modul3[key]:
+            errors[field] = "price_required"
+    if not modul3["quarters"]:
+        errors[M3_QUARTERS] = "quarters_required"
+    return modul3, errors
+
+
 class TariffSubentryFlow(ConfigSubentryFlow):
     """Add or change one tariff."""
 
@@ -314,9 +391,13 @@ class TariffSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Edit the tariff, or add or remove a price change."""
-        options = ["edit", "add_change"]
-        if self._get_reconfigure_subentry().data.get(CONF_CHANGES):
+        """Edit the tariff, Modul 3, or add or remove a price change."""
+        data = self._get_reconfigure_subentry().data
+        options = ["edit"]
+        if data[CONF_KIND] == KIND_DYNAMIC_MARKET:
+            options.append("modul3")
+        options.append("add_change")
+        if data.get(CONF_CHANGES):
             options.append("remove_change")
         return self.async_show_menu(step_id="reconfigure", menu_options=options)
 
@@ -326,6 +407,33 @@ class TariffSubentryFlow(ConfigSubentryFlow):
         """The form of the tariff's kind, prefilled (values from the start)."""
         kind = self._get_reconfigure_subentry().data[CONF_KIND]
         return await self._async_tariff_step(kind, None)
+
+    async def async_step_modul3(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Time-variable grid fee (values from the start of the tariff)."""
+        subentry = self._get_reconfigure_subentry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            modul3, errors = _modul3_from_input(user_input)
+            if not errors:
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    subentry,
+                    data={**subentry.data, CONF_MODUL3: modul3},
+                )
+        return self.async_show_form(
+            step_id="modul3",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(_modul3_fields()),
+                user_input or _modul3_suggested(subentry.data.get(CONF_MODUL3)),
+            ),
+            errors=errors,
+            description_placeholders={
+                "tariff": subentry.title,
+                "grid_fee": f"{float(subentry.data.get(CONF_GRID_FEE) or 0):g}",
+            },
+        )
 
     async def async_step_add_change(
         self, user_input: dict[str, Any] | None = None
@@ -342,22 +450,27 @@ class TariffSubentryFlow(ConfigSubentryFlow):
             elif kind == KIND_FIXED and not user_input.get(CONF_PRICE):
                 errors[CONF_PRICE] = "price_required"
             else:
-                change = {CONF_FROM: valid_from}
+                change: dict[str, Any] = {CONF_FROM: valid_from}
                 for key in change_fields(kind):
-                    if key == CONF_BASE_PERIOD:
+                    if key == CONF_MODUL3:
+                        change[key], errors = _modul3_from_input(user_input)
+                    elif key == CONF_BASE_PERIOD:
                         change[key] = user_input[key]
                     else:
                         change[key] = float(user_input.get(key) or 0)
-                changes = sorted([*changes, change], key=lambda c: c[CONF_FROM])
-                return self.async_update_and_abort(
-                    self._get_entry(),
-                    subentry,
-                    data={**subentry.data, CONF_CHANGES: changes},
-                )
+                if not errors:
+                    changes = sorted([*changes, change], key=lambda c: c[CONF_FROM])
+                    return self.async_update_and_abort(
+                        self._get_entry(),
+                        subentry,
+                        data={**subentry.data, CONF_CHANGES: changes},
+                    )
 
         fields: dict[Any, Any] = {vol.Required(CONF_FROM): selector.DateSelector()}
         for key in change_fields(kind):
-            if key == CONF_BASE_PERIOD:
+            if key == CONF_MODUL3:
+                fields.update(_modul3_fields())
+            elif key == CONF_BASE_PERIOD:
                 fields[vol.Required(key)] = BASE_PERIOD
             elif key == CONF_VAT:
                 fields[vol.Required(key)] = VAT_NUMBER
@@ -368,7 +481,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
             else:
                 fields[vol.Optional(key)] = PRICE_NUMBER
         # Prefilled with the values valid today.
-        suggested = user_input or state_at(subentry.data, dt_util.now().date())
+        if user_input is not None:
+            suggested = user_input
+        else:
+            today = state_at(subentry.data, dt_util.now().date())
+            suggested = {**today, **_modul3_suggested(today.get(CONF_MODUL3))}
         return self.async_show_form(
             step_id="add_change",
             data_schema=self.add_suggested_values_to_schema(
