@@ -28,11 +28,11 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
-- **Vergleich für einen beliebigen Zeitraum** per Aktion, z. B. für den letzten Monat.
+- **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet?
 - **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum.
 - **Verliert nichts:** Fällt der Zähler aus oder startet Home Assistant neu, wird der Verbrauch der Lücke nachgebucht. Fehlt ein Preis, rechnet Tarifwacht nie mit 0 €. Zähler-Resets und unplausible Sprünge werden erkannt und nicht gebucht.
 - **Schont SD-Karten:** schreibt nur einmal pro Viertelstunde (abgeschlossene Tage einmal am Tag ins Jahresarchiv) und aktualisiert die Sensoren höchstens einmal pro Minute.
-- Rein lokal: liest nur vorhandene Entitäten, keine Cloud.
+- Rein lokal: liest nur vorhandene Entitäten, keine Cloud. Nur für den Rückblick lädt Tarifwacht öffentliche Börsenpreise von SMARD.de.
 
 ## Hinweise zum Vergleich
 
@@ -159,19 +159,29 @@ data:
 
 <img alt="Antwort der Aktion „Tarife vergleichen“" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif. Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant. Bekannt sind nur die Viertelstunden seit der Einrichtung.
+Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat. Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
+
+### Rückblick vor der Einrichtung
+
+Liegt der Beginn vor der Einrichtung, rechnet Tarifwacht diese Zeit nach:
+
+- **Verbrauch:** aus der Langzeitstatistik deines Bezugszählers. Sie hat Stundenwerte; jede Stunde wird gleichmäßig auf ihre vier Viertelstunden verteilt. Für einen Festpreis ist das exakt, bei dynamischen Preisen eine gute Näherung (seit 1. Oktober 2025 wechselt der Börsenpreis jede Viertelstunde).
+- **Börsenpreise:** von [SMARD.de](https://www.smard.de) (Bundesnetzagentur), Day-Ahead DE-LU – dieselben Preise wie der Marktpreis von EPEX Spot. Tarifwacht lädt sie beim ersten Vergleich einer Zeit (je Woche eine Anfrage, ein Jahr dauert etwa eine halbe Minute) und speichert sie; danach geht es ohne Abruf.
+- **Welche Tarife:** Festpreis und „Börsenpreis plus Aufschläge“ (auch mit Modul 3 und Preisänderungen). Ein **Sensor mit Gesamtpreis** kennt nur die Zeit seit der Einrichtung – solche Tarife stehen dann mit `energy_without_price_kwh` am Ende und zählen nicht als günstigster. Tipp: Den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen.
+- Unter `estimate` steht, bis wann geschätzt wurde, wie viel Energie das war und wie viele Stunden in der Statistik fehlen (z. B. weil es den Zähler noch nicht gab).
+- Preise und Grundpreise gelten so, wie der Tarif heute eingetragen ist (mit seinen Preisänderungen). Für einen Vergleich über einen Jahreswechsel die alten Preise als Preisänderung eintragen, z. B. die Netzentgelte des Vorjahres.
 
 Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_variable`), z. B. für eine Monatsübersicht per Benachrichtigung.
 
 ## Datenschutz
 
-Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Es wird nichts ins Internet übertragen. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
+Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme: Vergleichst du eine Zeit vor der Einrichtung, lädt Tarifwacht öffentliche Börsenpreise von SMARD.de. Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
 
 ## Was Tarifwacht nicht kann
 
 - **Keine Abrechnung:** Abweichungen zur Rechnung sind normal (anderer Zähler, Rundung, Abschläge).
 - **Kein verändertes Verhalten:** Der Vergleich rechnet deinen tatsächlichen Verbrauch – was du mit einem dynamischen Tarif verschieben würdest, sieht er nicht.
-- **Keine Rückrechnung vor der Einrichtung:** Alle Werte beginnen bei der Einrichtung.
+- **Sensoren beginnen bei der Einrichtung:** Die Zeit davor gibt es nur über die Aktion „Tarife vergleichen“, nicht in Statistik-Karten.
 - **Keine Netzeinspeisung:** Tarifwacht rechnet nur den Bezug. Für die Einspeisung gibt es das Schwesterprojekt [Einspeisewacht](https://github.com/einspeisewacht/integration).
 - **Module 1 und 2** nach § 14a EnWG bildet Tarifwacht nicht eigens ab.
 
@@ -208,4 +218,4 @@ Die Idee, den eigenen Verbrauch in Home Assistant direkt gegen beide Tarife zu r
 
 ## Lizenz
 
-MIT. Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.
+MIT. Historische Börsenpreise (nur für Vergleiche vor der Einrichtung): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.

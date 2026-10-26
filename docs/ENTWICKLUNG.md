@@ -20,7 +20,7 @@ Fahrplan:
 
 1. **MVP:** ein Bezugszähler, zwei Tarife (Festpreis, dynamisch mit Gesamtpreis-Sensor), Kostensensoren, Differenz. Parallel zum Eigenbau laufen lassen und vergleichen.
 2. Beliebig viele Tarife (Untereinträge), Grundpreise, Durchschnittspreise, Service mit Antwortdaten für frei wählbare Zeiträume.
-3. Rückwirkende Berechnung: Verbrauch aus der Recorder-Statistik, historische Preise aus eigener Quelle (SMARD.de?).
+3. Rückwirkende Berechnung: Verbrauch aus der Recorder-Statistik, historische Preise von SMARD.de – umgesetzt als Rückblick der Aktion „Tarife vergleichen“ (2026-10-26). Offen: Vergangenheit in die Langzeitstatistik der Sensoren schreiben (wie „Statistik nachtragen“ der Einspeisewacht).
 4. Optional: dynamisch mit Modul-3-Netzentgelt (Zeitfenster manuell eingetragen).
 5. Veröffentlichung: README, Release, Vorstellung im simon42-Thread „Kostenvergleich von dynamischem und normalem Stromtarif“.
 
@@ -71,6 +71,12 @@ Recherchiert am Quellcode (feste Commit-Stände) am 2026-10-26. Ein Format wird 
 
 Nicht unterstützt (zu unsicher oder nicht vorhanden): HA-Core Nord Pool und Tibber (Preise nur über Aktionen), HACS `tibber_prices` (frei konfigurierbarer Export), Ostrom (`data` mit `{date, price}`, ct/kWh, Platzhalter-Einträge), Rabot (Ende und Auflösung im Code selbst als Annahme markiert), 1KOMMA5 (zwei Integrationen, gleicher Name `forecast`, anderer Aufbau), Octopus (nur bei `isTimeOfUse`, Format ungeprüft). Fixtures für Nord Pool und ENTSO-E sind **abgeleitet** aus echten API-Daten der Projekte (`tools/make_price_fixtures.py`, Herkunft in `tests/fixtures/_index.json`); sobald ein Nutzer eine Diagnose schickt (`attribute_shape`), gegen echte Attribute prüfen.
 
+### SMARD.de (Rückblick, geprüft 2026-10-26)
+
+- Format, Endpunkte und Eigenheiten wie in der Einspeisewacht (`docs/ENTWICKLUNG.md` dort, Abschnitt 3, Stand Commit 65857dc): Index `…/4169/DE-LU/index_quarterhour.json`, Wochendateien ab Montag 00:00 Ortszeit, €/MWh, `null` für fehlende Werte, vor dem 01.10.2025 jeder Stundenpreis viermal. Die `chart_data`-Endpunkte sind **nicht als API dokumentiert**.
+- Fixtures aus der Einspeisewacht übernommen (`tests/fixtures/smard_*.json`, Herkunft in `_index.json`). Test: Am 25.10.2026 stimmen alle 100 Viertelstunden mit dem EPEX-Spot-Marktpreis überein – SMARD ergänzt deshalb nur Tarife „Börsenpreis plus Aufschläge“, nie einen Gesamtpreis-Sensor.
+- Lizenz CC BY 4.0, Quellenangabe „Bundesnetzagentur | SMARD.de“ (README, Antwort der Aktion unter `estimate.exchange_prices`).
+
 ### Bezugszähler
 
 - Fronius Smart Meter TS 65A-3 (Plattform `fronius`): Wh, `total_increasing`, ganze Wh, neuer Zustand nur bei Wertänderung.
@@ -103,6 +109,7 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 - MVP-Sensoren: Strombezug (kWh), je Tarif Verbrauchskosten und Kosten gesamt, Mehrkosten dynamisch (dynamisch − Festpreis, positiv = dynamisch teurer). Summen über den Abrechnungszeitraum seit der Einrichtung.
 - **Dynamischer Preis aus Bestandteilen** (`ComposedPrice`): (Börsenpreis + Aufschläge netto) × (1 + MwSt.) – dieselbe Formel wie der Gesamtpreis von EPEX Spot. Nötig für die rückwirkende Berechnung, weil es für die Vergangenheit keinen Gesamtpreis-Sensor gibt.
 - **Rückwirkend** (Reihenfolge, Entscheidung 2026-10-26): erst MVP prüfen, dann Stufe 2, dann eine Aktion mit Antwortdaten für frei wählbare Zeiträume (Verbrauch aus der Statistik, Preise von SMARD.de), danach ggf. eigene Langzeitstatistik für die Vergangenheit. **Kein** Startdatum, das die Sensoren mit einem Vergangenheitsbetrag beginnen lässt (erschiene in Monatsgrafiken als Sprung).
+- **Rückblick** (Entscheidung 2026-10-26): Liegt der Beginn der Aktion „Tarife vergleichen“ vor der Einrichtung, kommt der Verbrauch davor aus der Langzeitstatistik des Zählers (`statistics_during_period`, Stundenwerte `change`, gleichmäßig auf vier Viertelstunden verteilt – Muster der Einspeisewacht), die Börsenpreise davor von SMARD.de (`FallbackPrice`: zuerst die Preise des Sensors, nur vor der Einrichtung SMARD). Viertelstunden vor der Einrichtung ohne Preis zählen sofort als „ohne Preis“ (warten nicht 24 h). Der Abruf läuft **automatisch** bei einem solchen Vergleich (kein Opt-in; im README unter Datenschutz genannt), nur wenn ein Tarif „Börsenpreis plus Aufschläge“ existiert; **ohne Zeitgrenze** nach hinten. Preise je UTC-Jahr in einem gemeinsamen Speicher `tarifwacht.smard.<jahr>` für alle Einträge, geschrieben nur nach neuen Wochen; 0,5 s Pause je Woche, Kennung `Tarifwacht/<Version>`. Die Antwort hat `estimate` (bis wann, Energie, fehlende Stunden, Quellenangabe) und `months`. „Günstigster“ ist nur ein Tarif, der jede kWh bepreisen konnte.
 - Zeiträume (Tag/Monat/Jahr) über die Langzeitstatistik, nicht über eigene Sensoren.
 - **Wenig Schreiblast (SD-Karten, Entscheidung 2026-10-26):**
   - Speicher in zwei Teilen (Speicherversion 3): eine kleine **Live-Datei** `tarifwacht.<entry_id>` (Zähler, gestern und heute, wenige KB) und je Kalenderjahr ein **Archiv** `tarifwacht.<entry_id>.<jahr>` mit den abgeschlossenen UTC-Tagen. Die Live-Datei wird nach jedem Viertelstunden-Tick und beim Beenden geschrieben, nicht bei jeder Zähleränderung; ein Archiv einmal am Tag, wenn ein Tag abgeschlossen ist (`archived_until`). Ein Absturz kostet höchstens eine Viertelstunde, die der nächste Zählerwert (Lücke wird verteilt) und die Preisprognose wieder auffüllen.
@@ -121,5 +128,5 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 ## 7. Offene Fragen
 
 - **Preisbestandteile:** Wie erklärt man Nutzern am besten, welche Bestandteile im Aufschlag eines dynamischen Tarifs stecken müssen (Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer, Anbieteraufschlag)? Stufe 2: Börsenpreis + einzeln eingetragene Bestandteile.
-- **Historische Preise** für die rückwirkende Berechnung: SMARD.de (Nutzungsbedingungen, CC BY 4.0, inoffizielle Schnittstelle – Erfahrung der Einspeisewacht nutzen).
+- **SMARD-Schnittstelle** ist inoffiziell: Ändern sich Pfade oder Format, scheitert nur der Rückblick (Fehlermeldung der Aktion), nicht die laufende Buchung.
 - `categories` im Manifest (Hinweis von hassfest).

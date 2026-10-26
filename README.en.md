@@ -30,11 +30,11 @@ The user interface is available in German and English and follows the language o
 - **Modul 3** (§ 14a EnWG): time-variable grid fee with low-load and high-load windows per quarter.
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
 - **Base prices** optional, per month or per year, booked pro rata per day.
-- **Comparison for any period** via an action, e.g. for last month.
+- **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff?
 - **Prices every tariff from the setup on:** consumption and prices are stored per quarter hour. A tariff added or corrected later therefore applies to the whole period.
 - **Loses nothing:** if the meter drops out or Home Assistant restarts, the consumption of the gap is booked afterwards. If a price is missing, Tarifwacht never uses 0 €. Meter resets and implausible jumps are detected and not booked.
 - **Easy on SD cards:** writes only once per quarter hour (closed days once a day into a yearly archive) and updates the sensors at most once a minute.
-- Local only: reads existing entities, no cloud.
+- Local only: reads existing entities, no cloud. Only for looking back does Tarifwacht load public exchange prices from SMARD.de.
 
 ## Notes on the comparison
 
@@ -161,19 +161,29 @@ data:
 
 <img alt="Response of the action Compare tariffs" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff. Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time. Only the quarter hours since setup are known.
+The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff; under `months` the same in short per calendar month. Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
+
+### Looking back before the setup
+
+If the start lies before the setup, Tarifwacht calculates that time as well:
+
+- **Consumption:** from your grid import meter's long-term statistics. They hold hourly values; each hour is spread evenly over its four quarter hours. Exact for a fixed price, a good approximation for dynamic prices (the exchange price changes every quarter hour since 1 October 2025).
+- **Exchange prices:** from [SMARD.de](https://www.smard.de) (Bundesnetzagentur), day-ahead DE-LU – the same prices as the EPEX Spot market price. Tarifwacht loads them on the first comparison of a period (one request per week, a year takes about half a minute) and keeps them; after that no download is needed.
+- **Which tariffs:** fixed price and "exchange price plus surcharges" (also with Modul 3 and price changes). A **sensor with the total price** only knows the time since setup – such tariffs are listed last with `energy_without_price_kwh` and are not counted as the cheapest. Tip: add your dynamic tariff a second time as "exchange price plus surcharges".
+- `estimate` shows until when it was estimated, how much energy that was and how many hours are missing in the statistics (e.g. because the meter did not exist yet).
+- Prices and base prices apply as the tariff is entered today (with its price changes). For a comparison across a turn of the year, enter the old prices as a price change, e.g. last year's grid fees.
 
 You can also use the response in scripts and automations (`response_variable`), e.g. for a monthly summary as a notification.
 
 ## Privacy
 
-Tarifwacht calculates locally and only reads the entities you select. Nothing is sent to the internet. The diagnostics file contains your tariff settings (prices, sensors), but no names, meter readings, energy or cost totals.
+Tarifwacht calculates locally and only reads the entities you select. Only exception: if you compare a time before the setup, Tarifwacht loads public exchange prices from SMARD.de. Nothing about you is transferred – just the download of the price files with the identifier `Tarifwacht/<version>`. The diagnostics file contains your tariff settings (prices, sensors), but no names, meter readings, energy or cost totals.
 
 ## What Tarifwacht does not do
 
 - **No billing:** differences to your bill are normal (different meter, rounding, instalments).
 - **No changed behaviour:** the comparison prices your actual consumption – what you would shift with a dynamic tariff is not visible to it.
-- **No calculation before setup:** all values start at setup.
+- **Sensors start at setup:** the time before is only available through the action Compare tariffs, not in statistics cards.
 - **No grid feed-in:** Tarifwacht only prices grid consumption. For feed-in there is the sister project [Einspeisewacht](https://github.com/einspeisewacht/integration).
 - **Modul 1 and 2** under § 14a EnWG are not modelled separately.
 
@@ -210,4 +220,4 @@ The idea of pricing your own consumption directly against both tariffs in Home A
 
 ## License
 
-MIT. The images in this README show a demo entry with invented consumption and invented prices.
+MIT. Historical exchange prices (only for comparisons before the setup): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The images in this README show a demo entry with invented consumption and invented prices.

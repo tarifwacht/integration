@@ -2,6 +2,8 @@
 
 ## Unveröffentlicht
 
+- **Rückblick vor der Einrichtung:** Die Aktion „Tarife vergleichen“ rechnet auch Zeiträume vor der Einrichtung – mit den Stundenwerten deines Zählers aus der Langzeitstatistik und historischen Börsenpreisen von SMARD.de (Bundesnetzagentur, nur bei Tarifen „Börsenpreis plus Aufschläge“; einmal geladen, dann gespeichert). Tarife mit Gesamtpreis-Sensor lassen sich für diese Zeit nicht berechnen und werden entsprechend markiert.
+- Die Antwort der Aktion schlüsselt jetzt nach Monaten auf (`months`) und zeigt unter `estimate`, was geschätzt ist. Als günstigster gilt nur ein Tarif, der jede kWh bepreisen konnte.
 - **Preissensoren ohne Prognose:** Ihr aktueller Wert gilt jetzt für jede Viertelstunde, bis er sich ändert. Bisher bekam nur die Viertelstunde einen Preis, in der sich der Wert änderte – bei einem stündlich wechselnden Preis blieben drei von vier Viertelstunden ohne Preis.
 - README überarbeitet und auf Englisch (`README.en.md`): Preisänderungen, Modul 3, Preisquellen, Aktion „Tarife vergleichen“, Dashboard-Beispiel, Reparaturen, Datenschutz, Entfernen; Bilder mit einem Demo-Eintrag.
 
