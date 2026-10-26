@@ -242,6 +242,11 @@ async def test_tariff_errors(hass: HomeAssistant) -> None:
 async def test_reconfigure_tariff_keeps_key(hass: HomeAssistant) -> None:
     entry = added_entry(hass)
     result = await entry.start_subentry_reconfigure_flow(hass, DYNAMIC_SUBENTRY)
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["edit", "add_change"]
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "edit"}
+    )
     assert result["step_id"] == "dynamic_total"
     result = await configure_tariff(
         hass,
