@@ -129,6 +129,35 @@
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
           }
+        },
+        "reconfigure": {
+          "title": "Change tariff",
+          "menu_options": {
+            "edit": "Edit tariff (name, current tariff, prices from the start)",
+            "add_change": "Add a price change from a date",
+            "remove_change": "Remove a price change"
+          }
+        },
+        "add_change": {
+          "title": "Price change ({tariff})",
+          "description": "From this date on (local midnight) the new prices apply; before it the previous ones stay. Prefilled with the prices valid today.",
+          "data": {
+            "from": "Valid from",
+            "price": "Energy price",
+            "grid_fee": "Grid fee",
+            "levies": "Taxes, levies and concession fee",
+            "margin": "Supplier surcharge",
+            "vat": "VAT",
+            "base_price": "Base price",
+            "base_period": "Base price per"
+          }
+        },
+        "remove_change": {
+          "title": "Remove a price change ({tariff})",
+          "description": "From then on the prices before that change apply again.",
+          "data": {
+            "from": "Price change from"
+          }
         }
       },
       "error": {
@@ -137,7 +166,8 @@
         "price_required": "Please enter the energy price.",
         "entity_missing": "The entity does not exist or has no state yet.",
         "price_unit": "The price sensor must report €/kWh.",
-        "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state."
+        "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state.",
+        "change_exists": "There is already a price change on this date."
       }
     }
   },

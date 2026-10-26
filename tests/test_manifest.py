@@ -9,6 +9,7 @@ from pathlib import Path
 from custom_components.tarifwacht.config_flow import _tariff_schema
 from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
 from custom_components.tarifwacht.sensor import DIFFERENCE, ENERGY, TARIFF_SENSORS
+from custom_components.tarifwacht.tariff_config import change_fields
 from custom_components.tarifwacht.tariffs import BasePeriod
 
 ROOT = Path(__file__).parent.parent
@@ -82,3 +83,14 @@ def test_base_periods_translated() -> None:
 def test_reconfigure_step_matches_user_step() -> None:
     steps = load(INTEGRATION / "strings.json")["config"]["step"]
     assert steps["reconfigure"] == steps["user"]
+
+
+def test_price_change_fields_translated() -> None:
+    step = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]["step"]
+    fields = {"from"} | {key for kind in KINDS for key in change_fields(kind)}
+    assert set(step["add_change"]["data"]) == fields
+    assert set(step["reconfigure"]["menu_options"]) == {
+        "edit",
+        "add_change",
+        "remove_change",
+    }

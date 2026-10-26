@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Aktion „Tarife vergleichen“** (`tarifwacht.compare`): Kosten aller Tarife in einem frei wählbaren Zeitraum, der günstigste zuerst – mit Verbrauchs- und Grundpreisanteil, Durchschnittspreis und Differenz zum aktuellen Tarif.
+- **Preisänderungen ab einem Datum:** Tarif → *Neu konfigurieren* → *Preisänderung hinzufügen* (z. B. neuer Arbeitspreis oder neue Netzentgelte ab 1. Januar). Davor gelten die bisherigen Preise; der Grundpreis wird am Wechseltag aufgeteilt.
+- **Hinweise unter Reparaturen:** Preissensor oder Zähler mit falscher Einheit, überfällige Preise, fehlgeschlagenes Nachlesen aus dem Recorder. Sie verschwinden, sobald die Ursache behoben ist.
+
 ## 0.1.0b3 – 2026-10-26
 
 - Icon und Logo (Verkehrspurpur, Viertelstunden gegen den Festpreis); Home Assistant zeigt sie ab 2026.3.

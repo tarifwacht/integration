@@ -20,7 +20,7 @@ from typing import Any
 from .history import SlotSeries
 from .meter import MeterTracker, MeterUpdate
 from .prices import ParsedPrices, PriceTable
-from .tariffs import Tariff, TariffTotals, base_price_between
+from .tariffs import Tariff, TariffTotals
 from .timeslots import QUARTER, slot_start
 
 # How long energy waits for its price after its quarter hour ended; after that
@@ -124,9 +124,9 @@ class Engine:
         # Base prices of the quarter hours that have ended.
         base_end = min(last, slot_start(now))
         for key, tariff in self.tariffs.items():
-            if tariff.base_price and first < base_end:
-                result.totals[key].base_cost = base_price_between(
-                    first, base_end, tariff.base_price, tariff.base_period, self.tz
+            if first < base_end:
+                result.totals[key].base_cost = tariff.base_between(
+                    first, base_end, self.tz
                 )
         return result
 
@@ -191,7 +191,7 @@ class Engine:
         energy: float,
         now: datetime,
     ) -> None:
-        price = self.tariffs[key].prices.get(slot)
+        price = self.tariffs[key].price(slot)
         if price is not None:
             totals.energy += energy
             totals.consumption_cost += energy * price
@@ -210,14 +210,9 @@ class Engine:
         if self._base_until is None or self._base_until >= current:
             return
         for key, tariff in self.tariffs.items():
-            if tariff.base_price:
-                self.totals[key].base_cost += base_price_between(
-                    self._base_until,
-                    current,
-                    tariff.base_price,
-                    tariff.base_period,
-                    self.tz,
-                )
+            self.totals[key].base_cost += tariff.base_between(
+                self._base_until, current, self.tz
+            )
         self._base_until = current
 
     def years(self) -> set[int]:

@@ -129,6 +129,35 @@
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
           }
+        },
+        "reconfigure": {
+          "title": "Tarif ändern",
+          "menu_options": {
+            "edit": "Tarif bearbeiten (Name, aktueller Tarif, Preise ab Beginn)",
+            "add_change": "Preisänderung ab einem Datum hinzufügen",
+            "remove_change": "Preisänderung entfernen"
+          }
+        },
+        "add_change": {
+          "title": "Preisänderung ({tariff})",
+          "description": "Ab diesem Datum (Mitternacht Ortszeit) gelten die neuen Preise, davor bleiben die bisherigen. Vorausgefüllt mit den heute gültigen Preisen.",
+          "data": {
+            "from": "Gültig ab",
+            "price": "Arbeitspreis",
+            "grid_fee": "Netzentgelt",
+            "levies": "Steuern, Abgaben und Konzessionsabgabe",
+            "margin": "Anbieteraufschlag",
+            "vat": "Mehrwertsteuer",
+            "base_price": "Grundpreis",
+            "base_period": "Grundpreis pro"
+          }
+        },
+        "remove_change": {
+          "title": "Preisänderung entfernen ({tariff})",
+          "description": "Danach gelten wieder die Preise vor dieser Änderung.",
+          "data": {
+            "from": "Preisänderung ab"
+          }
         }
       },
       "error": {
@@ -137,7 +166,8 @@
         "price_required": "Bitte den Arbeitspreis eingeben.",
         "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
         "price_unit": "Der Preissensor muss €/kWh liefern.",
-        "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert."
+        "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
+        "change_exists": "Zu diesem Datum gibt es schon eine Preisänderung."
       }
     }
   },

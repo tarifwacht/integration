@@ -259,3 +259,48 @@ async def test_reconfigure_tariff_keeps_key(hass: HomeAssistant) -> None:
     subentry = entry.subentries[DYNAMIC_SUBENTRY]
     assert subentry.title == "Tibber"
     assert dict(subentry.data) == dynamic_tariff(base_price=5.99)
+
+
+async def test_price_changes(hass: HomeAssistant) -> None:
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+
+    async def reconfigure(choice: str) -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+        assert result["type"] is FlowResultType.MENU
+        return await flows.async_configure(result["flow_id"], {"next_step_id": choice})
+
+    result = await reconfigure("add_change")
+    assert result["step_id"] == "add_change"
+    change = {
+        "from": "2027-01-01",
+        "price": 29.9,
+        "base_price": 12.0,
+        "base_period": "month",
+    }
+    result = await configure_tariff(hass, result, change)
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[FIXED_SUBENTRY].data["changes"] == [change]
+
+    # The same date again is refused.
+    result = await reconfigure("add_change")
+    result = await configure_tariff(hass, result, change)
+    assert result["errors"] == {"from": "change_exists"}
+
+    # Editing the tariff keeps its price changes and its key.
+    result = await reconfigure("edit")
+    assert result["step_id"] == "fixed"
+    result = await configure_tariff(
+        hass,
+        result,
+        {"name": "Fixed price", "price": 28.0, "base_period": "month", "current": True},
+    )
+    data = entry.subentries[FIXED_SUBENTRY].data
+    assert data["price"] == 28.0
+    assert data["key"] == "fixed"
+    assert data["changes"] == [change]
+
+    result = await reconfigure("remove_change")
+    result = await configure_tariff(hass, result, {"from": "2027-01-01"})
+    assert result["type"] is FlowResultType.ABORT
+    assert "changes" not in entry.subentries[FIXED_SUBENTRY].data

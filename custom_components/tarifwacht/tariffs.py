@@ -6,6 +6,7 @@ import calendar
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from enum import StrEnum
+from itertools import pairwise
 from typing import Protocol
 
 from .timeslots import QUARTER
@@ -53,11 +54,44 @@ class BasePeriod(StrEnum):
 
 @dataclass(frozen=True)
 class Tariff:
-    """Energy price per quarter hour plus an optional base price."""
+    """Energy price per quarter hour plus an optional base price.
+
+    `changes` are later price states, each valid from its UTC instant on, in
+    chronological order (e.g. new grid fees from 1 January).
+    """
 
     prices: PriceSource
     base_price: float = 0.0
     base_period: BasePeriod = BasePeriod.MONTH
+    changes: tuple[tuple[datetime, Tariff], ...] = ()
+
+    def at(self, moment: datetime) -> Tariff:
+        """The price state valid at `moment`."""
+        current = self
+        for start, change in self.changes:
+            if start > moment:
+                break
+            current = change
+        return current
+
+    def price(self, slot: datetime) -> float | None:
+        return self.at(slot).prices.get(slot)
+
+    def base_between(self, start: datetime, end: datetime, tz: tzinfo) -> float:
+        """Base price of [start, end), split at every change."""
+        bounds = [start, *(s for s, _ in self.changes if start < s < end), end]
+        total = 0.0
+        for segment_start, segment_end in pairwise(bounds):
+            state = self.at(segment_start)
+            if state.base_price and segment_start < segment_end:
+                total += base_price_between(
+                    segment_start,
+                    segment_end,
+                    state.base_price,
+                    state.base_period,
+                    tz,
+                )
+        return total
 
 
 @dataclass

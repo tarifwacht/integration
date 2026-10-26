@@ -286,6 +286,8 @@ async def test_closed_days_move_to_yearly_archive(
 async def test_compare_action(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
+    # Times without a zone are local time of the installation.
+    await hass.config.async_set_time_zone("Europe/Berlin")
     entry = await setup(hass)
     await two_kwh(hass, freezer)
 

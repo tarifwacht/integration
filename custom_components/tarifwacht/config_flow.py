@@ -9,6 +9,7 @@ reloads the entry (update listener), which recomputes the whole period.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 import voluptuous as vol
@@ -25,15 +26,18 @@ from homeassistant.config_entries import (
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
+    CONF_CHANGES,
     CONF_CURRENT,
     CONF_DYNAMIC_BASE,
     CONF_DYNAMIC_PRICE,
     CONF_FIXED_BASE,
     CONF_FIXED_PRICE,
+    CONF_FROM,
     CONF_GRID_FEE,
     CONF_KEY,
     CONF_KIND,
@@ -54,7 +58,13 @@ from .const import (
 )
 from .meter import UNIT_FACTORS
 from .runtime import parse_price_state, price_unit_ok, tariff_subentries
-from .tariff_config import default_titles, entry_data, initial_tariffs
+from .tariff_config import (
+    change_fields,
+    default_titles,
+    entry_data,
+    initial_tariffs,
+    state_at,
+)
 from .tariffs import BasePeriod
 
 
@@ -304,9 +314,106 @@ class TariffSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Show the form of the tariff's kind, prefilled."""
+        """Edit the tariff, or add or remove a price change."""
+        options = ["edit", "add_change"]
+        if self._get_reconfigure_subentry().data.get(CONF_CHANGES):
+            options.append("remove_change")
+        return self.async_show_menu(step_id="reconfigure", menu_options=options)
+
+    async def async_step_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """The form of the tariff's kind, prefilled (values from the start)."""
         kind = self._get_reconfigure_subentry().data[CONF_KIND]
         return await self._async_tariff_step(kind, None)
+
+    async def async_step_add_change(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """New prices valid from a date (local midnight) on."""
+        subentry = self._get_reconfigure_subentry()
+        kind = subentry.data[CONF_KIND]
+        changes: list[dict[str, Any]] = list(subentry.data.get(CONF_CHANGES, []))
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            valid_from = user_input[CONF_FROM]
+            if any(c[CONF_FROM] == valid_from for c in changes):
+                errors[CONF_FROM] = "change_exists"
+            elif kind == KIND_FIXED and not user_input.get(CONF_PRICE):
+                errors[CONF_PRICE] = "price_required"
+            else:
+                change = {CONF_FROM: valid_from}
+                for key in change_fields(kind):
+                    if key == CONF_BASE_PERIOD:
+                        change[key] = user_input[key]
+                    else:
+                        change[key] = float(user_input.get(key) or 0)
+                changes = sorted([*changes, change], key=lambda c: c[CONF_FROM])
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    subentry,
+                    data={**subentry.data, CONF_CHANGES: changes},
+                )
+
+        fields: dict[Any, Any] = {vol.Required(CONF_FROM): selector.DateSelector()}
+        for key in change_fields(kind):
+            if key == CONF_BASE_PERIOD:
+                fields[vol.Required(key)] = BASE_PERIOD
+            elif key == CONF_VAT:
+                fields[vol.Required(key)] = VAT_NUMBER
+            elif key == CONF_BASE_PRICE:
+                fields[vol.Optional(key)] = BASE_NUMBER
+            elif key == CONF_PRICE:
+                fields[vol.Required(key)] = PRICE_NUMBER
+            else:
+                fields[vol.Optional(key)] = PRICE_NUMBER
+        # Prefilled with the values valid today.
+        suggested = user_input or state_at(subentry.data, dt_util.now().date())
+        return self.async_show_form(
+            step_id="add_change",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(fields), suggested
+            ),
+            errors=errors,
+            description_placeholders={"tariff": subentry.title},
+        )
+
+    async def async_step_remove_change(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Remove one price change."""
+        subentry = self._get_reconfigure_subentry()
+        changes: list[dict[str, Any]] = list(subentry.data.get(CONF_CHANGES, []))
+        if user_input is not None:
+            remaining = [c for c in changes if c[CONF_FROM] != user_input[CONF_FROM]]
+            data = {**subentry.data, CONF_CHANGES: remaining}
+            if not remaining:
+                del data[CONF_CHANGES]
+            return self.async_update_and_abort(self._get_entry(), subentry, data=data)
+
+        german = self.hass.config.language.startswith("de")
+        options = [
+            selector.SelectOptionDict(
+                value=c[CONF_FROM],
+                label=date.fromisoformat(c[CONF_FROM]).strftime("%d.%m.%Y")
+                if german
+                else c[CONF_FROM],
+            )
+            for c in changes
+        ]
+        return self.async_show_form(
+            step_id="remove_change",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FROM): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options, mode=selector.SelectSelectorMode.LIST
+                        )
+                    )
+                }
+            ),
+            description_placeholders={"tariff": subentry.title},
+        )
 
     async def _async_tariff_step(
         self, kind: str, user_input: dict[str, Any] | None
@@ -336,8 +443,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 errors[CONF_PRICE_ENTITY] = error
             if not errors:
                 data = _tariff_data(kind, user_input)
-                if subentry is not None and subentry.data.get(CONF_KEY):
-                    data[CONF_KEY] = subentry.data[CONF_KEY]
+                if subentry is not None:
+                    # Keep the stable key and the price changes.
+                    for keep in (CONF_KEY, CONF_CHANGES):
+                        if subentry.data.get(keep):
+                            data[keep] = subentry.data[keep]
                 if data[CONF_CURRENT]:
                     self._clear_current(entry, subentry)
                 if subentry is not None:
