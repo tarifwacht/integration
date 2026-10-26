@@ -19,8 +19,6 @@ Tarifwacht is built for Germany: quarter-hour day-ahead prices, German price com
 
 The user interface is available in German and English and follows the language of your Home Assistant.
 
-<img alt="Device of a tariff with costs, average price and difference to the current tariff" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/geraet.png" width="640">
-
 ## Features
 
 - **Cost per tariff** (€): consumption cost and total cost (including base price) – with long-term statistics for statistics cards and the energy dashboard.
@@ -158,8 +156,6 @@ data:
   start: "2026-11-01 00:00:00"
   end: "2026-12-01 00:00:00"
 ```
-
-<img alt="Response of the action Compare tariffs" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
 The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff; under `months` the same in short per calendar month. Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
 

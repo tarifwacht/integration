@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.0b5 – 2026-10-26
 
 - **Rückblick vor der Einrichtung:** Die Aktion „Tarife vergleichen“ rechnet auch Zeiträume vor der Einrichtung – mit den Stundenwerten deines Zählers aus der Langzeitstatistik und historischen Börsenpreisen von SMARD.de (Bundesnetzagentur, nur bei Tarifen „Börsenpreis plus Aufschläge“; einmal geladen, dann gespeichert). Tarife mit Gesamtpreis-Sensor lassen sich für diese Zeit nicht berechnen und werden entsprechend markiert.
 - Die Antwort der Aktion schlüsselt jetzt nach Monaten auf (`months`) und zeigt unter `estimate`, was geschätzt ist. Als günstigster gilt nur ein Tarif, der jede kWh bepreisen konnte.
