@@ -1,4 +1,11 @@
-# Tarifwacht
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/github/readme-header-dark@2x.png">
+  <img alt="Tarifwacht – Jeder Tarif. Jede Viertelstunde." src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/github/readme-header-light@2x.png" width="640">
+</picture>
+
+[![Release](https://img.shields.io/github/v/release/tarifwacht/integration?color=96497D)](https://github.com/tarifwacht/integration/releases)
+[![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
 
 **Was hätte dein Strom mit einem anderen Tarif gekostet?**
 Tarifwacht ist eine Home-Assistant-Integration, die deinen tatsächlichen Strombezug Viertelstunde für Viertelstunde gegen beliebig viele Tarife rechnet – Festpreis und dynamisch – und zeigt, welcher günstiger gewesen wäre.

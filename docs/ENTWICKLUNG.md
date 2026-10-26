@@ -84,11 +84,11 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 
 ## 6. Arbeitsweise
 
-- GitHub: Organisation `tarifwacht` (angelegt 2026-10-26), Repo `integration`. Wie bei der Einspeisewacht: Standard-Branch `main`, Ruleset „main schützen“ (nur grüne CI `test`, `hassfest`, `compat`; kein Löschen, kein Force-Push) und „Release-Tags schützen“ (`v*` unveränderlich). Brand-Bilder fehlen noch: der CI-Job `hacs` ignoriert `brands`.
+- GitHub: Organisation `tarifwacht` (angelegt 2026-10-26), Repo `integration`. Wie bei der Einspeisewacht: Standard-Branch `main`, Ruleset „main schützen“ (nur grüne CI `test`, `hassfest`, `compat`; kein Löschen, kein Force-Push) und „Release-Tags schützen“ (`v*` unveränderlich). Brand-Bilder seit 2026-10-26 (`docs/BRAND.md`), der CI-Job `hacs` prüft sie mit.
 - Releases, auch Betas, als **reguläre** GitHub-Releases (nicht „Pre-release“) – sonst sucht HACS die ZIP unter dem Commit und scheitert (Erfahrung Einspeisewacht 0.1.0b2).
 
 ## 7. Offene Fragen
 
 - **Preisbestandteile:** Wie erklärt man Nutzern am besten, welche Bestandteile im Aufschlag eines dynamischen Tarifs stecken müssen (Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer, Anbieteraufschlag)? Stufe 2: Börsenpreis + einzeln eingetragene Bestandteile.
 - **Historische Preise** für die rückwirkende Berechnung: SMARD.de (Nutzungsbedingungen, CC BY 4.0, inoffizielle Schnittstelle – Erfahrung der Einspeisewacht nutzen).
-- Brand-Bilder; `categories` im Manifest.
+- `categories` im Manifest (Hinweis von hassfest).

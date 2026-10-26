@@ -6,6 +6,7 @@ Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und
 
 - **`docs/ENTWICKLUNG.md`** – Umfang, Abgrenzung, verifizierte Eigenheiten der Datenquellen, Schwächen des typischen Eigenbaus, Entscheidungen, offene Fragen. Vor größeren Arbeiten lesen.
 - **`CHANGELOG.md`** – Projektstand und Versionsgeschichte. Hier stehen keine Statusberichte.
+- **`docs/BRAND.md`** – Farben, Schrift, Bilddateien, Regenerierung. Brand-Bilder nicht verändern oder neu erzeugen, außer auf ausdrücklichen Wunsch.
 
 ## Verbindliche Entscheidungen
 
