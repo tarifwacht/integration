@@ -1,0 +1,14 @@
+{
+  "domain": "tarifwacht",
+  "name": "Tarifwacht",
+  "codeowners": [
+    "@n42net"
+  ],
+  "config_flow": false,
+  "documentation": "https://github.com/tarifwacht/integration",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/tarifwacht/integration/issues",
+  "requirements": [],
+  "version": "0.1.0.dev0"
+}

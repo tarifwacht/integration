@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# The checks only read the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the running check obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes no floating major tag (no "v10"): full version required.
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --locked --group ha-tests
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Test
+        run: uv run pytest
+
+  hassfest:
+    # Home Assistant's own validation of manifest.json, strings and translations.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    # HACS repository requirements (hacs.json, structure, description, topics).
+    # HACS cannot read a private repository: runs once the repo is public.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@22.5.0
+        with:
+          category: integration
+          # Brand images follow before the first regular release.
+          ignore: brands
+
+  compat:
+    # Oldest Home Assistant version promised in hacs.json / README (2026.3).
+    # Not locked: installs that version's test harness into a separate venv.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: Install Home Assistant 2026.3
+        run: |
+          uv venv --python 3.14 .venv-compat
+          uv pip install --python .venv-compat "pytest-homeassistant-custom-component==0.13.320"
+      - name: Test
+        run: .venv-compat/bin/python -m pytest --durations=5

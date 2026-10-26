@@ -1,0 +1,7 @@
+{
+  "name": "Tarifwacht",
+  "country": "DE",
+  "homeassistant": "2026.3.0",
+  "zip_release": true,
+  "filename": "tarifwacht.zip"
+}

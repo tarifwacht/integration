@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+pytest-cache-files-*/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editor / OS
+CLAUDE.local.md
+.claude/settings.local.json
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Lokale HA-Testkonfiguration
+config/
+*.log
+
+# Rohdaten aus der eigenen HA-Instanz (Zählerstände, Verläufe): nicht
+# veröffentlichen. Ins Repo kommen nur Preis-Fixtures (siehe docs/ENTWICKLUNG.md).
+raw/
+
+# Browser automation logs (Playwright MCP)
+.playwright-mcp/

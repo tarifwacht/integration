@@ -1,0 +1,65 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke fürs Melden! Mit Diagnose-Datei und Versionen lässt sich das meist schnell eingrenzen.
+        Hinweis: Tarifwacht ist eine Orientierung – maßgeblich ist die Abrechnung deines Stromanbieters.
+  - type: textarea
+    id: description
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du erwartet, was ist stattdessen passiert?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Wie lässt es sich nachvollziehen?
+      placeholder: |
+        1. Festpreis 30 ct/kWh und dynamischer Tarif mit EPEX Spot eingerichtet
+        2. …
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home-Assistant-Version
+      description: Einstellungen → Info
+      placeholder: "2026.10.4"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Tarifwacht-Version
+      description: HACS → Tarifwacht, oder Geräte & Dienste → Tarifwacht
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Betroffen
+      multiple: true
+      options:
+        - Kosten je Tarif
+        - Grundpreis
+        - Preisquelle
+        - Bezugszähler
+        - Einrichtung
+        - weiß nicht
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnose-Datei
+      description: >-
+        Geräte & Dienste → Tarifwacht → ⋮ → „Diagnose herunterladen“ und die Datei
+        hier hineinziehen.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Protokoll
+      description: >-
+        Einstellungen → System → Protokolle, nach „tarifwacht“ filtern.
+      render: text
