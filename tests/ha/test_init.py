@@ -11,6 +11,7 @@ from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
@@ -322,3 +323,49 @@ async def test_compare_action(
 
     with pytest.raises(ServiceValidationError):
         await compare(start="2026-10-25 17:20:00", end="2026-10-25 17:10:00")
+
+
+@pytest.mark.freeze_time(START)
+async def test_repair_issue_for_wrong_price_unit(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await setup(hass)
+    issues = ir.async_get(hass)
+    issue_id = f"{entry.entry_id}_price_unit_{PRICE}"
+    attributes = {**price_attributes(), "unit_of_measurement": "ct/kWh"}
+    hass.states.async_set(PRICE, "4.577", attributes)
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_key == "price_unit"
+    assert issue.translation_placeholders["unit"] == "ct/kWh"
+    hass.states.async_set(PRICE, "0.04577", price_attributes())
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+
+
+@pytest.mark.freeze_time(START)
+async def test_repair_issue_for_late_prices(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A price sensor without forecast: later quarter hours lack prices."""
+    hass.states.async_set(PRICE, "0.31", {"unit_of_measurement": "€/kWh"})
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    freezer.move_to(datetime(2026, 10, 25, 16, 20, tzinfo=UTC))
+    hass.states.async_set(METER, "1000500", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    issue_id = f"{entry.entry_id}_late_prices"
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    # The quarter hour 16:15 UTC ended at 16:30; an hour later it is overdue.
+    freezer.move_to(datetime(2026, 10, 25, 17, 45, 1, tzinfo=UTC))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_placeholders["tariffs"] == "Dynamic"
+    assert value(hass, entry, "fixed_consumption_cost") == pytest.approx(0.15)

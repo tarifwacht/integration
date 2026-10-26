@@ -401,3 +401,28 @@ def test_costs_between_is_clipped_to_the_period() -> None:
     )
     assert empty.quarter_hours == 0
     assert empty.totals["fixed"].cost == 0
+
+
+def test_late_prices() -> None:
+    engine = make_engine()
+    engine.start(utc(2026, 1, 5, 9))
+    engine.on_meter(100.0, utc(2026, 1, 5, 9), utc(2026, 1, 5, 9))
+    engine.on_meter(100.5, utc(2026, 1, 5, 9, 10), utc(2026, 1, 5, 9, 10))
+    grace = timedelta(hours=1)
+    # The quarter hour 09:00 ends at 09:15: overdue only after 10:15.
+    assert engine.late_prices(utc(2026, 1, 5, 10, 15), grace) == set()
+    assert engine.late_prices(utc(2026, 1, 5, 10, 16), grace) == {"dynamic"}
+    engine.on_prices(
+        TOTAL, ParsedPrices(prices={utc(2026, 1, 5, 9): 0.3}), utc(2026, 1, 5, 10, 20)
+    )
+    assert engine.late_prices(utc(2026, 1, 5, 10, 20), grace) == set()
+
+
+def test_costs_between_includes_the_running_quarter_hour() -> None:
+    """An end inside a quarter hour (e.g. "now") includes that quarter hour."""
+    engine = with_fixture_prices(make_engine())
+    run_constant_purchase(engine, timedelta(minutes=5))
+    now = DAY_START + 10 * QUARTER + timedelta(minutes=7)
+    result = engine.costs_between(DAY_START, now, DAY_END)
+    assert result.quarter_hours == 11
+    assert result.end == DAY_START + 11 * QUARTER

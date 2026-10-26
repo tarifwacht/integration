@@ -195,5 +195,23 @@
     "start_after_end": {
       "message": "The start must be before the end."
     }
+  },
+  "issues": {
+    "price_unit": {
+      "title": "Price sensor with an unsupported unit ({name})",
+      "description": "The price sensor {entity} reports {unit}. Tarifwacht uses prices as they are and needs €/kWh, so it ignores this sensor's prices for now. Set the unit to €/kWh in the price integration, or choose another sensor for the tariff (Tarifwacht → tariff → Reconfigure). This message disappears once the sensor reports €/kWh."
+    },
+    "meter_unit": {
+      "title": "Meter with an unsupported unit ({name})",
+      "description": "The meter {entity} reports {unit}. Tarifwacht needs Wh, kWh or MWh and books nothing until then. Choose another meter (Tarifwacht → ⋮ → Reconfigure). This message disappears once the meter reports a supported unit."
+    },
+    "late_prices": {
+      "title": "Prices missing ({name})",
+      "description": "For {tariffs}, the price of a past quarter hour is still missing. Day-ahead prices are normally known the day before, so the price sensor may have failed. Consumption waits for its price for 24 hours; after that it is counted without a price (never as free). This message disappears once the prices arrive."
+    },
+    "backfill_failed": {
+      "title": "Consumption could not be read from the recorder ({name})",
+      "description": "After the update from 0.1.0b1, Tarifwacht reads the consumption since setup from the recorder once. This failed: {error}. Live booking is not affected; the next start of Home Assistant tries again."
+    }
   }
 }

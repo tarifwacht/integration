@@ -84,6 +84,18 @@ class Engine:
         self._base_until = self.started
         self._book_base_prices(now)
 
+    def late_prices(self, now: datetime, grace: timedelta) -> set[str]:
+        """Tariffs with energy whose price is overdue (quarter ended > grace ago).
+
+        Day-ahead prices are known the day before; a price still missing well
+        after its quarter hour points to a failing price sensor.
+        """
+        return {
+            key
+            for key, totals in self.totals.items()
+            if any(now - (slot + QUARTER) > grace for slot in totals.pending)
+        }
+
     def costs_between(
         self, start: datetime, end: datetime, now: datetime
     ) -> PeriodCosts:
@@ -93,7 +105,11 @@ class Engine:
         accounting period (`started` up to the running quarter hour).
         """
         first = max(slot_start(start), self.started or slot_start(now))
-        last = min(slot_start(end), slot_start(now) + QUARTER)
+        # A quarter hour that begins before `end` belongs to the period.
+        end_slot = slot_start(end)
+        if end_slot < end:
+            end_slot += QUARTER
+        last = min(end_slot, slot_start(now) + QUARTER)
         result = PeriodCosts(
             start=first,
             end=max(first, last),

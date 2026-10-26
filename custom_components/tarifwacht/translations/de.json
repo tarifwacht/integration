@@ -195,5 +195,23 @@
     "start_after_end": {
       "message": "Der Beginn muss vor dem Ende liegen."
     }
+  },
+  "issues": {
+    "price_unit": {
+      "title": "Preissensor mit nicht unterstützter Einheit ({name})",
+      "description": "Der Preissensor {entity} liefert {unit}. Tarifwacht übernimmt Preise unverändert und braucht €/kWh, deshalb ignoriert sie die Preise dieses Sensors vorerst. Stelle die Einheit in der Preis-Integration auf €/kWh oder wähle für den Tarif einen anderen Sensor (Tarifwacht → Tarif → Neu konfigurieren). Dieser Hinweis verschwindet, sobald der Sensor €/kWh liefert."
+    },
+    "meter_unit": {
+      "title": "Zähler mit nicht unterstützter Einheit ({name})",
+      "description": "Der Zähler {entity} liefert {unit}. Tarifwacht braucht Wh, kWh oder MWh und bucht bis dahin nichts. Wähle einen anderen Zähler (Tarifwacht → ⋮ → Neu konfigurieren). Dieser Hinweis verschwindet, sobald der Zähler eine unterstützte Einheit liefert."
+    },
+    "late_prices": {
+      "title": "Preise fehlen ({name})",
+      "description": "Für {tariffs} fehlt der Preis einer vergangenen Viertelstunde. Day-Ahead-Preise sind normalerweise am Vortag bekannt – vermutlich ist der Preissensor ausgefallen. Der Verbrauch wartet 24 Stunden auf seinen Preis; danach wird er ohne Preis gezählt (nie als kostenlos). Dieser Hinweis verschwindet, sobald die Preise da sind."
+    },
+    "backfill_failed": {
+      "title": "Verbrauch konnte nicht aus dem Recorder gelesen werden ({name})",
+      "description": "Nach dem Update von 0.1.0b1 liest Tarifwacht den Verbrauch seit der Einrichtung einmalig aus dem Recorder. Das ist fehlgeschlagen: {error}. Die laufende Buchung ist davon nicht betroffen; der nächste Start von Home Assistant versucht es erneut."
+    }
   }
 }

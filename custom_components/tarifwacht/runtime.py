@@ -23,6 +23,7 @@ from homeassistant.core import (
     State,
     callback,
 )
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
@@ -66,6 +67,10 @@ NOTIFY_INTERVAL = timedelta(seconds=60)
 # Recorder history is read from this long before the setup of the entry, so
 # the reading in effect at the setup is found as the baseline.
 BACKFILL_MARGIN = timedelta(hours=1)
+
+# A price still missing this long after its quarter hour is reported as a
+# repair issue (day-ahead prices are known the day before).
+LATE_PRICE_GRACE = timedelta(hours=1)
 
 # Price sensors without a forecast attribute: the state is the current price.
 FORECAST_ATTRIBUTE = "data"
@@ -167,6 +172,7 @@ class MeterRuntime:
             if entity := price_entity(subentry.data):
                 self.price_entities.add(entity)
         self.unknown_unit: str | None = None
+        self.meter_unit_ok = True
         self.wrong_price_unit: dict[str, str | None] = {}
         self.backfill_error: str | None = None
         self._store = TarifwachtStore(hass, entry)
@@ -175,6 +181,8 @@ class MeterRuntime:
         self._unsubscribe: list[CALLBACK_TYPE] = []
         self._last_notify: datetime | None = None
         self._notify_later: CALLBACK_TYPE | None = None
+        # Repair issues currently shown: issue id -> (translation key, placeholders)
+        self._issues: dict[str, tuple[str, dict[str, str]]] = {}
 
     @property
     def current(self) -> TariffInfo | None:
@@ -221,6 +229,64 @@ class MeterRuntime:
             ),
         ]
         await self._async_archive(now)
+        # Issues of an earlier run are dropped unless still valid.
+        self._issues = {issue_id: ("", {}) for issue_id in self._stored_issue_ids()}
+        self._update_issues(now)
+
+    def _stored_issue_ids(self) -> list[str]:
+        prefix = f"{self.entry.entry_id}_"
+        return [
+            issue_id
+            for domain, issue_id in ir.async_get(self.hass).issues
+            if domain == DOMAIN and issue_id.startswith(prefix)
+        ]
+
+    def _update_issues(self, now: datetime) -> None:
+        """Show problems as repair issues; remove them once solved.
+
+        Only changes are written to the issue registry (it is stored on disk).
+        """
+        prefix = f"{self.entry.entry_id}_"
+        wanted: dict[str, tuple[str, dict[str, str]]] = {}
+        for source, unit in self.wrong_price_unit.items():
+            wanted[f"{prefix}price_unit_{source}"] = (
+                "price_unit",
+                {"name": self.name, "entity": source, "unit": str(unit)},
+            )
+        if not self.meter_unit_ok:
+            wanted[f"{prefix}meter_unit"] = (
+                "meter_unit",
+                {
+                    "name": self.name,
+                    "entity": self.meter_entity,
+                    "unit": str(self.unknown_unit),
+                },
+            )
+        if late := self.engine.late_prices(now, LATE_PRICE_GRACE):
+            titles = sorted(self.tariffs[key].title for key in late)
+            wanted[f"{prefix}late_prices"] = (
+                "late_prices",
+                {"name": self.name, "tariffs": ", ".join(titles)},
+            )
+        if self.backfill_error is not None:
+            wanted[f"{prefix}backfill_failed"] = (
+                "backfill_failed",
+                {"name": self.name, "error": self.backfill_error},
+            )
+        for issue_id in self._issues.keys() - wanted.keys():
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        for issue_id, (key, placeholders) in wanted.items():
+            if self._issues.get(issue_id) != (key, placeholders):
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key=key,
+                    translation_placeholders=placeholders,
+                )
+        self._issues = wanted
 
     async def _async_archive(self, now: datetime) -> None:
         """Move closed UTC days (before yesterday) to the yearly archives.
@@ -301,6 +367,8 @@ class MeterRuntime:
         for year in self._archive_years(now):
             await self._archive_store(year).async_remove()
         await self._store.async_remove()
+        for issue_id in self._stored_issue_ids():
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
 
     @callback
     def add_listener(self, listener: Callable[[], None]) -> CALLBACK_TYPE:
@@ -317,11 +385,13 @@ class MeterRuntime:
             self._handle_meter(state, now)
         else:
             self._handle_price(state, now)
+        self._update_issues(now)
         self._changed()
 
     @callback
     def _on_tick(self, now: datetime) -> None:
         self.engine.tick(now)
+        self._update_issues(now)
         self._notify()
         self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
         cutoff = now.astimezone(UTC).date() - timedelta(days=1)
@@ -340,10 +410,12 @@ class MeterRuntime:
             if self.unknown_unit != unit:
                 _LOGGER.warning("%s: unsupported unit %s", self.meter_entity, unit)
             self.unknown_unit = unit
+            self.meter_unit_ok = False
             return
         except ValueError:
             return
         self.unknown_unit = None
+        self.meter_unit_ok = True
         update = self.engine.on_meter(value, state.last_updated, now)
         if update.event is not None:
             _LOGGER.debug(
