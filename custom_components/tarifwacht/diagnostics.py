@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from . import TarifwachtConfigEntry
 from .const import CONF_NAME, VERSION
 from .history import SlotSeries
+from .prices import attribute_shape
 from .runtime import tariff_subentries
 from .tariff_config import tariff_key
 
@@ -52,6 +53,12 @@ async def async_get_config_entry_diagnostics(
                 if (parsed := engine.last_parse.get(source)) and parsed.resolution
                 else None,
                 "skipped_entries": parsed.skipped if parsed else None,
+                "format": parsed.format if parsed else None,
+                # Keys and types of list attributes (no values), to support
+                # further price sources from what users send in.
+                "attribute_shape": attribute_shape(state.attributes)
+                if (state := hass.states.get(source))
+                else None,
                 "wrong_unit": runtime.wrong_price_unit.get(source),
             }
             for source, table in engine.prices.items()

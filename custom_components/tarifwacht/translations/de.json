@@ -101,7 +101,7 @@
           },
           "data_description": {
             "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
-            "price_entity": "In €/kWh, am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot.",
+            "price_entity": "In €/kWh, am besten mit Preisprognose je Viertelstunde oder Stunde: der Gesamtpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS.",
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
           }
@@ -122,7 +122,7 @@
           },
           "data_description": {
             "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
-            "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose-Attribut `data`, z. B. der Marktpreis der Integration EPEX Spot.",
+            "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose: der Marktpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS, jeweils ohne MwSt. und Aufschläge.",
             "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
             "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
             "margin": "Was der Anbieter je kWh aufschlägt, netto.",

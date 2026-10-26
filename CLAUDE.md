@@ -20,7 +20,7 @@ Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und
 
 ## Arbeitsregeln
 
-1. **Formate nie raten.** Die Dateien in `tests/fixtures/` sind die Wahrheit über Formate der Preissensoren (Herkunft in `tests/fixtures/_index.json`). Neue Preisquellen erst mit echtem Fixture.
+1. **Formate nie raten.** Die Dateien in `tests/fixtures/` sind die Wahrheit über Formate der Preissensoren (Herkunft in `tests/fixtures/_index.json`). Neue Preisquellen nur mit Fixture: am besten aufgezeichnet; sonst abgeleitet aus echten API-Daten des Projekts nach dessen Quellcode (fester Commit, Zeilen zitiert, `tools/make_price_fixtures.py`), dann im README als „experimentell“ markiert (Entscheidung 2026-10-26).
 2. **Preisbestandteile nie aus dem Gedächtnis.** Netzentgelte, Umlagen, Steuern nur mit Quelle (Preisblatt, Gesetz, Veröffentlichung) in `docs/ENTWICKLUNG.md`.
 3. **Keine personenbezogenen Daten ins Repo:** keine Zählerstände, Verläufe oder Tarifdaten des Nutzers – auch nicht als Beispielwerte in Tests. Preis-Fixtures (Marktdaten, SMARD.de, CC BY 4.0) sind erlaubt; Rohdaten nur in `raw/`.
 4. Entwickelt wird gegen eine produktive Home-Assistant-Instanz. Logik erst als reines Python ohne HA-Importe testen. Ein Fehler (Preis fehlt, Zähler unavailable) darf nie die Integration oder HA blockieren und nie still falsch buchen.

@@ -44,7 +44,7 @@ from .const import (
 )
 from .engine import Engine, migrate_v1
 from .meter import MeterTracker, to_kwh
-from .prices import ParsedPrices, parse_interval_prices
+from .prices import ParsedPrices, parse_price_attributes
 from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .timeslots import slot_start
 
@@ -72,20 +72,16 @@ BACKFILL_MARGIN = timedelta(hours=1)
 # repair issue (day-ahead prices are known the day before).
 LATE_PRICE_GRACE = timedelta(hours=1)
 
-# Price sensors without a forecast attribute: the state is the current price.
-FORECAST_ATTRIBUTE = "data"
-
 
 def parse_price_state(state: State) -> ParsedPrices | None:
-    """Prices from a price sensor: forecast attribute, else the current state."""
-    forecast = state.attributes.get(FORECAST_ATTRIBUTE)
-    if isinstance(forecast, list) and forecast:
-        return parse_interval_prices(forecast)
+    """Prices from a price sensor: known forecast attributes, else the state."""
+    if (parsed := parse_price_attributes(state.attributes)) is not None:
+        return parsed
     try:
         price = float(state.state)
     except ValueError:
         return None
-    return ParsedPrices(prices={slot_start(state.last_updated): price})
+    return ParsedPrices(prices={slot_start(state.last_updated): price}, format="state")
 
 
 def price_unit_ok(state: State) -> bool:

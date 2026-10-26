@@ -4,6 +4,7 @@
 
 - **Aktion „Tarife vergleichen“** (`tarifwacht.compare`): Kosten aller Tarife in einem frei wählbaren Zeitraum, der günstigste zuerst – mit Verbrauchs- und Grundpreisanteil, Durchschnittspreis und Differenz zum aktuellen Tarif.
 - **Preisänderungen ab einem Datum:** Tarif → *Neu konfigurieren* → *Preisänderung hinzufügen* (z. B. neuer Arbeitspreis oder neue Netzentgelte ab 1. Januar). Davor gelten die bisherigen Preise; der Grundpreis wird am Wechseltag aufgeteilt.
+- **Weitere Preisquellen (experimentell):** Nord Pool (HACS-Integration `custom-components/nordpool`, Attribute `raw_today`/`raw_tomorrow`) und ENTSO-E (HACS-Integration `JaccoR/hass-entso-e`, Durchschnittspreis-Sensor mit `prices`). Die Diagnose zeigt jetzt den Aufbau der Preis-Attribute (ohne Werte), damit weitere Quellen ergänzt werden können.
 - **Hinweise unter Reparaturen:** Preissensor oder Zähler mit falscher Einheit, überfällige Preise, fehlgeschlagenes Nachlesen aus dem Recorder. Sie verschwinden, sobald die Ursache behoben ist.
 
 ## 0.1.0b3 – 2026-10-26

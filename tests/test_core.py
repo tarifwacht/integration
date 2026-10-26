@@ -8,7 +8,13 @@ import pytest
 
 from custom_components.tarifwacht.history import SlotSeries
 from custom_components.tarifwacht.meter import MeterEvent, MeterTracker, to_kwh
-from custom_components.tarifwacht.prices import PriceTable, parse_interval_prices
+from custom_components.tarifwacht.prices import (
+    PriceTable,
+    attribute_shape,
+    parse_interval_prices,
+    parse_price_attributes,
+    parse_start_prices,
+)
 from custom_components.tarifwacht.timeslots import (
     QUARTER,
     slot_start,
@@ -239,3 +245,93 @@ def test_slot_series_day_ranges_and_merge() -> None:
     live.restore(series.as_dict(7), merge=True)
     assert live.get(utc(2026, 10, 26, 12)) == 99.0
     assert live.get(utc(2026, 10, 24, 12)) == 24.0
+
+
+# --- price sources ------------------------------------------------------------------
+
+
+def test_epex_spot_format_recognised() -> None:
+    fixture = load_fixture("epex_spot_2026-10-25.json")
+    parsed = parse_price_attributes(fixture["attributes"])
+    assert parsed is not None
+    assert parsed.format == "epex_spot"
+    assert len(parsed.prices) == 192
+
+
+@pytest.mark.parametrize("as_objects", [False, True])
+def test_nordpool_raw_today(as_objects: bool) -> None:
+    """Strings as serialized; datetime objects as inside Home Assistant."""
+    attributes = load_fixture("nordpool_raw_2025-10-01.json")["attributes"]
+    if as_objects:
+        attributes["raw_today"] = [
+            {
+                **e,
+                "start": datetime.fromisoformat(e["start"]),
+                "end": datetime.fromisoformat(e["end"]),
+            }
+            for e in attributes["raw_today"]
+        ]
+    parsed = parse_price_attributes(attributes)
+    assert parsed is not None
+    assert parsed.format == "nordpool"
+    assert parsed.resolution == QUARTER
+    assert parsed.skipped == 0
+    assert len(parsed.prices) == 96
+    # 2025-10-01 00:00 CEST = 2025-09-30 22:00 UTC: 556.68 EUR/MWh.
+    assert parsed.prices[utc(2025, 9, 30, 22)] == 0.557
+
+
+def test_entsoe_hourly_prices_without_end() -> None:
+    attributes = load_fixture("entsoe_prices_2024-10-06.json")["attributes"]
+    parsed = parse_price_attributes(attributes)
+    assert parsed is not None
+    assert parsed.format == "entsoe"
+    assert parsed.resolution == timedelta(hours=1)
+    # 48 hours (today and tomorrow), each for its four quarter hours; the
+    # entries of `prices_today`/`prices_tomorrow` repeat those of `prices`.
+    assert len(parsed.prices) == 192
+    hour = utc(2024, 10, 5, 22)
+    assert {parsed.prices[hour + i * QUARTER] for i in range(4)} == {0.06704}
+    assert parsed.prices[utc(2024, 10, 6, 11)] == -0.00001
+
+
+def test_start_prices_gap_is_not_filled() -> None:
+    entries = [
+        {"time": "2026-01-01 10:00:00+01:00", "price": 0.1},
+        {"time": "2026-01-01 11:00:00+01:00", "price": 0.2},
+        {"time": "2026-01-01 13:00:00+01:00", "price": 0.3},
+    ]
+    parsed = parse_start_prices(entries)
+    assert parsed.resolution == timedelta(hours=1)
+    assert utc(2026, 1, 1, 10, 45) in parsed.prices
+    assert utc(2026, 1, 1, 11) not in parsed.prices
+    assert parsed.prices[utc(2026, 1, 1, 12, 45)] == 0.3
+    # A single entry has no measurable length: nothing is guessed.
+    single = parse_start_prices(entries[:1])
+    assert single.prices == {}
+    assert single.skipped == 1
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        # Ostrom: same attribute name as EPEX Spot, other keys, ct/kWh.
+        {"data": [{"date": "2026-10-26T10:00:00.000Z", "price": 31.2}]},
+        # 1KOMMA5 (two integrations, two structures under `forecast`).
+        {"forecast": [{"datetime": "2026-10-26T10:00:00+00:00", "price": 0.31}]},
+        {"today": [0.31, 0.32]},
+    ],
+)
+def test_unknown_formats_are_not_guessed(attributes: dict) -> None:
+    assert parse_price_attributes(attributes) is None
+
+
+def test_attribute_shape_has_no_values() -> None:
+    attributes = load_fixture("nordpool_raw_2025-10-01.json")["attributes"]
+    shape = attribute_shape(attributes)
+    assert shape["raw_today"] == {
+        "entries": 96,
+        "entry": {"start": "str", "end": "str", "value": "float"},
+    }
+    assert "raw_tomorrow" not in shape  # empty lists are left out
+    assert "0.557" not in str(shape)

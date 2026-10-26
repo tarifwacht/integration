@@ -46,6 +46,18 @@ Seitdem unabhängig weiterentwickelt; die Tarifwacht braucht die Einspeisewacht 
 - Aufschlag und Steuersatz stehen in der Konfiguration der EPEX-Spot-Integration. Ob der Aufschlag alle Preisbestandteile abdeckt, liegt beim Nutzer (siehe Abschnitt 5).
 - Weitere Eigenheiten (Zustandswechsel 0,1–0,4 s nach der Grenze; Recorder speichert `data` nicht; Langzeitstatistik nur Stundenmittel): siehe Einspeisewacht `docs/ENTWICKLUNG.md`, Abschnitt 3.
 
+### Weitere Preisquellen (experimentell, Entscheidung 2026-10-26)
+
+Recherchiert am Quellcode (feste Commit-Stände) am 2026-10-26. Ein Format wird nur an den **genauen Schlüsseln** erkannt (`parse_price_attributes`), nicht am Attributnamen – `data` nutzen EPEX Spot, Ostrom und der Tibber-Export mit verschiedenem Aufbau.
+
+| Integration | Attribut | Eintrag | Hinweise |
+|---|---|---|---|
+| EPEX Spot (mampfes) | `data` | `{start_time, end_time, price_per_kwh}` | aufgezeichnetes Fixture; deckt über seine Quellen auch aWATTar, Tibber (Gesamtpreis), SMARD ab |
+| Nord Pool, HACS `custom-components/nordpool` 0.0.18 | `raw_today`, `raw_tomorrow` | `{start, end, value}` (in HA `datetime`-Objekte) | Einheit `EUR/kWh` (oder `c/kWh` → abgelehnt); Wert = Börse/1000 × (1+MwSt.) + Zusatzkosten-Template, gerundet (Standard 3 Stellen); Listen nicht im Recorder; Repo ohne Lizenz – kein Code übernommen |
+| ENTSO-E, HACS `JaccoR/hass-entso-e` v0.7.5 | `prices`, `prices_today`, `prices_tomorrow` (nur am Durchschnittspreis-Sensor) | `{time, price}` **ohne Ende**, `time` mit Leerzeichen | Länge aus dem häufigsten Abstand (15/60 min, UTC); Lücken werden nicht gefüllt; Standard ohne MwSt./Aufschlag = reiner Börsenpreis |
+
+Nicht unterstützt (zu unsicher oder nicht vorhanden): HA-Core Nord Pool und Tibber (Preise nur über Aktionen), HACS `tibber_prices` (frei konfigurierbarer Export), Ostrom (`data` mit `{date, price}`, ct/kWh, Platzhalter-Einträge), Rabot (Ende und Auflösung im Code selbst als Annahme markiert), 1KOMMA5 (zwei Integrationen, gleicher Name `forecast`, anderer Aufbau), Octopus (nur bei `isTimeOfUse`, Format ungeprüft). Fixtures für Nord Pool und ENTSO-E sind **abgeleitet** aus echten API-Daten der Projekte (`tools/make_price_fixtures.py`, Herkunft in `tests/fixtures/_index.json`); sobald ein Nutzer eine Diagnose schickt (`attribute_shape`), gegen echte Attribute prüfen.
+
 ### Bezugszähler
 
 - Fronius Smart Meter TS 65A-3 (Plattform `fronius`): Wh, `total_increasing`, ganze Wh, neuer Zustand nur bei Wertänderung.

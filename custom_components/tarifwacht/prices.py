@@ -9,6 +9,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from itertools import pairwise
 from typing import Any
 
 from .history import SlotSeries
@@ -26,6 +27,9 @@ class ParsedPrices:
     # Most common entry length (15 or 60 minutes), None if nothing parsed.
     resolution: timedelta | None = None
     skipped: int = 0
+    # Recognised attribute format ("epex_spot", "nordpool", "entsoe") or
+    # "state" for a sensor without forecast.
+    format: str | None = None
 
 
 def parse_interval_prices(
@@ -68,6 +72,120 @@ def parse_interval_prices(
     if lengths:
         result.resolution = lengths.most_common(1)[0][0]
     return result
+
+
+def parse_start_prices(
+    entries: Iterable[Mapping[str, Any]],
+    *,
+    time_key: str = "time",
+    price_key: str = "price",
+) -> ParsedPrices:
+    """Parse a list of {start, price} entries without an end (ENTSO-E).
+
+    The length of an entry is the most common distance between consecutive
+    starts (15 or 60 minutes; measured in UTC, so clock changes do not
+    matter). A gap is not filled and the last entry gets the same length. If
+    the length cannot be determined, nothing is parsed.
+    """
+    result = ParsedPrices()
+    starts: dict[datetime, float] = {}
+    for entry in entries:
+        try:
+            start = datetime.fromisoformat(str(entry[time_key]))
+            price = float(entry[price_key])
+        except KeyError, TypeError, ValueError:
+            result.skipped += 1
+            continue
+        if start.tzinfo is None or slot_start(start) != start:
+            result.skipped += 1
+            continue
+        starts[slot_start(start)] = price
+    ordered = sorted(starts)
+    distances = Counter(b - a for a, b in pairwise(ordered))
+    length = distances.most_common(1)[0][0] if distances else None
+    if length not in (QUARTER, timedelta(hours=1)):
+        result.skipped += len(ordered)
+        return result
+    result.resolution = length
+    for start in ordered:
+        slot = start
+        while slot < start + length:
+            result.prices[slot] = starts[start]
+            slot += QUARTER
+    return result
+
+
+def _first_entry(attributes: Mapping[str, Any], name: str) -> Mapping[str, Any] | None:
+    values = attributes.get(name)
+    if isinstance(values, list) and values and isinstance(values[0], Mapping):
+        return values[0]
+    return None
+
+
+def _entries(attributes: Mapping[str, Any], *names: str) -> list[Mapping[str, Any]]:
+    return [
+        entry
+        for name in names
+        if isinstance(values := attributes.get(name), list)
+        for entry in values
+        if isinstance(entry, Mapping)
+    ]
+
+
+def parse_price_attributes(attributes: Mapping[str, Any]) -> ParsedPrices | None:
+    """Prices from a price sensor's forecast attributes; None if none is known.
+
+    A format is only recognised by its exact keys: attribute names alone are
+    ambiguous (several integrations use `data` with different contents).
+    - EPEX Spot: `data` = [{start_time, end_time, price_per_kwh}] (fixture).
+    - Nord Pool (HACS custom-components/nordpool): `raw_today`, `raw_tomorrow`
+      = [{start, end, value}] (fixture derived from its code and API data).
+    - ENTSO-E (HACS JaccoR/hass-entso-e): `prices`, `prices_today`,
+      `prices_tomorrow` = [{time, price}] without an end (fixture derived).
+    """
+    first = _first_entry(attributes, "data")
+    if first is not None and {"start_time", "end_time", "price_per_kwh"} <= set(first):
+        parsed = parse_interval_prices(attributes["data"])
+        parsed.format = "epex_spot"
+        return parsed
+    first = _first_entry(attributes, "raw_today") or _first_entry(
+        attributes, "raw_tomorrow"
+    )
+    if first is not None and {"start", "end", "value"} <= set(first):
+        parsed = parse_interval_prices(
+            _entries(attributes, "raw_today", "raw_tomorrow"),
+            start_key="start",
+            end_key="end",
+            price_key="value",
+        )
+        parsed.format = "nordpool"
+        return parsed
+    names = ("prices", "prices_today", "prices_tomorrow")
+    first = next((e for n in names if (e := _first_entry(attributes, n))), None)
+    if first is not None and {"time", "price"} <= set(first):
+        parsed = parse_start_prices(_entries(attributes, *names))
+        parsed.format = "entsoe"
+        return parsed
+    return None
+
+
+def attribute_shape(attributes: Mapping[str, Any]) -> dict[str, Any]:
+    """Structure of list attributes (names, keys, types; no values).
+
+    For the diagnostics, so new price sources can be supported from what
+    users send in.
+    """
+    shape: dict[str, Any] = {}
+    for name, values in attributes.items():
+        if isinstance(values, list) and values:
+            first = values[0]
+            shape[name] = {
+                "entries": len(values),
+                "entry": {k: type(v).__name__ for k, v in first.items()}
+                if isinstance(first, Mapping)
+                else type(first).__name__,
+            }
+    return shape
 
 
 class PriceTable(SlotSeries):

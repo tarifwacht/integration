@@ -101,7 +101,7 @@
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
-            "price_entity": "In €/kWh, ideally with a forecast attribute `data`, e.g. the total price of the EPEX Spot integration.",
+            "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS.",
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
           }
@@ -122,7 +122,7 @@
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
-            "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast attribute `data`, e.g. the market price of the EPEX Spot integration.",
+            "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast: the market price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS, each without VAT and surcharges.",
             "grid_fee": "Energy-related grid fee of your grid operator, net.",
             "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
             "margin": "What the supplier adds per kWh, net.",
