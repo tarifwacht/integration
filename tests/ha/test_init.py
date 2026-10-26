@@ -9,6 +9,7 @@ import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
@@ -278,3 +279,46 @@ async def test_closed_days_move_to_yearly_archive(
     await hass.async_block_till_done()
     assert value(hass, entry, "energy") == pytest.approx(2.0)
     assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(DYNAMIC)
+
+
+@pytest.mark.freeze_time(START)
+async def test_compare_action(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await setup(hass)
+    await two_kwh(hass, freezer)
+
+    async def compare(**data: Any) -> dict[str, Any]:
+        return await hass.services.async_call(
+            DOMAIN,
+            "compare",
+            {"config_entry": entry.entry_id, **data},
+            blocking=True,
+            return_response=True,
+        )
+
+    # Whole period: since setup (17:00 CET) until now (17:29:30).
+    whole = await compare()
+    assert whole["energy_kwh"] == pytest.approx(2.0)
+    assert whole["quarter_hours"] == 2
+    assert whole["cheapest"] == "Dynamic"
+    tariffs = {t["tariff"]: t for t in whole["tariffs"]}
+    assert tariffs["Fixed price"]["consumption_cost"] == pytest.approx(0.60)
+    # Base price of the ended quarter hour 17:00 (31 €/month, 100 on 25.10.).
+    assert tariffs["Fixed price"]["cost"] == pytest.approx(0.61)
+    assert tariffs["Fixed price"]["current"] is True
+    assert tariffs["Dynamic"]["difference_to_current"] == pytest.approx(
+        round(DYNAMIC, 4) - 0.61, abs=1e-4
+    )
+
+    # From 17:15 local time (no zone: Home Assistant's time zone).
+    part = await compare(start="2026-10-25 17:15:00")
+    assert part["start"].startswith("2026-10-25T17:15:00")
+    assert part["energy_kwh"] == pytest.approx(29 / 30, abs=1e-4)
+    tariffs = {t["tariff"]: t for t in part["tariffs"]}
+    assert tariffs["Fixed price"]["consumption_cost"] == pytest.approx(
+        0.30 * 29 / 30, abs=1e-4
+    )
+
+    with pytest.raises(ServiceValidationError):
+        await compare(start="2026-10-25 17:20:00", end="2026-10-25 17:10:00")

@@ -170,5 +170,30 @@
         "name": "Differenz zum aktuellen Tarif"
       }
     }
+  },
+  "services": {
+    "compare": {
+      "name": "Tarife vergleichen",
+      "description": "Kosten jedes Tarifs eines Zählers in einem Zeitraum, der günstigste zuerst. Bekannt sind nur die Viertelstunden seit der Einrichtung.",
+      "fields": {
+        "config_entry": {
+          "name": "Zähler",
+          "description": "Der Tarifwacht-Eintrag, der ausgewertet wird."
+        },
+        "start": {
+          "name": "Beginn",
+          "description": "Optional. Ohne Angabe: seit der Einrichtung."
+        },
+        "end": {
+          "name": "Ende",
+          "description": "Optional. Ohne Angabe: bis jetzt."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "start_after_end": {
+      "message": "Der Beginn muss vor dem Ende liegen."
+    }
   }
 }

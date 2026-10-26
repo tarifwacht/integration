@@ -32,6 +32,18 @@ ENERGY_DIGITS = 7
 
 
 @dataclass
+class PeriodCosts:
+    """Costs of each tariff in a period (answer of the compare action)."""
+
+    start: datetime
+    end: datetime
+    totals: dict[str, TariffTotals]
+    energy: float = 0.0
+    # Quarter hours with recorded consumption in the period.
+    quarter_hours: int = 0
+
+
+@dataclass
 class Engine:
     """Books every meter reading into each tariff."""
 
@@ -71,6 +83,36 @@ class Engine:
         self._book(self.consumption.items(), now)
         self._base_until = self.started
         self._book_base_prices(now)
+
+    def costs_between(
+        self, start: datetime, end: datetime, now: datetime
+    ) -> PeriodCosts:
+        """Costs of every tariff for the quarter hours in [start, end).
+
+        Same rules as the running totals; the period is clipped to the
+        accounting period (`started` up to the running quarter hour).
+        """
+        first = max(slot_start(start), self.started or slot_start(now))
+        last = min(slot_start(end), slot_start(now) + QUARTER)
+        result = PeriodCosts(
+            start=first,
+            end=max(first, last),
+            totals={key: TariffTotals() for key in self.tariffs},
+        )
+        for slot, energy in self.consumption.items():
+            if first <= slot < last:
+                result.energy += energy
+                result.quarter_hours += 1
+                for key, totals in result.totals.items():
+                    self._book_one(key, totals, slot, energy, now)
+        # Base prices of the quarter hours that have ended.
+        base_end = min(last, slot_start(now))
+        for key, tariff in self.tariffs.items():
+            if tariff.base_price and first < base_end:
+                result.totals[key].base_cost = base_price_between(
+                    first, base_end, tariff.base_price, tariff.base_period, self.tz
+                )
+        return result
 
     def backfill(
         self, readings: Iterable[tuple[float, datetime]], since: datetime

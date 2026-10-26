@@ -361,3 +361,43 @@ def test_live_state_and_archive_restore_everything() -> None:
         assert snapshot(restored)[key] == pytest.approx(values, abs=1e-6)
     assert restored.archived_until == before
     assert restored.years() == {2026}
+
+
+# --- costs of a period (compare action) ---------------------------------------------
+
+
+def test_costs_between_whole_and_parts() -> None:
+    engine = with_fixture_prices(make_engine(fixed_base=31.0))
+    run_constant_purchase(engine, timedelta(minutes=5))
+    engine.tick(DAY_END)
+    whole = engine.costs_between(DAY_START, DAY_END, DAY_END)
+    assert whole.quarter_hours == 100
+    assert whole.energy == pytest.approx(25.0)
+    for key, totals in engine.totals.items():
+        assert whole.totals[key].cost == pytest.approx(totals.cost)
+    # Two halves add up to the whole day, base price included.
+    middle = DAY_START + 50 * QUARTER
+    first = engine.costs_between(DAY_START, middle, DAY_END)
+    second = engine.costs_between(middle, DAY_END, DAY_END)
+    for key in engine.totals:
+        assert first.totals[key].cost + second.totals[key].cost == pytest.approx(
+            whole.totals[key].cost
+        )
+    assert first.totals["fixed"].base_cost == pytest.approx(0.5)
+
+
+def test_costs_between_is_clipped_to_the_period() -> None:
+    engine = with_fixture_prices(make_engine(fixed_base=31.0))
+    run_constant_purchase(engine, timedelta(minutes=5))
+    engine.tick(DAY_END)
+    result = engine.costs_between(
+        DAY_START - timedelta(days=30), DAY_END + timedelta(days=30), DAY_END
+    )
+    assert result.start == DAY_START
+    assert result.end == DAY_END + QUARTER
+    assert result.totals["fixed"].base_cost == pytest.approx(1.0)
+    empty = engine.costs_between(
+        DAY_START - timedelta(days=30), DAY_START - timedelta(days=1), DAY_END
+    )
+    assert empty.quarter_hours == 0
+    assert empty.totals["fixed"].cost == 0

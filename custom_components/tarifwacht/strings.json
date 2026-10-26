@@ -170,5 +170,30 @@
         "name": "Difference to current tariff"
       }
     }
+  },
+  "services": {
+    "compare": {
+      "name": "Compare tariffs",
+      "description": "Costs of every tariff of a meter in a period, cheapest first. Only quarter hours since setup are known.",
+      "fields": {
+        "config_entry": {
+          "name": "Meter",
+          "description": "The Tarifwacht entry to evaluate."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Optional. Without it: since setup."
+        },
+        "end": {
+          "name": "End",
+          "description": "Optional. Without it: until now."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "start_after_end": {
+      "message": "The start must be before the end."
+    }
   }
 }
