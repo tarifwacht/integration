@@ -63,7 +63,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
     if entry.version == 1:
         devices = dr.async_get(hass)
-        meter_device = devices.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+        # Looked up within the entry: identifiers are unique per config entry only.
+        meter_device = next(
+            (
+                d
+                for d in dr.async_entries_for_config_entry(devices, entry.entry_id)
+                if (DOMAIN, entry.entry_id) in d.identifiers
+            ),
+            None,
+        )
         titles = default_titles(hass.config.language)
         for title, data in initial_tariffs(entry.data, titles):
             subentry = ConfigSubentry(

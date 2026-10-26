@@ -132,9 +132,15 @@ async def test_update_from_0_1_0b1(
     )
 
     # The tariff devices keep the area of the old device.
+    entry_devices = dr.async_entries_for_config_entry(devices, entry.entry_id)
     for key in ("fixed", "dynamic"):
-        device = devices.async_get_device(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{key}")}
+        device = next(
+            (
+                d
+                for d in entry_devices
+                if (DOMAIN, f"{entry.entry_id}_{key}") in d.identifiers
+            ),
+            None,
         )
         assert device is not None, key
         assert device.area_id == area.id, key
