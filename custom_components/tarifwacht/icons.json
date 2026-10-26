@@ -1,0 +1,29 @@
+{
+  "entity": {
+    "sensor": {
+      "energy": {
+        "default": "mdi:transmission-tower-import"
+      },
+      "cheapest": {
+        "default": "mdi:trophy-outline"
+      },
+      "consumption_cost": {
+        "default": "mdi:cash"
+      },
+      "cost": {
+        "default": "mdi:cash-multiple"
+      },
+      "average_price": {
+        "default": "mdi:tag-outline"
+      },
+      "difference": {
+        "default": "mdi:plus-minus-variant"
+      }
+    }
+  },
+  "services": {
+    "compare": {
+      "service": "mdi:scale-balance"
+    }
+  }
+}

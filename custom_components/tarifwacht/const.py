@@ -6,7 +6,7 @@ from typing import Final
 from zoneinfo import ZoneInfo
 
 DOMAIN: Final = "tarifwacht"
-VERSION: Final = "0.1.0b3"
+VERSION: Final = "0.1.0b4"
 
 # Days (pro-rata base prices) and months follow German local time.
 BERLIN: Final = ZoneInfo("Europe/Berlin")

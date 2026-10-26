@@ -1,7 +1,7 @@
 [project]
 name = "tarifwacht"
 # Kept equal to custom_components/tarifwacht/manifest.json (checked by tests/test_manifest.py).
-version = "0.1.0b3"
+version = "0.1.0b4"
 description = "Home Assistant integration: compare grid purchase costs under fixed and dynamic electricity tariffs."
 readme = "README.md"
 license = "MIT"

@@ -104,3 +104,10 @@ def test_modul3_fields_translated() -> None:
     step = strings["config_subentries"]["tariff"]["step"]["modul3"]
     assert set(step["data"]) == {str(key) for key in _modul3_fields()}
     assert set(strings["selector"]["quarters"]["options"]) == {"1", "2", "3", "4"}
+
+
+def test_every_sensor_and_action_has_an_icon() -> None:
+    icons = load(INTEGRATION / "icons.json")
+    strings = load(INTEGRATION / "strings.json")
+    assert set(icons["entity"]["sensor"]) == set(strings["entity"]["sensor"])
+    assert set(icons["services"]) == set(strings["services"])
