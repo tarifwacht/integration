@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
@@ -24,6 +24,7 @@ from homeassistant.core import (
     callback,
 )
 from homeassistant.helpers.event import (
+    async_call_later,
     async_track_state_change_event,
     async_track_utc_time_change,
 )
@@ -48,10 +49,19 @@ from .timeslots import slot_start
 
 _LOGGER = logging.getLogger(__name__)
 
-# 1: 0.1.0b1 (running totals); 2: consumption and prices per quarter hour.
-STORAGE_VERSION = 2
-# Bookings are written at most this often (and on unload).
-SAVE_DELAY = 60
+# 1: 0.1.0b1 (running totals); 2: consumption and prices per quarter hour;
+# 3: closed days in yearly archives, the live file keeps yesterday and today.
+STORAGE_VERSION = 3
+ARCHIVE_VERSION = 1
+
+# Few, small writes spare SD cards. The live state (a few KB) is written after
+# each quarter-hour tick and on unload; a crash loses at most a quarter hour,
+# which the next meter reading and the price forecast make good again. Each
+# yearly archive is written once a day, when a UTC day closes.
+SAVE_DELAY = 10
+# Entities (and so the recorder) are updated at most this often, and at each
+# quarter-hour tick, not on every meter reading.
+NOTIFY_INTERVAL = timedelta(seconds=60)
 
 # Recorder history is read from this long before the setup of the entry, so
 # the reading in effect at the setup is found as the baseline.
@@ -124,6 +134,9 @@ class TarifwachtStore(Store[dict[str, Any]]):
                 "",
             )
             return migrate_v1(old_data, source, self._entry.created_at)
+        if old_major_version == 2:
+            # Same format; the first start moves closed days to the archives.
+            return dict(old_data)
         raise NotImplementedError
 
 
@@ -157,21 +170,39 @@ class MeterRuntime:
         self.wrong_price_unit: dict[str, str | None] = {}
         self.backfill_error: str | None = None
         self._store = TarifwachtStore(hass, entry)
+        self._archives: dict[int, Store[dict[str, Any]]] = {}
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribe: list[CALLBACK_TYPE] = []
+        self._last_notify: datetime | None = None
+        self._notify_later: CALLBACK_TYPE | None = None
 
     @property
     def current(self) -> TariffInfo | None:
         """The tariff the others are compared with (first marked one)."""
         return next((t for t in self.tariffs.values() if t.current), None)
 
+    def _archive_store(self, year: int) -> Store[dict[str, Any]]:
+        if year not in self._archives:
+            self._archives[year] = Store(
+                self.hass, ARCHIVE_VERSION, f"{DOMAIN}.{self.entry.entry_id}.{year}"
+            )
+        return self._archives[year]
+
+    def _archive_years(self, now: datetime) -> range:
+        """Years that may have an archive, from the start of the period."""
+        first = self.engine.started.year if self.engine.started else now.year
+        return range(first, now.year + 1)
+
     async def async_start(self) -> None:
         """Restore the stored state, read current values, start listening."""
+        now = dt_util.utcnow()
         if data := await self._store.async_load():
             self.engine.restore(data)
+        for year in self._archive_years(now):
+            if archived := await self._archive_store(year).async_load():
+                self.engine.restore_archive(archived)
         if self.engine.backfill_until is not None:
             await self._async_backfill()
-        now = dt_util.utcnow()
         self.engine.start(now)
         for entity in sorted(self.price_entities):
             if state := self.hass.states.get(entity):
@@ -189,6 +220,27 @@ class MeterRuntime:
                 self.hass, self._on_tick, minute=[0, 15, 30, 45], second=1
             ),
         ]
+        await self._async_archive(now)
+
+    async def _async_archive(self, now: datetime) -> None:
+        """Move closed UTC days (before yesterday) to the yearly archives.
+
+        Writes once a day: each year from the last archived day up to now, so
+        late changes to days of the current year are kept as well. Then the
+        live state is saved without them.
+        """
+        cutoff = now.astimezone(UTC).date() - timedelta(days=1)
+        since = self.engine.archived_until
+        if since is not None and since >= cutoff:
+            return
+        years = self.engine.years()
+        first = since.year if since else min(years, default=cutoff.year)
+        for year in range(first, cutoff.year + 1):
+            data = self.engine.archive_dict(year, cutoff)
+            if data["consumption"] or any(data["prices"].values()):
+                await self._archive_store(year).async_save(data)
+        self.engine.archived_until = cutoff
+        self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
 
     async def _async_backfill(self) -> None:
         """Read the consumption 0.1.0b1 did not keep from the recorder.
@@ -235,9 +287,19 @@ class MeterRuntime:
         for unsubscribe in self._unsubscribe:
             unsubscribe()
         self._unsubscribe = []
+        if self._notify_later is not None:
+            self._notify_later()
+            self._notify_later = None
+        await self._async_archive(dt_util.utcnow())
         await self._store.async_save(self.engine.as_dict())
 
     async def async_remove(self) -> None:
+        """Delete the live state and all yearly archives."""
+        now = dt_util.utcnow()
+        if data := await self._store.async_load():
+            self.engine.restore(data)
+        for year in self._archive_years(now):
+            await self._archive_store(year).async_remove()
         await self._store.async_remove()
 
     @callback
@@ -260,7 +322,13 @@ class MeterRuntime:
     @callback
     def _on_tick(self, now: datetime) -> None:
         self.engine.tick(now)
-        self._changed()
+        self._notify()
+        self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
+        cutoff = now.astimezone(UTC).date() - timedelta(days=1)
+        if self.engine.archived_until is None or self.engine.archived_until < cutoff:
+            self.entry.async_create_background_task(
+                self.hass, self._async_archive(now), f"{DOMAIN} archive"
+            )
 
     def _handle_meter(self, state: State, now: datetime) -> None:
         if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
@@ -300,6 +368,26 @@ class MeterRuntime:
             self.engine.on_prices(source, parsed, now)
 
     def _changed(self) -> None:
-        self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
+        """Notify entities now, or once the minute since the last time is over."""
+        if self._notify_later is not None:
+            return
+        now = dt_util.utcnow()
+        if self._last_notify is None or now - self._last_notify >= NOTIFY_INTERVAL:
+            self._notify()
+            return
+        self._notify_later = async_call_later(
+            self.hass, self._last_notify + NOTIFY_INTERVAL - now, self._on_notify_later
+        )
+
+    @callback
+    def _on_notify_later(self, _now: datetime) -> None:
+        self._notify_later = None
+        self._notify()
+
+    def _notify(self) -> None:
+        if self._notify_later is not None:
+            self._notify_later()
+            self._notify_later = None
+        self._last_notify = dt_util.utcnow()
         for listener in list(self._listeners):
             listener()

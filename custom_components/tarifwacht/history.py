@@ -57,15 +57,32 @@ class SlotSeries:
     def __len__(self) -> int:
         return sum(v is not None for values in self.days.values() for v in values)
 
-    def as_dict(self, digits: int) -> dict[str, list[float | None]]:
+    def years(self) -> set[int]:
+        return {day.year for day in self.days}
+
+    def as_dict(
+        self,
+        digits: int,
+        *,
+        start: date | None = None,
+        end: date | None = None,
+    ) -> dict[str, list[float | None]]:
+        """The UTC days in [start, end) (all if not given), values rounded."""
         return {
             day.isoformat(): [None if v is None else round(v, digits) for v in values]
             for day, values in sorted(self.days.items())
+            if (start is None or day >= start) and (end is None or day < end)
         }
 
-    def restore(self, data: Mapping[str, Any]) -> None:
-        self.days = {
+    def restore(self, data: Mapping[str, Any], *, merge: bool = False) -> None:
+        """Replace the days, or with `merge` add days not present yet."""
+        days = {
             date.fromisoformat(day): [None if v is None else float(v) for v in values]
             for day, values in data.items()
             if len(values) == SLOTS_PER_DAY
         }
+        if merge:
+            for day, values in days.items():
+                self.days.setdefault(day, values)
+        else:
+            self.days = days

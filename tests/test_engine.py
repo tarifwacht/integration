@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -334,3 +334,30 @@ def test_migrate_v1_with_backfill() -> None:
     # The live meter continues where 0.1.0b1 stopped: nothing booked twice.
     engine.on_meter(1002.5, utc(2026, 10, 25, 16, 44, 30), now)
     assert engine.energy == pytest.approx(2.5)
+
+
+# --- archives -----------------------------------------------------------------------
+
+
+def test_live_state_and_archive_restore_everything() -> None:
+    """Closed days go to a yearly archive; together they restore the period."""
+    engine = with_fixture_prices(make_engine(fixed_base=10.0, dynamic_base=12.0))
+    run_constant_purchase(engine, timedelta(minutes=5))
+    engine.tick(DAY_END)
+    before = date(2026, 10, 25)
+    engine.archived_until = before
+    live = engine.as_dict()
+    archive = engine.archive_dict(2026, before)
+    assert live["archived_until"] == "2026-10-25"
+    assert set(live["consumption"]) == {"2026-10-25"}
+    assert set(archive["consumption"]) == {"2026-10-24"}
+    assert set(archive["prices"][TOTAL]) == {"2026-10-24"}
+
+    restored = make_engine(fixed_base=10.0, dynamic_base=12.0)
+    restored.restore(live)
+    restored.restore_archive(archive)
+    restored.start(DAY_END)
+    for key, values in snapshot(engine).items():
+        assert snapshot(restored)[key] == pytest.approx(values, abs=1e-6)
+    assert restored.archived_until == before
+    assert restored.years() == {2026}

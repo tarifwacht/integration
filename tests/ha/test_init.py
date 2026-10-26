@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.tarifwacht.const import DOMAIN
 from custom_components.tarifwacht.diagnostics import (
@@ -221,3 +225,56 @@ async def test_remove_entry(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert hass.config_entries.async_entries(DOMAIN) == []
+
+
+@pytest.mark.freeze_time(START)
+async def test_entities_update_at_most_once_a_minute(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Fewer recorder writes: readings within a minute are shown together."""
+    entry = await setup(hass)
+    freezer.move_to(datetime(2026, 10, 25, 16, 5, tzinfo=UTC))
+    hass.states.async_set(METER, "1000100", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(0.1)
+    freezer.tick(timedelta(seconds=10))
+    hass.states.async_set(METER, "1000200", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(0.1)
+    freezer.tick(timedelta(seconds=50))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(0.2)
+
+
+@pytest.mark.freeze_time(START)
+async def test_closed_days_move_to_yearly_archive(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """The live file keeps yesterday and today; older days are archived."""
+    entry = await setup(hass)
+    await two_kwh(hass, freezer)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    live = hass_storage[f"{DOMAIN}.{entry.entry_id}"]
+    assert live["version"] == 3
+    assert "2026-10-25" in live["data"]["consumption"]
+
+    # Two days later: 25.10. (UTC) is closed and goes to the 2026 archive.
+    freezer.move_to(datetime(2026, 10, 27, 16, 30, tzinfo=UTC))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    archive = hass_storage[f"{DOMAIN}.{entry.entry_id}.2026"]["data"]
+    live = hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]
+    assert "2026-10-25" in archive["consumption"]
+    assert "2026-10-25" in archive["prices"][PRICE]
+    assert "2026-10-25" not in live["consumption"]
+    assert live["archived_until"] == "2026-10-26"
+
+    # Live state and archive together restore the period.
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(2.0)
+    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(DYNAMIC)

@@ -79,12 +79,18 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 - **Dynamischer Preis aus Bestandteilen** (`ComposedPrice`): (Börsenpreis + Aufschläge netto) × (1 + MwSt.) – dieselbe Formel wie der Gesamtpreis von EPEX Spot. Nötig für die rückwirkende Berechnung, weil es für die Vergangenheit keinen Gesamtpreis-Sensor gibt.
 - **Rückwirkend** (Reihenfolge, Entscheidung 2026-10-26): erst MVP prüfen, dann Stufe 2, dann eine Aktion mit Antwortdaten für frei wählbare Zeiträume (Verbrauch aus der Statistik, Preise von SMARD.de), danach ggf. eigene Langzeitstatistik für die Vergangenheit. **Kein** Startdatum, das die Sensoren mit einem Vergangenheitsbetrag beginnen lässt (erschiene in Monatsgrafiken als Sprung).
 - Zeiträume (Tag/Monat/Jahr) über die Langzeitstatistik, nicht über eigene Sensoren.
-- Stand verzögert speichern (höchstens alle 60 s) und beim Entladen/Beenden, nicht bei jeder Zähleränderung.
+- **Wenig Schreiblast (SD-Karten, Entscheidung 2026-10-26):**
+  - Speicher in zwei Teilen (Speicherversion 3): eine kleine **Live-Datei** `tarifwacht.<entry_id>` (Zähler, gestern und heute, wenige KB) und je Kalenderjahr ein **Archiv** `tarifwacht.<entry_id>.<jahr>` mit den abgeschlossenen UTC-Tagen. Die Live-Datei wird nach jedem Viertelstunden-Tick und beim Beenden geschrieben, nicht bei jeder Zähleränderung; ein Archiv einmal am Tag, wenn ein Tag abgeschlossen ist (`archived_until`). Ein Absturz kostet höchstens eine Viertelstunde, die der nächste Zählerwert (Lücke wird verteilt) und die Preisprognose wieder auffüllen.
+  - Zuvor (0.1.0b2) wurde die ganze, wachsende Datei bei jeder Zähleränderung (verzögert um 60 s, bei sekündlichen Zählern also womöglich nie) geschrieben – nach einem Jahr rund 700 KB je Schreibvorgang.
+  - Sensoren werden höchstens **einmal pro Minute** und an jeder Viertelstundengrenze aktualisiert (`NOTIFY_INTERVAL`), nicht bei jedem Zählerwert: weniger Recorder-Zeilen (bei 14 Sensoren und einem Zähler im Sekundentakt sonst über 200 000 am Tag).
+  - Das Attribut `ranking` von „Günstigster Tarif“ wird nicht aufgezeichnet (`_unrecorded_attributes`).
+  - Grenze: Späte Änderungen an Tagen eines **früheren** Jahres (z. B. ein im Januar nachgelieferter Dezemberpreis) landen erst beim nächsten Archiv-Durchlauf jenes Jahres – praktisch nie nötig.
 - README-Hinweise: Der Vergleich unterstellt gleiches Verbrauchsverhalten (mit dynamischem Tarif verschieben Nutzer oft Verbrauch); alle Preisbestandteile auf beiden Seiten gleich erfassen.
 
 ## 6. Arbeitsweise
 
 - GitHub: Organisation `tarifwacht` (angelegt 2026-10-26), Repo `integration`. Wie bei der Einspeisewacht: Standard-Branch `main`, Ruleset „main schützen“ (nur grüne CI `test`, `hassfest`, `compat`; kein Löschen, kein Force-Push) und „Release-Tags schützen“ (`v*` unveränderlich). Brand-Bilder seit 2026-10-26 (`docs/BRAND.md`), der CI-Job `hacs` prüft sie mit.
+- **GitHub-Sicherheit (gesetzt 2026-10-26, wie Einspeisewacht plus CodeQL):** Organisation mit Zwei-Faktor-Pflicht (ohne „nur sichere Methoden“ – SMS bleibt möglich), Beschreibung und Link gesetzt. Repo: Secret Scanning mit Push-Schutz, Dependabot-Alarme und -Sicherheitsupdates, private Meldung von Sicherheitslücken (für `SECURITY.md`), Branches nach Merge löschen, Actions nur GitHub-eigene plus `astral-sh/setup-uv@*`, `home-assistant/actions/*`, `hacs/action@*` (neue Actions dort freigeben!), Standard-Workflow-Rechte nur lesen, Code Scanning (CodeQL, Standardkonfiguration). **Nicht** gesetzt: unveränderliche Releases – sonst kann `release-asset.yml` die ZIP nach dem Veröffentlichen nicht anhängen; die Tags `v*` schützt der Regelsatz.
 - Releases, auch Betas, als **reguläre** GitHub-Releases (nicht „Pre-release“) – sonst sucht HACS die ZIP unter dem Commit und scheitert (Erfahrung Einspeisewacht 0.1.0b2).
 
 ## 7. Offene Fragen

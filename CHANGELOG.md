@@ -3,6 +3,7 @@
 ## Unveröffentlicht
 
 - Icon und Logo (Verkehrspurpur, Viertelstunden gegen den Festpreis); Home Assistant zeigt sie ab 2026.3.
+- **Schont SD-Karten:** Abgeschlossene Tage wandern einmal am Tag in ein Jahresarchiv; die laufende Datei bleibt wenige KB groß und wird nur noch jede Viertelstunde geschrieben statt bei jeder Zähleränderung. Sensoren aktualisieren sich höchstens einmal pro Minute (weniger Recorder-Einträge); die Rangfolge von „Günstigster Tarif“ wird nicht aufgezeichnet.
 
 ## 0.1.0b2 – 2026-10-26
 

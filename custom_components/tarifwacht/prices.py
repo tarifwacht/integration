@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from .history import SlotSeries
@@ -78,13 +78,19 @@ class PriceTable(SlotSeries):
     period, so tariffs can be booked again when their definition changes.
     """
 
-    def as_dict(self, digits: int = PRICE_DIGITS) -> dict[str, list[float | None]]:
-        return super().as_dict(digits)
+    def as_dict(
+        self,
+        digits: int = PRICE_DIGITS,
+        *,
+        start: date | None = None,
+        end: date | None = None,
+    ) -> dict[str, list[float | None]]:
+        return super().as_dict(digits, start=start, end=end)
 
-    def restore(self, data: Mapping[str, Any]) -> None:
+    def restore(self, data: Mapping[str, Any], *, merge: bool = False) -> None:
         if any(not isinstance(v, list) for v in data.values()):
             # Version 0.1.0b1 stored {slot start (ISO): price}.
             self.days = {}
             self.merge({datetime.fromisoformat(s): float(p) for s, p in data.items()})
             return
-        super().restore(data)
+        super().restore(data, merge=merge)

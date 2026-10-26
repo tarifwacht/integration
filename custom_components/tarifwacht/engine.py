@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, tzinfo
+from datetime import date, datetime, timedelta, tzinfo
 from typing import Any
 
 from .history import SlotSeries
@@ -46,6 +46,8 @@ class Engine:
     # Consumption from `started` up to here is still to be read from the
     # recorder (set when migrating from 0.1.0b1).
     backfill_until: datetime | None = None
+    # UTC days before this are stored in yearly archives, not in the live state.
+    archived_until: date | None = None
     meter_events: Counter[str] = field(default_factory=Counter)
     last_parse: dict[str, ParsedPrices] = field(default_factory=dict)
     # Derived, not stored.
@@ -89,6 +91,8 @@ class Engine:
             for slot, energy in tracker.update(value, at).pieces:
                 self.consumption.add(slot, energy)
         self.backfill_until = None
+        # Older days may have changed: the archives are written again.
+        self.archived_until = None
 
     def on_meter(self, value_kwh: float, at: datetime, now: datetime) -> MeterUpdate:
         """A new meter reading in kWh."""
@@ -158,16 +162,45 @@ class Engine:
                 )
         self._base_until = current
 
+    def years(self) -> set[int]:
+        """Calendar years (UTC days) with consumption or prices."""
+        years = self.consumption.years()
+        for table in self.prices.values():
+            years |= table.years()
+        return years
+
     def as_dict(self) -> dict[str, Any]:
+        """The live state: everything except the archived days.
+
+        Days before `archived_until` are kept in yearly archives (see
+        `archive_dict`), so this stays small however long the period gets.
+        """
+        days_from = self.archived_until
         return {
             "meter": self.meter.as_dict(),
-            "consumption": self.consumption.as_dict(ENERGY_DIGITS),
-            "prices": {source: t.as_dict() for source, t in self.prices.items()},
+            "consumption": self.consumption.as_dict(ENERGY_DIGITS, start=days_from),
+            "prices": {
+                source: t.as_dict(start=days_from) for source, t in self.prices.items()
+            },
             "started": self.started.isoformat() if self.started else None,
             "backfill_until": self.backfill_until.isoformat()
             if self.backfill_until
             else None,
+            "archived_until": days_from.isoformat() if days_from else None,
             "meter_events": dict(self.meter_events),
+        }
+
+    def archive_dict(self, year: int, before: date) -> dict[str, Any]:
+        """Consumption and prices of the UTC days of `year` before `before`."""
+        start, end = date(year, 1, 1), min(before, date(year + 1, 1, 1))
+        return {
+            "consumption": self.consumption.as_dict(
+                ENERGY_DIGITS, start=start, end=end
+            ),
+            "prices": {
+                source: t.as_dict(start=start, end=end)
+                for source, t in self.prices.items()
+            },
         }
 
     def restore(self, data: dict[str, Any]) -> None:
@@ -180,7 +213,15 @@ class Engine:
         self.started = datetime.fromisoformat(started) if started else None
         until = data.get("backfill_until")
         self.backfill_until = datetime.fromisoformat(until) if until else None
+        archived = data.get("archived_until")
+        self.archived_until = date.fromisoformat(archived) if archived else None
         self.meter_events = Counter(data.get("meter_events", {}))
+
+    def restore_archive(self, data: dict[str, Any]) -> None:
+        """Add an archived year; days in the live state take precedence."""
+        self.consumption.restore(data.get("consumption", {}), merge=True)
+        for source, table_data in data.get("prices", {}).items():
+            self.price_table(source).restore(table_data, merge=True)
 
 
 def migrate_v1(

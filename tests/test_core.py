@@ -221,3 +221,21 @@ def test_slot_series_round_trip_and_rounding() -> None:
     assert restored.get(utc(2026, 1, 1, 9, 15)) == pytest.approx(1 / 3)
     assert restored.get(utc(2026, 1, 1, 9, 30)) is None
     assert len(restored) == 2
+
+
+def test_slot_series_day_ranges_and_merge() -> None:
+    series = SlotSeries()
+    for day in (24, 25, 26):
+        series.set(utc(2026, 10, day, 12), float(day))
+    assert list(series.as_dict(7, start=date(2026, 10, 25))) == [
+        "2026-10-25",
+        "2026-10-26",
+    ]
+    assert list(series.as_dict(7, end=date(2026, 10, 25))) == ["2026-10-24"]
+    assert series.years() == {2026}
+    # Merging keeps days already present (the live state wins).
+    live = SlotSeries()
+    live.set(utc(2026, 10, 26, 12), 99.0)
+    live.restore(series.as_dict(7), merge=True)
+    assert live.get(utc(2026, 10, 26, 12)) == 99.0
+    assert live.get(utc(2026, 10, 24, 12)) == 24.0

@@ -128,6 +128,10 @@ class EnergySensor(MeterEntity, SensorEntity):
 class CheapestSensor(MeterEntity, SensorEntity):
     """The tariff with the lowest total cost so far."""
 
+    # The costs in the ranking change all the time; recording every change
+    # would add a row of attributes per update.
+    _unrecorded_attributes = frozenset({"ranking"})
+
     def __init__(self, entry: TarifwachtConfigEntry) -> None:
         super().__init__(entry, "cheapest")
 
