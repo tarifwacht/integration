@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
 
+from custom_components.tarifwacht.const import PRICE_UNITS
 from tests.conftest import load_fixture
 
 QUARTER = timedelta(minutes=15)
@@ -47,3 +48,9 @@ def test_epex_dst_day_contents() -> None:
         and e["end_time"] == "2026-10-25T02:00:00+01:00"
         for e in fixture["attributes"]["data"]
     )
+
+
+def test_epex_unit_is_accepted() -> None:
+    fixture = load_fixture("epex_spot_2026-10-25.json")
+    assert fixture["attributes"]["unit_of_measurement"] == "€/kWh"
+    assert fixture["attributes"]["unit_of_measurement"] in PRICE_UNITS

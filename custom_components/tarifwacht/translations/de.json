@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bezugszähler",
+        "description": "Tarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Bezugszähler"
+        },
+        "data_description": {
+          "name": "Zum Beispiel „Haus“. Wird in den Entitätsnamen verwendet.",
+          "meter_entity": "Aus dem Netz bezogene Energie (Wh, kWh oder MWh, fortlaufend). Am besten der Zähler am Netzanschlusspunkt."
+        }
+      },
+      "reconfigure": {
+        "title": "Bezugszähler",
+        "description": "Tarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Bezugszähler"
+        },
+        "data_description": {
+          "name": "Zum Beispiel „Haus“. Wird in den Entitätsnamen verwendet.",
+          "meter_entity": "Aus dem Netz bezogene Energie (Wh, kWh oder MWh, fortlaufend). Am besten der Zähler am Netzanschlusspunkt."
+        }
+      },
+      "tariffs": {
+        "title": "Tarife",
+        "description": "Alle Preise brutto (mit Mehrwertsteuer). Für einen fairen Vergleich müssen beide Seiten dieselben Preisbestandteile enthalten (Netzentgelte, Umlagen, Steuern).",
+        "data": {
+          "fixed_price": "Festpreis: Arbeitspreis",
+          "fixed_base": "Festpreis: Grundpreis pro Monat",
+          "dynamic_price_entity": "Dynamisch: Sensor mit Gesamtpreis",
+          "dynamic_base": "Dynamisch: Grundpreis pro Monat"
+        },
+        "data_description": {
+          "fixed_price": "Preis je kWh aus deinem Vertrag oder Angebot.",
+          "fixed_base": "Optional. Wird tageweise anteilig gebucht.",
+          "dynamic_price_entity": "Ein Sensor mit dem Gesamtpreis je Viertelstunde in €/kWh (Börsenpreis plus alle Aufschläge, brutto), am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot.",
+          "dynamic_base": "Optional. Wird tageweise anteilig gebucht."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Bitte einen Namen eingeben.",
+      "meter_in_use": "Dieser Zähler wird schon von einem anderen Eintrag verwendet.",
+      "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
+      "meter_unit": "Der Zähler muss Wh, kWh oder MWh liefern.",
+      "meter_state_class": "Der Zähler muss fortlaufend zählen (Zustandsklasse total oder total_increasing).",
+      "price_required": "Bitte den Arbeitspreis eingeben.",
+      "price_unit": "Der Preissensor muss €/kWh liefern.",
+      "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert."
+    },
+    "abort": {
+      "already_configured": "Dieser Zähler ist bereits eingerichtet.",
+      "reconfigure_successful": "Der Eintrag wurde geändert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy": {
+        "name": "Strombezug"
+      },
+      "fixed_consumption_cost": {
+        "name": "Festpreis Verbrauchskosten"
+      },
+      "fixed_cost": {
+        "name": "Festpreis Kosten gesamt"
+      },
+      "dynamic_consumption_cost": {
+        "name": "Dynamisch Verbrauchskosten"
+      },
+      "dynamic_cost": {
+        "name": "Dynamisch Kosten gesamt"
+      },
+      "dynamic_extra_cost": {
+        "name": "Mehrkosten dynamisch"
+      }
+    }
+  }
+}

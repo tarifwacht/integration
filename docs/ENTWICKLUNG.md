@@ -36,6 +36,7 @@ Seitdem unabhängig weiterentwickelt; die Tarifwacht braucht die Einspeisewacht 
 
 - `sensor.epex_spot_data_market_price` (Börsenpreis, netto) und `sensor.epex_spot_data_total_price` (Gesamtpreis) haben **dasselbe Format**: Zustand €/kWh der laufenden Viertelstunde, `state_class: measurement`; Attribut `data` als Liste `{start_time, end_time, price_per_kwh}` mit ISO-Zeitstempeln (Offset Europe/Berlin), Zeitumstellung als Eintrag `02:45+02:00 → 02:00+01:00`. `parse_interval_prices` liest beide.
 - Gesamtpreis = (Börsenpreis + Aufschlag absolut) × (1 + Steuer), auf 6 Nachkommastellen gerundet (nachgeprüft an mehreren Viertelstunden, auch bei Börsenpreis 0).
+- Die Tarifwacht übernimmt Preise unverändert und akzeptiert deshalb nur die Einheit €/kWh (`PRICE_UNITS`); ein Sensor mit anderer Einheit wird abgelehnt (Einrichtung) bzw. ignoriert (Laufzeit, in der Diagnose sichtbar).
 - Aufschlag und Steuersatz stehen in der Konfiguration der EPEX-Spot-Integration. Ob der Aufschlag alle Preisbestandteile abdeckt, liegt beim Nutzer (siehe Abschnitt 5).
 - Weitere Eigenheiten (Zustandswechsel 0,1–0,4 s nach der Grenze; Recorder speichert `data` nicht; Langzeitstatistik nur Stundenmittel): siehe Einspeisewacht `docs/ENTWICKLUNG.md`, Abschnitt 3.
 
@@ -60,19 +61,23 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 
 - Liest vorhandene Entitäten (Bezugszähler, Preissensoren), keine Cloud, keine `requirements`. Erscheint als Integration (`integration_type: service`), wie die Einspeisewacht.
 - Nur UI-Config-Flow, kein YAML. Tarife als Untereinträge (ab Stufe 2).
-- **Grundpreise optional** je Tarif (€/Monat, leer = 0), tageweise anteilig gebucht.
+- **Grundpreise optional** je Tarif (€/Monat, leer = 0). Jeder Tag erhält €/Monat ÷ Tage des Monats, gleichmäßig verteilt auf seine 92/96/100 Viertelstunden; ein Monat ergibt so genau den Monatspreis (Entscheidung 2026-10-26; anbieterabhängige Abrechnung, z. B. Jahrespreis ÷ 365, kann später als Option folgen). Gebucht ab der ersten Viertelstunde nach der Einrichtung; Zeiten, in denen HA aus war, werden nachgebucht (der Grundpreis fällt trotzdem an).
+- **Kostensensoren** mit `device_class: monetary` haben `state_class: total` – Home Assistant erlaubt für Geldbeträge nichts anderes (die Übergabe nannte `total_increasing`).
+- **Fehlt ein dynamischer Preis**, wartet die Menge bis zu 24 h; danach wird sie gezählt (`energy_without_price`, Diagnose), aber **nie mit 0 € bewertet**.
+- **Plausibilitätsgrenze** des Zählers: 100 kW (`MAX_GRID_POWER_KW`, mehr als jeder Hausanschluss); kein Einrichtungsfeld.
+- MVP-Sensoren: Strombezug (kWh), je Tarif Verbrauchskosten und Kosten gesamt, Mehrkosten dynamisch (dynamisch − Festpreis, positiv = dynamisch teurer). Alles laufende Summen seit der Einrichtung.
 - Zeiträume (Tag/Monat/Jahr) über die Langzeitstatistik, nicht über eigene Sensoren.
-- Stand regelmäßig speichern (verzögert, nicht bei jeder Zähleränderung), nicht nur beim Entladen.
+- Stand verzögert speichern (höchstens alle 60 s) und beim Entladen/Beenden, nicht bei jeder Zähleränderung.
 - README-Hinweise: Der Vergleich unterstellt gleiches Verbrauchsverhalten (mit dynamischem Tarif verschieben Nutzer oft Verbrauch); alle Preisbestandteile auf beiden Seiten gleich erfassen.
 
 ## 6. Arbeitsweise
 
-- GitHub: Organisation `tarifwacht` (angelegt 2026-10-26), Repo `integration` (noch nicht angelegt).
+- GitHub: Organisation `tarifwacht` (angelegt 2026-10-26), Repo `integration`. Wie bei der Einspeisewacht: Standard-Branch `main`, Ruleset „main schützen“ (nur grüne CI `test`, `hassfest`, `compat`; kein Löschen, kein Force-Push) und „Release-Tags schützen“ (`v*` unveränderlich). Brand-Bilder fehlen noch: der CI-Job `hacs` ignoriert `brands`.
 - Releases, auch Betas, als **reguläre** GitHub-Releases (nicht „Pre-release“) – sonst sucht HACS die ZIP unter dem Commit und scheitert (Erfahrung Einspeisewacht 0.1.0b2).
 
 ## 7. Offene Fragen
 
-- **Preisbestandteile:** Wie erklärt man Nutzern am besten, welche Bestandteile im Aufschlag eines dynamischen Tarifs stecken müssen?
-- **Grundpreis tageweise:** €/Monat ÷ Tage des Monats oder × 12 ÷ 365? Wie rechnen Anbieter tagesgenau ab?
+- **Preisbestandteile:** Wie erklärt man Nutzern am besten, welche Bestandteile im Aufschlag eines dynamischen Tarifs stecken müssen (Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer, Anbieteraufschlag)? Stufe 2: Börsenpreis + einzeln eingetragene Bestandteile.
+- **Grundpreis:** Wie rechnen Anbieter tagesgenau ab (Monatspreis ÷ Tage des Monats oder Jahrespreis ÷ 365)?
 - **Historische Preise** für die rückwirkende Berechnung: SMARD.de (Nutzungsbedingungen, CC BY 4.0, inoffizielle Schnittstelle – Erfahrung der Einspeisewacht nutzen).
 - Brand-Bilder; `categories` im Manifest.

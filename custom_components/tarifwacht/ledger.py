@@ -15,10 +15,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from .prices import PriceTable
-
 # How long a piece waits for its price before it is booked without one.
 PRICE_WAIT = timedelta(hours=24)
+
+
+class PriceSource(Protocol):
+    """Price in EUR/kWh of a quarter hour, None if not known (yet)."""
+
+    def get(self, slot: datetime) -> float | None: ...
 
 
 class Valuation(Protocol):
@@ -45,7 +49,7 @@ class Ledger:
     def book(
         self,
         pieces: Iterable[tuple[datetime, float]],
-        prices: PriceTable,
+        prices: PriceSource,
         valuation: Valuation,
         now: datetime,
     ) -> None:
@@ -59,7 +63,7 @@ class Ledger:
                 valuation.book(self.totals, slot, energy, price)
 
     def retry_pending(
-        self, prices: PriceTable, valuation: Valuation, now: datetime
+        self, prices: PriceSource, valuation: Valuation, now: datetime
     ) -> None:
         """Book held-back pieces once their price is known or the wait is over."""
         for slot, (energy, since) in sorted(self.pending.items()):

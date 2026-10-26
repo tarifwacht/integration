@@ -1,0 +1,82 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Grid purchase meter",
+        "description": "Tarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Grid purchase meter"
+        },
+        "data_description": {
+          "name": "For example “House”. Used in entity names.",
+          "meter_entity": "Energy drawn from the grid (Wh, kWh or MWh, cumulative). Best: the meter at the grid connection point."
+        }
+      },
+      "reconfigure": {
+        "title": "Grid purchase meter",
+        "description": "Tarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Grid purchase meter"
+        },
+        "data_description": {
+          "name": "For example “House”. Used in entity names.",
+          "meter_entity": "Energy drawn from the grid (Wh, kWh or MWh, cumulative). Best: the meter at the grid connection point."
+        }
+      },
+      "tariffs": {
+        "title": "Tariffs",
+        "description": "Enter all prices including VAT. For a fair comparison, both sides must contain the same price components (grid fees, levies, taxes).",
+        "data": {
+          "fixed_price": "Fixed price: energy price",
+          "fixed_base": "Fixed price: base price per month",
+          "dynamic_price_entity": "Dynamic: total price sensor",
+          "dynamic_base": "Dynamic: base price per month"
+        },
+        "data_description": {
+          "fixed_price": "Price per kWh from your contract or offer.",
+          "fixed_base": "Optional. Booked pro rata per day.",
+          "dynamic_price_entity": "A sensor with the total price per quarter hour in €/kWh (exchange price plus all surcharges, incl. VAT), ideally with a forecast attribute `data`, e.g. the total price of the EPEX Spot integration.",
+          "dynamic_base": "Optional. Booked pro rata per day."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name.",
+      "meter_in_use": "This meter is already used by another entry.",
+      "entity_missing": "The entity does not exist or has no state yet.",
+      "meter_unit": "The meter must report Wh, kWh or MWh.",
+      "meter_state_class": "The meter must be cumulative (state class total or total_increasing).",
+      "price_required": "Please enter the energy price.",
+      "price_unit": "The price sensor must report €/kWh.",
+      "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state."
+    },
+    "abort": {
+      "already_configured": "This meter is already set up.",
+      "reconfigure_successful": "The entry was changed."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy": {
+        "name": "Grid purchase"
+      },
+      "fixed_consumption_cost": {
+        "name": "Fixed price consumption cost"
+      },
+      "fixed_cost": {
+        "name": "Fixed price total cost"
+      },
+      "dynamic_consumption_cost": {
+        "name": "Dynamic consumption cost"
+      },
+      "dynamic_cost": {
+        "name": "Dynamic total cost"
+      },
+      "dynamic_extra_cost": {
+        "name": "Extra cost dynamic"
+      }
+    }
+  }
+}
