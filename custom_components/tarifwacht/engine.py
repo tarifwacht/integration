@@ -12,12 +12,14 @@ forecasts and clock ticks, and stores `as_dict()`.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, tzinfo
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
+from itertools import chain
 from typing import Any
 
 from .history import SlotSeries
+from .lookback import Lookback
 from .meter import MeterTracker, MeterUpdate
 from .prices import ParsedPrices, PriceTable
 from .tariffs import Tariff, TariffTotals
@@ -41,6 +43,25 @@ class PeriodCosts:
     energy: float = 0.0
     # Quarter hours with recorded consumption in the period.
     quarter_hours: int = 0
+    # Of these, estimated from hourly statistics (before the setup).
+    estimated_energy: float = 0.0
+    estimated_quarter_hours: int = 0
+    # The same per local calendar month ("YYYY-MM"), in order.
+    months: dict[str, PeriodCosts] = field(default_factory=dict)
+
+
+def month_bounds(
+    start: datetime, end: datetime, tz: tzinfo
+) -> Iterator[tuple[str, datetime, datetime]]:
+    """Local calendar months touching [start, end), clipped to it (UTC)."""
+    cursor = start
+    while cursor < end:
+        local = cursor.astimezone(tz)
+        year, month = local.year + local.month // 12, local.month % 12 + 1
+        next_month = datetime.combine(date(year, month, 1), time(), tz).astimezone(UTC)
+        segment_end = min(end, next_month)
+        yield f"{local.year:04d}-{local.month:02d}", cursor, segment_end
+        cursor = segment_end
 
 
 @dataclass
@@ -97,37 +118,61 @@ class Engine:
         }
 
     def costs_between(
-        self, start: datetime, end: datetime, now: datetime
+        self,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+        lookback: Lookback | None = None,
     ) -> PeriodCosts:
         """Costs of every tariff for the quarter hours in [start, end).
 
-        Same rules as the running totals; the period is clipped to the
-        accounting period (`started` up to the running quarter hour).
+        Same rules as the running totals. Without `lookback` the period is
+        clipped to the accounting period (`started` up to the running quarter
+        hour); with it, the quarter hours before `started` come from there.
         """
-        first = max(slot_start(start), self.started or slot_start(now))
+        tariffs = lookback.tariffs if lookback is not None else self.tariffs
+        first = slot_start(start)
+        if lookback is None:
+            first = max(first, self.started or slot_start(now))
         # A quarter hour that begins before `end` belongs to the period.
         end_slot = slot_start(end)
         if end_slot < end:
             end_slot += QUARTER
-        last = min(end_slot, slot_start(now) + QUARTER)
-        result = PeriodCosts(
-            start=first,
-            end=max(first, last),
-            totals={key: TariffTotals() for key in self.tariffs},
-        )
-        for slot, energy in self.consumption.items():
-            if first <= slot < last:
-                result.energy += energy
-                result.quarter_hours += 1
-                for key, totals in result.totals.items():
-                    self._book_one(key, totals, slot, energy, now)
+        last = max(first, min(end_slot, slot_start(now) + QUARTER))
+
+        def costs(a: datetime, b: datetime) -> PeriodCosts:
+            return PeriodCosts(a, b, {key: TariffTotals() for key in tariffs})
+
+        result = costs(first, last)
+        months = {key: costs(a, b) for key, a, b in month_bounds(first, last, self.tz)}
+        result.months = months
+        estimated = lookback.consumption.items() if lookback is not None else ()
+        for slot, energy in chain(estimated, self.consumption.items()):
+            if not first <= slot < last:
+                continue
+            is_estimate = lookback is not None and slot < lookback.until
+            # A price missing before the setup will not come any more.
+            booked_at = max(now, slot + QUARTER + PRICE_WAIT) if is_estimate else now
+            month = months[slot.astimezone(self.tz).strftime("%Y-%m")]
+            for part in (result, month):
+                part.energy += energy
+                part.quarter_hours += 1
+                if is_estimate:
+                    part.estimated_energy += energy
+                    part.estimated_quarter_hours += 1
+                for key, totals in part.totals.items():
+                    _book(tariffs[key], totals, slot, energy, booked_at)
         # Base prices of the quarter hours that have ended.
         base_end = min(last, slot_start(now))
-        for key, tariff in self.tariffs.items():
-            if first < base_end:
-                result.totals[key].base_cost = tariff.base_between(
-                    first, base_end, self.tz
+        for month in months.values():
+            if month.start >= base_end:
+                continue
+            for key, tariff in tariffs.items():
+                base = tariff.base_between(
+                    month.start, min(month.end, base_end), self.tz
                 )
+                month.totals[key].base_cost = base
+                result.totals[key].base_cost += base
         return result
 
     def backfill(
@@ -191,14 +236,7 @@ class Engine:
         energy: float,
         now: datetime,
     ) -> None:
-        price = self.tariffs[key].price(slot)
-        if price is not None:
-            totals.energy += energy
-            totals.consumption_cost += energy * price
-        elif now - (slot + QUARTER) >= PRICE_WAIT:
-            totals.energy_without_price += energy
-        else:
-            totals.pending[slot] = totals.pending.get(slot, 0.0) + energy
+        _book(self.tariffs[key], totals, slot, energy, now)
 
     def _book_base_prices(self, now: datetime) -> None:
         """Base prices of every quarter hour that ended by `now`.
@@ -295,3 +333,21 @@ def migrate_v1(
         "backfill_until": meter.get("last_time"),
         "meter_events": data.get("meter_events", {}),
     }
+
+
+def _book(
+    tariff: Tariff,
+    totals: TariffTotals,
+    slot: datetime,
+    energy: float,
+    now: datetime,
+) -> None:
+    """Book a quarter hour's energy, or let it wait for its price."""
+    price = tariff.price(slot)
+    if price is not None:
+        totals.energy += energy
+        totals.consumption_cost += energy * price
+    elif now - (slot + QUARTER) >= PRICE_WAIT:
+        totals.energy_without_price += energy
+    else:
+        totals.pending[slot] = totals.pending.get(slot, 0.0) + energy

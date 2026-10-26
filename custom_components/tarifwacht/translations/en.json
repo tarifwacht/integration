@@ -247,7 +247,7 @@
   "services": {
     "compare": {
       "name": "Compare tariffs",
-      "description": "Costs of every tariff of a meter in a period, cheapest first. Only quarter hours since setup are known.",
+      "description": "Cost of every tariff of a meter in a period, the cheapest first, also per month. Before the setup estimated from the hourly long-term statistics; Tarifwacht loads the exchange prices of that time from SMARD.de.",
       "fields": {
         "config_entry": {
           "name": "Meter",
@@ -255,7 +255,7 @@
         },
         "start": {
           "name": "Start",
-          "description": "Optional. Without it: since setup."
+          "description": "Optional. Without: since the setup. An earlier start uses the meter's hourly values from the long-term statistics."
         },
         "end": {
           "name": "End",
@@ -267,6 +267,9 @@
   "exceptions": {
     "start_after_end": {
       "message": "The start must be before the end."
+    },
+    "smard_failed": {
+      "message": "Exchange prices could not be loaded from SMARD.de ({error}). Please try again later."
     }
   },
   "issues": {

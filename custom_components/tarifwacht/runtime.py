@@ -9,11 +9,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
+from homeassistant.components.recorder.statistics import statistics_during_period
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
+    UnitOfEnergy,
 )
 from homeassistant.core import (
     CALLBACK_TYPE,
@@ -35,16 +37,26 @@ from homeassistant.util import dt as dt_util
 from .const import (
     BERLIN,
     CONF_CURRENT,
+    CONF_KIND,
     CONF_METER,
     CONF_NAME,
     DOMAIN,
+    KIND_DYNAMIC_MARKET,
     MAX_GRID_POWER_KW,
     PRICE_UNITS,
     SUBENTRY_TARIFF,
 )
 from .engine import Engine, migrate_v1
+from .lookback import (
+    FallbackPrice,
+    Lookback,
+    hour_start,
+    hours_without_energy,
+    spread_hours,
+)
 from .meter import MeterTracker, to_kwh
-from .prices import ParsedPrices, parse_price_attributes
+from .prices import ParsedPrices, PriceTable, parse_price_attributes
+from .smard_cache import smard_cache
 from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .timeslots import slot_start
 
@@ -184,6 +196,57 @@ class MeterRuntime:
         self._notify_later: CALLBACK_TYPE | None = None
         # Repair issues currently shown: issue id -> (translation key, placeholders)
         self._issues: dict[str, tuple[str, dict[str, str]]] = {}
+
+    async def async_lookback(self, start: datetime) -> Lookback | None:
+        """Consumption and tariffs for the quarter hours from `start` to the setup.
+
+        None if `start` is not before the setup. Exchange prices of that time
+        are fetched from SMARD.de, only if a tariff needs them; raises
+        SmardError if that fails.
+        """
+        until = self.engine.started
+        if until is None or slot_start(start) >= until:
+            return None
+        hourly = await self._async_hourly_energy(hour_start(start), until)
+        subentries = tariff_subentries(self.entry)
+        smard: PriceTable = PriceTable()
+        if any(s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET for s in subentries):
+            smard = await smard_cache(self.hass).async_prices(start, until)
+
+        def market(entity: str) -> FallbackPrice:
+            return FallbackPrice(self.engine.price_table(entity), smard, until)
+
+        return Lookback(
+            consumption=spread_hours(hourly, start, until),
+            tariffs={
+                tariff_key(s.subentry_id, s.data): tariff_from_data(
+                    s.data, self.engine.price_table, market
+                )
+                for s in subentries
+            },
+            until=until,
+            hours_without_energy=hours_without_energy(hourly, start, until),
+        )
+
+    async def _async_hourly_energy(
+        self, start: datetime, end: datetime
+    ) -> list[tuple[datetime, float]]:
+        """The meter's energy per hour (kWh) from the long-term statistics."""
+        rows = await get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start,
+            end,
+            {self.meter_entity},
+            "hour",
+            {"energy": UnitOfEnergy.KILO_WATT_HOUR},
+            {"change"},
+        )
+        return [
+            (dt_util.utc_from_timestamp(row["start"]), row["change"])
+            for row in rows.get(self.meter_entity, [])
+            if row.get("change") is not None
+        ]
 
     @property
     def current(self) -> TariffInfo | None:

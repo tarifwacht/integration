@@ -41,7 +41,6 @@ from .const import (
     TARIFF_FIXED,
 )
 from .modul3 import modul3_from_data
-from .prices import PriceTable
 from .tariffs import BasePeriod, ComposedPrice, FixedPrice, PriceSource, Tariff
 
 
@@ -89,10 +88,17 @@ def state_at(data: Mapping[str, Any], day: date) -> dict[str, Any]:
 
 
 def tariff_from_data(
-    data: Mapping[str, Any], price_table: Callable[[str], PriceTable]
+    data: Mapping[str, Any],
+    price_table: Callable[[str], PriceSource],
+    market_table: Callable[[str], PriceSource] | None = None,
 ) -> Tariff:
-    """The engine's tariff with its later price states (`changes`)."""
-    tariff = _single_tariff(data, price_table)
+    """The engine's tariff with its later price states (`changes`).
+
+    `price_table` returns the prices of a price sensor; `market_table`, if
+    given, those of an exchange price sensor (e.g. completed from SMARD.de).
+    """
+    tables = (price_table, market_table or price_table)
+    tariff = _single_tariff(data, *tables)
     changes = sorted(data.get(CONF_CHANGES, []), key=lambda c: c[CONF_FROM])
     if not changes:
         return tariff
@@ -100,7 +106,7 @@ def tariff_from_data(
         (
             change_start(change),
             _single_tariff(
-                state_at(data, date.fromisoformat(change[CONF_FROM])), price_table
+                state_at(data, date.fromisoformat(change[CONF_FROM])), *tables
             ),
         )
         for change in changes
@@ -109,9 +115,11 @@ def tariff_from_data(
 
 
 def _single_tariff(
-    data: Mapping[str, Any], price_table: Callable[[str], PriceTable]
+    data: Mapping[str, Any],
+    price_table: Callable[[str], PriceSource],
+    market_table: Callable[[str], PriceSource],
 ) -> Tariff:
-    """One price state; `price_table` returns the table of a price sensor."""
+    """One price state; the callables return the prices of a price sensor."""
     kind = data[CONF_KIND]
     prices: PriceSource
     if kind == KIND_FIXED:
@@ -127,7 +135,7 @@ def _single_tariff(
             # The grid fee depends on the quarter hour.
             surcharge -= float(data.get(CONF_GRID_FEE) or 0)
         prices = ComposedPrice(
-            price_table(data[CONF_PRICE_ENTITY]),
+            market_table(data[CONF_PRICE_ENTITY]),
             surcharge / 100,
             float(data.get(CONF_VAT) or 0) / 100,
             grid_fee=modul3.fee if modul3 is not None else None,

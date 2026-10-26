@@ -247,7 +247,7 @@
   "services": {
     "compare": {
       "name": "Tarife vergleichen",
-      "description": "Kosten jedes Tarifs eines Zählers in einem Zeitraum, der günstigste zuerst. Bekannt sind nur die Viertelstunden seit der Einrichtung.",
+      "description": "Kosten jedes Tarifs eines Zählers in einem Zeitraum, der günstigste zuerst, auch je Monat. Vor der Einrichtung geschätzt aus den Stundenwerten der Langzeitstatistik; Börsenpreise dieser Zeit lädt Tarifwacht von SMARD.de.",
       "fields": {
         "config_entry": {
           "name": "Zähler",
@@ -255,7 +255,7 @@
         },
         "start": {
           "name": "Beginn",
-          "description": "Optional. Ohne Angabe: seit der Einrichtung."
+          "description": "Optional. Ohne Angabe: seit der Einrichtung. Ein früherer Beginn rechnet mit den Stundenwerten des Zählers aus der Langzeitstatistik."
         },
         "end": {
           "name": "Ende",
@@ -267,6 +267,9 @@
   "exceptions": {
     "start_after_end": {
       "message": "Der Beginn muss vor dem Ende liegen."
+    },
+    "smard_failed": {
+      "message": "Börsenpreise von SMARD.de konnten nicht geladen werden ({error}). Bitte später noch einmal versuchen."
     }
   },
   "issues": {
