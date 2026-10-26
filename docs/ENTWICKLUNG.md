@@ -26,7 +26,13 @@ Fahrplan:
 
 ## 2. Buchungskern (aus der Einspeisewacht)
 
-`timeslots.py`, `prices.py`, `meter.py` und `ledger.py` stammen aus der Einspeisewacht (Commit `e4fd5fc`); `ledger.py` ohne deren Einspeise-Bewertung. Prinzip: Jedes Zählerdelta wird zeitlinear auf die berührten Viertelstunden verteilt, jedes Teilstück sofort mit dem Preis seiner Viertelstunde bewertet (`Valuation`); fehlt ein Preis, wartet das Teilstück bis zu 24 h. Intern UTC, Umstellungstage haben 92 bzw. 100 Viertelstunden.
+`timeslots.py`, `prices.py` und `meter.py` stammen aus der Einspeisewacht (Commit `e4fd5fc`). Prinzip: Jedes Zählerdelta wird zeitlinear auf die berührten Viertelstunden verteilt, jedes Teilstück mit dem Preis seiner Viertelstunde bewertet; fehlt ein Preis, wartet das Teilstück bis 24 h nach dem Ende seiner Viertelstunde. Intern UTC, Umstellungstage haben 92 bzw. 100 Viertelstunden.
+
+**Verlauf statt laufender Summen (ab Stufe 2, Entscheidung 2026-10-26):** Die Engine speichert den Verbrauch je Viertelstunde (`history.py`, eine Liste mit 96 Werten je UTC-Tag, ca. 350 KB pro Jahr) und jeden Preis jedes Preissensors für den ganzen Abrechnungszeitraum. Die Summen jedes Tarifs werden daraus abgeleitet: beim Start vollständig neu berechnet, danach laufend fortgeschrieben – nach denselben Regeln (Test `test_recompute_equals_incremental`). Folgen:
+
+- Ein geänderter Tarif (Preis korrigiert, Grundpreis nachgetragen) und ein neu hinzugefügter Tarif gelten **für den ganzen Zeitraum** seit Beginn – Tarife sind gedachte Alternativen, keine Vertragshistorie. Preisänderungen eines Tarifs im Zeitverlauf (z. B. ab 1. Januar) brauchen später eigene Gültigkeitszeiträume.
+- `ledger.py` (laufende Summen) ist damit entfallen.
+- **Update von 0.1.0b1** (Speicherversion 1, nur Summen): Preise und Zähler werden übernommen, Beginn = `created_at` des Eintrags; der Verbrauch von der Einrichtung bis zur letzten von 0.1.0b1 gebuchten Ablesung wird einmalig aus dem Recorder gelesen (`state_changes_during_period`, Muster wie die Integration `statistics`, `after_dependencies: recorder`). Schlägt das fehl, versucht es der nächste Start erneut; die Live-Buchung läuft unabhängig. Das ist zugleich der erste Baustein der rückwirkenden Berechnung (Stufe 3).
 
 Seitdem unabhängig weiterentwickelt; die Tarifwacht braucht die Einspeisewacht nicht. Bei Fehlerkorrekturen am Kern prüfen, ob die Schwester denselben Fehler hat. Eine gemeinsame Bibliothek erst, wenn sich der Kern in beiden Projekten als stabil erwiesen hat (eine Abhängigkeit mehr für die Nutzer).
 
@@ -65,7 +71,9 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 - **Kostensensoren** mit `device_class: monetary` haben `state_class: total` – Home Assistant erlaubt für Geldbeträge nichts anderes (die Übergabe nannte `total_increasing`).
 - **Fehlt ein dynamischer Preis**, wartet die Menge bis zu 24 h; danach wird sie gezählt (`energy_without_price`, Diagnose), aber **nie mit 0 € bewertet**.
 - **Plausibilitätsgrenze** des Zählers: 100 kW (`MAX_GRID_POWER_KW`, mehr als jeder Hausanschluss); kein Einrichtungsfeld.
-- MVP-Sensoren: Strombezug (kWh), je Tarif Verbrauchskosten und Kosten gesamt, Mehrkosten dynamisch (dynamisch − Festpreis, positiv = dynamisch teurer). Alles laufende Summen seit der Einrichtung.
+- MVP-Sensoren: Strombezug (kWh), je Tarif Verbrauchskosten und Kosten gesamt, Mehrkosten dynamisch (dynamisch − Festpreis, positiv = dynamisch teurer). Summen über den Abrechnungszeitraum seit der Einrichtung.
+- **Dynamischer Preis aus Bestandteilen** (`ComposedPrice`): (Börsenpreis + Aufschläge netto) × (1 + MwSt.) – dieselbe Formel wie der Gesamtpreis von EPEX Spot. Nötig für die rückwirkende Berechnung, weil es für die Vergangenheit keinen Gesamtpreis-Sensor gibt.
+- **Rückwirkend** (Reihenfolge, Entscheidung 2026-10-26): erst MVP prüfen, dann Stufe 2, dann eine Aktion mit Antwortdaten für frei wählbare Zeiträume (Verbrauch aus der Statistik, Preise von SMARD.de), danach ggf. eigene Langzeitstatistik für die Vergangenheit. **Kein** Startdatum, das die Sensoren mit einem Vergangenheitsbetrag beginnen lässt (erschiene in Monatsgrafiken als Sprung).
 - Zeiträume (Tag/Monat/Jahr) über die Langzeitstatistik, nicht über eigene Sensoren.
 - Stand verzögert speichern (höchstens alle 60 s) und beim Entladen/Beenden, nicht bei jeder Zähleränderung.
 - README-Hinweise: Der Vergleich unterstellt gleiches Verbrauchsverhalten (mit dynamischem Tarif verschieben Nutzer oft Verbrauch); alle Preisbestandteile auf beiden Seiten gleich erfassen.

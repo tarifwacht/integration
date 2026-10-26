@@ -41,7 +41,7 @@ Zeiträume (Tag, Woche, Monat, Jahr) zeigen die Statistik-Karte oder das Energie
 1. **Bezugszähler:** Name und Zähler.
 2. **Tarife:** Arbeitspreis des Festpreistarifs (ct/kWh, brutto), Sensor mit dem Gesamtpreis des dynamischen Tarifs, für beide optional der Grundpreis pro Monat.
 
-Mehrere Zähler: je einen Eintrag anlegen. Ändern: *Tarifwacht → ⋮ → Neu konfigurieren* – neue Preise gelten ab dann, Bisheriges bleibt gebucht.
+Mehrere Zähler: je einen Eintrag anlegen. Ändern: *Tarifwacht → ⋮ → Neu konfigurieren*. Ab Version 0.1.0b2 gelten geänderte Preise für den ganzen Zeitraum seit der Einrichtung – Tarifwacht rechnet dann alles neu.
 
 ## Danke
 

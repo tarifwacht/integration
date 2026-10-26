@@ -1,13 +1,12 @@
-"""Booking core: time slots, meter, prices, ledger (no Home Assistant)."""
+"""Booking core: time slots, meter, prices, quarter-hour history (no Home Assistant)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from custom_components.tarifwacht.ledger import PRICE_WAIT, Ledger
+from custom_components.tarifwacht.history import SlotSeries
 from custom_components.tarifwacht.meter import MeterEvent, MeterTracker, to_kwh
 from custom_components.tarifwacht.prices import PriceTable, parse_interval_prices
 from custom_components.tarifwacht.timeslots import (
@@ -30,26 +29,6 @@ def fixture_prices() -> PriceTable:
     for entries in (fixture["history_supplement"], fixture["attributes"]["data"]):
         table.merge(parse_interval_prices(entries).prices)
     return table
-
-
-@dataclass
-class CostValuation:
-    """Energy times the quarter-hour price; stands in for a tariff."""
-
-    def book(
-        self,
-        totals: dict[str, float],
-        slot: datetime,
-        energy: float,
-        price: float | None,
-    ) -> None:
-        if price is None:
-            totals["energy_without_price"] = (
-                totals.get("energy_without_price", 0.0) + energy
-            )
-            return
-        totals["energy"] = totals.get("energy", 0.0) + energy
-        totals["cost"] = totals.get("cost", 0.0) + energy * price
 
 
 # --- time slots ---------------------------------------------------------------
@@ -188,96 +167,57 @@ def test_parse_skips_broken_entries() -> None:
     assert parsed.resolution is None
 
 
-def test_price_table_prune_and_round_trip() -> None:
+def test_price_table_round_trip() -> None:
     table = fixture_prices()
-    table.prune(utc(2026, 10, 26, 0))
-    assert min(table.prices) == utc(2026, 10, 26, 0)
     restored = PriceTable()
     restored.restore(table.as_dict())
     assert restored == table
+    assert len(restored) == 196
 
 
-# --- ledger -------------------------------------------------------------------
+def test_price_table_reads_version_1_format() -> None:
+    """0.1.0b1 stored {slot start: price}; it is converted on restore."""
+    table = PriceTable()
+    table.restore(
+        {"2026-10-25T03:00:00+00:00": -0.00001, "2026-10-25T03:15:00+00:00": 0}
+    )
+    assert table.get(utc(2026, 10, 25, 3)) == -0.00001
+    assert table.get(utc(2026, 10, 25, 3, 15)) == 0
+    assert table.get(utc(2026, 10, 25, 3, 30)) is None
+
+
+# --- quarter-hour history -------------------------------------------------------
 
 # 25.10.2026 local time (25 hours, DST ends).
 DAY_START, DAY_END = utc(2026, 10, 24, 22), utc(2026, 10, 25, 23)
 
 
-def simulate_constant_purchase(step: timedelta) -> Ledger:
-    """1 kW purchase all day on 25.10.2026, meter read every `step`."""
-    prices = fixture_prices()
-    meter, ledger, val = MeterTracker(max_power_kw=GRID_KW), Ledger(), CostValuation()
-    at, value = DAY_START, 4000.0
-    while at <= DAY_END:
-        update = meter.update(value, at)
-        ledger.book(update.pieces, prices, val, at)
-        at += step
-        value += step.total_seconds() / 3600
-    return ledger
-
-
-@pytest.mark.parametrize(
-    "step", [timedelta(minutes=5), timedelta(minutes=7), timedelta(seconds=61)]
-)
-def test_dst_day_constant_purchase(step: timedelta) -> None:
-    ledger = simulate_constant_purchase(step)
-    prices = fixture_prices()
-    # The last reading may stop short of midnight; everything read is booked.
-    readings = int((DAY_END - DAY_START) / step)
-    last = DAY_START + readings * step
-    expected_energy = (last - DAY_START).total_seconds() / 3600
-    # Each quarter hour costs its own price times the time covered by readings.
-    expected_cost = 0.0
+def test_slot_series_spans_utc_days() -> None:
+    series = SlotSeries()
     slot = DAY_START
-    while slot < last:
-        covered = min(slot + QUARTER, last) - slot
-        expected_cost += prices.get(slot) * covered.total_seconds() / 3600
+    while slot < DAY_END:
+        series.add(slot, 0.25)
         slot += QUARTER
-    assert ledger.totals["energy"] == pytest.approx(expected_energy)
-    assert ledger.totals["cost"] == pytest.approx(expected_cost)
-    assert ledger.pending == {}
+    series.add(DAY_START, 0.25)
+    # The local day of 100 quarter hours lies on two UTC days.
+    assert sorted(series.days) == [date(2026, 10, 24), date(2026, 10, 25)]
+    assert len(series) == 100
+    items = list(series.items())
+    assert items[0] == (DAY_START, 0.5)
+    assert items[-1][0] == DAY_END - QUARTER
+    assert [s for s, _ in items] == sorted(s for s, _ in items)
 
 
-def test_dst_day_has_100_priced_quarters() -> None:
-    prices = fixture_prices()
-    slots = [s for s in prices.prices if DAY_START <= s < DAY_END]
-    assert len(slots) == 100
-    ledger = simulate_constant_purchase(timedelta(minutes=5))
-    assert ledger.totals["energy"] == pytest.approx(25.0)
-    assert ledger.totals["cost"] == pytest.approx(
-        sum(prices.get(s) for s in slots) * 0.25
-    )
-
-
-def test_missing_price_waits_then_books_without_price() -> None:
-    prices, ledger, val = PriceTable(), Ledger(), CostValuation()
-    slot, now = utc(2026, 10, 25, 3), utc(2026, 10, 25, 3, 10)
-    ledger.book([(slot, 0.1), (slot, 0.2)], prices, val, now)
-    assert ledger.pending == {slot: (pytest.approx(0.3), now)}
-    ledger.retry_pending(prices, val, now + PRICE_WAIT - timedelta(seconds=1))
-    assert slot in ledger.pending
-    ledger.retry_pending(prices, val, now + PRICE_WAIT)
-    assert ledger.pending == {}
-    assert ledger.booked_without_price == 1
-    assert ledger.totals == {"energy_without_price": pytest.approx(0.3)}
-
-
-def test_missing_price_booked_when_it_arrives() -> None:
-    prices, ledger, val = PriceTable(), Ledger(), CostValuation()
-    slot, now = utc(2026, 10, 25, 3), utc(2026, 10, 25, 3, 10)
-    ledger.book([(slot, 0.25)], prices, val, now)
-    prices.merge({slot: 0.3})
-    ledger.retry_pending(prices, val, now + timedelta(minutes=1))
-    assert ledger.totals == {
-        "energy": pytest.approx(0.25),
-        "cost": pytest.approx(0.075),
-    }
-
-
-def test_ledger_round_trip() -> None:
-    prices, ledger, val = PriceTable(), Ledger(), CostValuation()
-    ledger.book([(utc(2026, 10, 25, 3), 0.1)], prices, val, utc(2026, 10, 25, 3, 5))
-    ledger.totals["energy"] = 1.0
-    restored = Ledger()
-    restored.restore(ledger.as_dict())
-    assert restored == ledger
+def test_slot_series_round_trip_and_rounding() -> None:
+    series = SlotSeries()
+    series.add(utc(2026, 1, 1, 9, 15), 1 / 3)
+    series.set(utc(2026, 1, 1, 23, 45), 0.0)
+    data = series.as_dict(7)
+    assert data["2026-01-01"][37] == 0.3333333
+    assert data["2026-01-01"][95] == 0.0
+    assert data["2026-01-01"][0] is None
+    restored = SlotSeries()
+    restored.restore(data)
+    assert restored.get(utc(2026, 1, 1, 9, 15)) == pytest.approx(1 / 3)
+    assert restored.get(utc(2026, 1, 1, 9, 30)) is None
+    assert len(restored) == 2

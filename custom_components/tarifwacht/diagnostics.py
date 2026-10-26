@@ -11,6 +11,16 @@ from homeassistant.core import HomeAssistant
 
 from . import TarifwachtConfigEntry
 from .const import CONF_NAME, VERSION
+from .history import SlotSeries
+
+
+def _span(series: SlotSeries) -> dict[str, Any]:
+    slots = [slot for slot, _ in series.items()]
+    return {
+        "quarter_hours": len(slots),
+        "first": slots[0].isoformat() if slots else None,
+        "last": slots[-1].isoformat() if slots else None,
+    }
 
 
 async def async_get_config_entry_diagnostics(
@@ -19,24 +29,22 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for the config entry."""
     runtime = entry.runtime_data
     engine = runtime.engine
-    parsed = engine.last_parse
     return {
         "version": VERSION,
         "config": {k: v for k, v in entry.data.items() if k != CONF_NAME},
+        "started": engine.started.isoformat() if engine.started else None,
+        "consumption": _span(engine.consumption),
         "prices": {
-            "known_quarter_hours": len(engine.prices.prices),
-            "first": min(engine.prices.prices).isoformat()
-            if engine.prices.prices
-            else None,
-            "last": max(engine.prices.prices).isoformat()
-            if engine.prices.prices
-            else None,
-            "resolution_minutes": parsed.resolution.total_seconds() / 60
-            if parsed and parsed.resolution
-            else None,
-            "skipped_entries": parsed.skipped if parsed else None,
-            "wrong_unit": runtime.wrong_price_unit,
+            source: {
+                **_span(table),
+                "resolution_minutes": parsed.resolution.total_seconds() / 60
+                if (parsed := engine.last_parse.get(source)) and parsed.resolution
+                else None,
+                "skipped_entries": parsed.skipped if parsed else None,
+            }
+            for source, table in engine.prices.items()
         },
+        "wrong_price_unit": runtime.wrong_price_unit,
         "meter": {
             "unknown_unit": runtime.unknown_unit,
             "events": dict(engine.meter_events),
@@ -44,16 +52,17 @@ async def async_get_config_entry_diagnostics(
             if engine.meter.last_time
             else None,
         },
+        "backfill": {
+            "pending_until": engine.backfill_until.isoformat()
+            if engine.backfill_until
+            else None,
+            "error": runtime.backfill_error,
+        },
         "tariffs": {
             key: {
-                "pending_quarter_hours": len(account.ledger.pending),
-                "booked_without_price": account.ledger.booked_without_price,
-                "has_energy_without_price": "energy_without_price"
-                in account.ledger.totals,
+                "pending_quarter_hours": len(totals.pending),
+                "has_energy_without_price": totals.energy_without_price > 0,
             }
-            for key, account in engine.tariffs.items()
+            for key, totals in engine.totals.items()
         },
-        "next_base_slot": engine.next_base_slot.isoformat()
-        if engine.next_base_slot
-        else None,
     }

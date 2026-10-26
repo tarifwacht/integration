@@ -43,7 +43,7 @@ def _money(key: str, value: Callable[[Engine], float]) -> TarifwachtSensorDescri
 
 def _extra_cost(engine: Engine) -> float:
     """Positive: the dynamic tariff would have cost more."""
-    return engine.tariffs[TARIFF_DYNAMIC].cost - engine.tariffs[TARIFF_FIXED].cost
+    return engine.totals[TARIFF_DYNAMIC].cost - engine.totals[TARIFF_FIXED].cost
 
 
 SENSORS = (
@@ -58,14 +58,14 @@ SENSORS = (
     ),
     _money(
         "fixed_consumption_cost",
-        lambda e: e.tariffs[TARIFF_FIXED].consumption_cost,
+        lambda e: e.totals[TARIFF_FIXED].consumption_cost,
     ),
-    _money("fixed_cost", lambda e: e.tariffs[TARIFF_FIXED].cost),
+    _money("fixed_cost", lambda e: e.totals[TARIFF_FIXED].cost),
     _money(
         "dynamic_consumption_cost",
-        lambda e: e.tariffs[TARIFF_DYNAMIC].consumption_cost,
+        lambda e: e.totals[TARIFF_DYNAMIC].consumption_cost,
     ),
-    _money("dynamic_cost", lambda e: e.tariffs[TARIFF_DYNAMIC].cost),
+    _money("dynamic_cost", lambda e: e.totals[TARIFF_DYNAMIC].cost),
     _money("dynamic_extra_cost", _extra_cost),
 )
 

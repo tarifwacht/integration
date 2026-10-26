@@ -1,6 +1,9 @@
 {
   "domain": "tarifwacht",
   "name": "Tarifwacht",
+  "after_dependencies": [
+    "recorder"
+  ],
   "codeowners": [
     "@n42net"
   ],

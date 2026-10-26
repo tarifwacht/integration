@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
+from .history import SlotSeries
 from .timeslots import QUARTER, slot_start
+
+# Price sensors report EUR/kWh with up to 6 decimals (EPEX Spot: 5 or 6).
+PRICE_DIGITS = 6
 
 
 @dataclass
@@ -66,28 +70,21 @@ def parse_interval_prices(
     return result
 
 
-@dataclass
-class PriceTable:
-    """Quarter-hour prices seen so far.
+class PriceTable(SlotSeries):
+    """Quarter-hour prices seen so far, kept for recalculation.
 
     Forecast attributes drop past entries after a day or so, and the recorder
-    does not keep them; the table remembers prices for late bookings.
+    does not keep them; the table remembers every price of the accounting
+    period, so tariffs can be booked again when their definition changes.
     """
 
-    prices: dict[datetime, float] = field(default_factory=dict)
+    def as_dict(self, digits: int = PRICE_DIGITS) -> dict[str, list[float | None]]:
+        return super().as_dict(digits)
 
-    def merge(self, prices: Mapping[datetime, float]) -> None:
-        self.prices.update(prices)
-
-    def get(self, slot: datetime) -> float | None:
-        return self.prices.get(slot)
-
-    def prune(self, before: datetime) -> None:
-        """Forget prices of quarter hours starting before `before`."""
-        self.prices = {s: p for s, p in self.prices.items() if s >= before}
-
-    def as_dict(self) -> dict[str, float]:
-        return {s.isoformat(): p for s, p in sorted(self.prices.items())}
-
-    def restore(self, data: Mapping[str, float]) -> None:
-        self.prices = {datetime.fromisoformat(s): p for s, p in data.items()}
+    def restore(self, data: Mapping[str, Any]) -> None:
+        if any(not isinstance(v, list) for v in data.values()):
+            # Version 0.1.0b1 stored {slot start (ISO): price}.
+            self.days = {}
+            self.merge({datetime.fromisoformat(s): float(p) for s, p in data.items()})
+            return
+        super().restore(data)

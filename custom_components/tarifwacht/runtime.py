@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
+from homeassistant.components.recorder import get_instance, history
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     STATE_UNAVAILABLE,
@@ -41,15 +43,16 @@ from .const import (
     TARIFF_DYNAMIC,
     TARIFF_FIXED,
 )
-from .engine import Engine, TariffAccount
+from .engine import Engine, migrate_v1
 from .meter import MeterTracker, to_kwh
-from .prices import ParsedPrices, PriceTable, parse_interval_prices
-from .tariffs import FixedPrice
+from .prices import ParsedPrices, parse_interval_prices
+from .tariffs import FixedPrice, Tariff
 from .timeslots import slot_start
 
 _LOGGER = logging.getLogger(__name__)
 
-STORAGE_VERSION = 1
+# 1: 0.1.0b1 (running totals); 2: consumption and prices per quarter hour.
+STORAGE_VERSION = 2
 # Bookings are written at most this often (and on unload).
 SAVE_DELAY = 60
 
@@ -73,41 +76,67 @@ def price_unit_ok(state: State) -> bool:
     return state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) in PRICE_UNITS
 
 
+def meter_reading(state: State) -> float | None:
+    """Meter state in kWh; None if unavailable, not numeric or in another unit."""
+    if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+        return None
+    try:
+        return to_kwh(
+            float(state.state), state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+        )
+    except KeyError, ValueError:
+        return None
+
+
 def engine_from_config(config: Mapping[str, Any]) -> Engine:
-    prices = PriceTable()
-    return Engine(
-        meter=MeterTracker(max_power_kw=MAX_GRID_POWER_KW),
-        tariffs={
-            TARIFF_FIXED: TariffAccount(
-                FixedPrice(float(config[CONF_FIXED_PRICE]) / 100),
-                float(config.get(CONF_FIXED_BASE) or 0),
-            ),
-            TARIFF_DYNAMIC: TariffAccount(
-                prices, float(config.get(CONF_DYNAMIC_BASE) or 0)
-            ),
-        },
-        tz=BERLIN,
-        prices=prices,
+    engine = Engine(
+        meter=MeterTracker(max_power_kw=MAX_GRID_POWER_KW), tariffs={}, tz=BERLIN
     )
+    engine.tariffs = {
+        TARIFF_FIXED: Tariff(
+            FixedPrice(float(config[CONF_FIXED_PRICE]) / 100),
+            float(config.get(CONF_FIXED_BASE) or 0),
+        ),
+        TARIFF_DYNAMIC: Tariff(
+            engine.price_table(config[CONF_DYNAMIC_PRICE]),
+            float(config.get(CONF_DYNAMIC_BASE) or 0),
+        ),
+    }
+    return engine
+
+
+class TarifwachtStore(Store[dict[str, Any]]):
+    """Storage of one entry; converts the format of 0.1.0b1."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        super().__init__(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
+        self._entry = entry
+
+    async def _async_migrate_func(
+        self, old_major_version: int, old_minor_version: int, old_data: Any
+    ) -> dict[str, Any]:
+        if old_major_version == 1:
+            return migrate_v1(
+                old_data, self._entry.data[CONF_DYNAMIC_PRICE], self._entry.created_at
+            )
+        raise NotImplementedError
 
 
 class MeterRuntime:
     """Feeds the engine and notifies entities."""
 
-    def __init__(
-        self, hass: HomeAssistant, entry_id: str, config: Mapping[str, Any]
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
-        self.entry_id = entry_id
+        self.entry = entry
+        config = entry.data
         self.name: str = config[CONF_NAME]
         self.meter_entity: str = config[CONF_METER]
         self.price_entity: str = config[CONF_DYNAMIC_PRICE]
         self.engine = engine_from_config(config)
         self.unknown_unit: str | None = None
         self.wrong_price_unit: str | None = None
-        self._store: Store[dict[str, Any]] = Store(
-            hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}"
-        )
+        self.backfill_error: str | None = None
+        self._store = TarifwachtStore(hass, entry)
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribe: list[CALLBACK_TYPE] = []
 
@@ -115,7 +144,10 @@ class MeterRuntime:
         """Restore the stored state, read current values, start listening."""
         if data := await self._store.async_load():
             self.engine.restore(data)
+        if self.engine.backfill_until is not None:
+            await self._async_backfill()
         now = dt_util.utcnow()
+        self.engine.start(now)
         if state := self.hass.states.get(self.price_entity):
             self._handle_price(state, now)
         if state := self.hass.states.get(self.meter_entity):
@@ -129,6 +161,44 @@ class MeterRuntime:
                 self.hass, self._on_tick, minute=[0, 15, 30, 45], second=1
             ),
         ]
+
+    async def _async_backfill(self) -> None:
+        """Read the consumption 0.1.0b1 did not keep from the recorder.
+
+        From the setup of the entry up to the last reading 0.1.0b1 booked. If
+        the recorder is not available, the next start tries again; live
+        booking is not affected.
+        """
+        until = self.engine.backfill_until
+        if until is None:
+            return
+        if "recorder" not in self.hass.config.components:
+            self.backfill_error = "recorder not available"
+            return
+        start = self.entry.created_at
+        try:
+            states = await get_instance(self.hass).async_add_executor_job(
+                history.state_changes_during_period,
+                self.hass,
+                start,
+                # The end is exclusive; the reading at `until` belongs to it.
+                until + timedelta(microseconds=1),
+                self.meter_entity,
+            )
+        except Exception as err:  # never block the setup
+            self.backfill_error = f"{type(err).__name__}: {err}"
+            _LOGGER.warning("%s: reading the recorder failed: %s", self.name, err)
+            return
+        readings = [
+            (value, state.last_updated)
+            for state in states.get(self.meter_entity.lower(), [])
+            if (value := meter_reading(state)) is not None
+        ]
+        self.engine.backfill(readings)
+        self.backfill_error = None
+        _LOGGER.debug(
+            "%s: %s readings read from the recorder", self.name, len(readings)
+        )
 
     async def async_stop(self) -> None:
         """Stop listening and write the state."""
@@ -198,7 +268,7 @@ class MeterRuntime:
             return
         self.wrong_price_unit = None
         if (parsed := parse_price_state(state)) is not None:
-            self.engine.on_prices(parsed, now)
+            self.engine.on_prices(self.price_entity, parsed, now)
 
     def _changed(self) -> None:
         self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)

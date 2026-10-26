@@ -15,7 +15,7 @@ type TarifwachtConfigEntry = ConfigEntry[MeterRuntime]
 
 async def async_setup_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) -> bool:
     """Set up one meter with its tariffs."""
-    runtime = MeterRuntime(hass, entry.entry_id, entry.data)
+    runtime = MeterRuntime(hass, entry)
     await runtime.async_start()
     entry.runtime_data = runtime
 
@@ -40,4 +40,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) 
 
 async def async_remove_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) -> None:
     """Delete the stored bookings."""
-    await MeterRuntime(hass, entry.entry_id, entry.data).async_remove()
+    await MeterRuntime(hass, entry).async_remove()
