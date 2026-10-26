@@ -70,15 +70,22 @@ class Engine:
         self._base_until = self.started
         self._book_base_prices(now)
 
-    def backfill(self, readings: Iterable[tuple[float, datetime]]) -> None:
+    def backfill(
+        self, readings: Iterable[tuple[float, datetime]], since: datetime
+    ) -> None:
         """Add consumption from recorded meter readings (kWh, time) to the history.
 
         For a period the live meter did not book into the history (update
-        from 0.1.0b1). Resets and jumps are skipped as in live operation.
-        Call `start()` or `recompute()` afterwards.
+        from 0.1.0b1). The baseline is the last reading at or before `since`;
+        earlier readings are ignored. Resets and jumps are skipped as in live
+        operation. Call `start()` or `recompute()` afterwards.
         """
+        ordered = sorted(readings, key=lambda reading: reading[1])
+        baseline = max(
+            (i for i, (_, at) in enumerate(ordered) if at <= since), default=0
+        )
         tracker = MeterTracker(max_power_kw=self.meter.max_power_kw)
-        for value, at in readings:
+        for value, at in ordered[baseline:]:
             for slot, energy in tracker.update(value, at).pieces:
                 self.consumption.add(slot, energy)
         self.backfill_until = None

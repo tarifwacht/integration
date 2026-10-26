@@ -300,7 +300,7 @@ def test_migrate_v1_with_backfill() -> None:
     engine = make_engine(fixed_base=31.0)
     engine.restore(data)
     assert engine.backfill_until == utc(2026, 10, 25, 16, 29, 30)
-    engine.backfill(readings)
+    engine.backfill([(999.0, utc(2026, 10, 25, 15, 30)), *readings], since=created)
     assert engine.backfill_until is None
     now = utc(2026, 10, 25, 16, 30)
     engine.start(now)

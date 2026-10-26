@@ -56,6 +56,10 @@ STORAGE_VERSION = 2
 # Bookings are written at most this often (and on unload).
 SAVE_DELAY = 60
 
+# Recorder history is read from this long before the setup of the entry, so
+# the reading in effect at the setup is found as the baseline.
+BACKFILL_MARGIN = timedelta(hours=1)
+
 # Price sensors without a forecast attribute: the state is the current price.
 FORECAST_ATTRIBUTE = "data"
 
@@ -175,12 +179,14 @@ class MeterRuntime:
         if "recorder" not in self.hass.config.components:
             self.backfill_error = "recorder not available"
             return
-        start = self.entry.created_at
+        created = self.entry.created_at
         try:
             states = await get_instance(self.hass).async_add_executor_job(
                 history.state_changes_during_period,
                 self.hass,
-                start,
+                # Start earlier: a reading exactly at `created` would be
+                # neither the start state nor a change after the start.
+                created - BACKFILL_MARGIN,
                 # The end is exclusive; the reading at `until` belongs to it.
                 until + timedelta(microseconds=1),
                 self.meter_entity,
@@ -194,7 +200,7 @@ class MeterRuntime:
             for state in states.get(self.meter_entity.lower(), [])
             if (value := meter_reading(state)) is not None
         ]
-        self.engine.backfill(readings)
+        self.engine.backfill(readings, since=created)
         self.backfill_error = None
         _LOGGER.debug(
             "%s: %s readings read from the recorder", self.name, len(readings)
