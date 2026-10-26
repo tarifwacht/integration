@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     STATE_UNAVAILABLE,
@@ -31,22 +32,18 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     BERLIN,
-    CONF_DYNAMIC_BASE,
-    CONF_DYNAMIC_PRICE,
-    CONF_FIXED_BASE,
-    CONF_FIXED_PRICE,
+    CONF_CURRENT,
     CONF_METER,
     CONF_NAME,
     DOMAIN,
     MAX_GRID_POWER_KW,
     PRICE_UNITS,
-    TARIFF_DYNAMIC,
-    TARIFF_FIXED,
+    SUBENTRY_TARIFF,
 )
 from .engine import Engine, migrate_v1
 from .meter import MeterTracker, to_kwh
 from .prices import ParsedPrices, parse_interval_prices
-from .tariffs import FixedPrice, Tariff
+from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .timeslots import slot_start
 
 _LOGGER = logging.getLogger(__name__)
@@ -92,21 +89,18 @@ def meter_reading(state: State) -> float | None:
         return None
 
 
-def engine_from_config(config: Mapping[str, Any]) -> Engine:
-    engine = Engine(
-        meter=MeterTracker(max_power_kw=MAX_GRID_POWER_KW), tariffs={}, tz=BERLIN
-    )
-    engine.tariffs = {
-        TARIFF_FIXED: Tariff(
-            FixedPrice(float(config[CONF_FIXED_PRICE]) / 100),
-            float(config.get(CONF_FIXED_BASE) or 0),
-        ),
-        TARIFF_DYNAMIC: Tariff(
-            engine.price_table(config[CONF_DYNAMIC_PRICE]),
-            float(config.get(CONF_DYNAMIC_BASE) or 0),
-        ),
-    }
-    return engine
+@dataclass(frozen=True)
+class TariffInfo:
+    """A tariff subentry as the sensors see it."""
+
+    key: str
+    subentry_id: str
+    title: str
+    current: bool
+
+
+def tariff_subentries(entry: ConfigEntry) -> list[ConfigSubentry]:
+    return [s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_TARIFF]
 
 
 class TarifwachtStore(Store[dict[str, Any]]):
@@ -120,9 +114,16 @@ class TarifwachtStore(Store[dict[str, Any]]):
         self, old_major_version: int, old_minor_version: int, old_data: Any
     ) -> dict[str, Any]:
         if old_major_version == 1:
-            return migrate_v1(
-                old_data, self._entry.data[CONF_DYNAMIC_PRICE], self._entry.created_at
+            # 0.1.0b1 had one price sensor: the one of its dynamic tariff.
+            source = next(
+                (
+                    entity
+                    for s in tariff_subentries(self._entry)
+                    if (entity := price_entity(s.data))
+                ),
+                "",
             )
+            return migrate_v1(old_data, source, self._entry.created_at)
         raise NotImplementedError
 
 
@@ -132,17 +133,37 @@ class MeterRuntime:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
-        config = entry.data
-        self.name: str = config[CONF_NAME]
-        self.meter_entity: str = config[CONF_METER]
-        self.price_entity: str = config[CONF_DYNAMIC_PRICE]
-        self.engine = engine_from_config(config)
+        self.name: str = entry.data[CONF_NAME]
+        self.meter_entity: str = entry.data[CONF_METER]
+        self.engine = Engine(
+            meter=MeterTracker(max_power_kw=MAX_GRID_POWER_KW), tariffs={}, tz=BERLIN
+        )
+        self.tariffs: dict[str, TariffInfo] = {}
+        self.price_entities: set[str] = set()
+        for subentry in tariff_subentries(entry):
+            key = tariff_key(subentry.subentry_id, subentry.data)
+            self.engine.tariffs[key] = tariff_from_data(
+                subentry.data, self.engine.price_table
+            )
+            self.tariffs[key] = TariffInfo(
+                key=key,
+                subentry_id=subentry.subentry_id,
+                title=subentry.title,
+                current=bool(subentry.data.get(CONF_CURRENT)),
+            )
+            if entity := price_entity(subentry.data):
+                self.price_entities.add(entity)
         self.unknown_unit: str | None = None
-        self.wrong_price_unit: str | None = None
+        self.wrong_price_unit: dict[str, str | None] = {}
         self.backfill_error: str | None = None
         self._store = TarifwachtStore(hass, entry)
         self._listeners: list[Callable[[], None]] = []
         self._unsubscribe: list[CALLBACK_TYPE] = []
+
+    @property
+    def current(self) -> TariffInfo | None:
+        """The tariff the others are compared with (first marked one)."""
+        return next((t for t in self.tariffs.values() if t.current), None)
 
     async def async_start(self) -> None:
         """Restore the stored state, read current values, start listening."""
@@ -152,14 +173,17 @@ class MeterRuntime:
             await self._async_backfill()
         now = dt_util.utcnow()
         self.engine.start(now)
-        if state := self.hass.states.get(self.price_entity):
-            self._handle_price(state, now)
+        for entity in sorted(self.price_entities):
+            if state := self.hass.states.get(entity):
+                self._handle_price(state, now)
         if state := self.hass.states.get(self.meter_entity):
             self._handle_meter(state, now)
         self.engine.tick(now)
         self._unsubscribe = [
             async_track_state_change_event(
-                self.hass, [self.meter_entity, self.price_entity], self._on_state_change
+                self.hass,
+                [self.meter_entity, *sorted(self.price_entities)],
+                self._on_state_change,
             ),
             async_track_utc_time_change(
                 self.hass, self._on_tick, minute=[0, 15, 30, 45], second=1
@@ -261,20 +285,19 @@ class MeterRuntime:
     def _handle_price(self, state: State, now: datetime) -> None:
         if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             return
+        source = state.entity_id
         if not price_unit_ok(state):
             # Prices are used as they are: a wrong unit would book nonsense.
             unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-            if self.wrong_price_unit != unit:
+            if self.wrong_price_unit.get(source) != unit:
                 _LOGGER.warning(
-                    "%s: unsupported price unit %s (expected €/kWh)",
-                    self.price_entity,
-                    unit,
+                    "%s: unsupported price unit %s (expected €/kWh)", source, unit
                 )
-            self.wrong_price_unit = unit
+            self.wrong_price_unit[source] = unit
             return
-        self.wrong_price_unit = None
+        self.wrong_price_unit.pop(source, None)
         if (parsed := parse_price_state(state)) is not None:
-            self.engine.on_prices(self.price_entity, parsed, now)
+            self.engine.on_prices(source, parsed, now)
 
     def _changed(self) -> None:
         self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)

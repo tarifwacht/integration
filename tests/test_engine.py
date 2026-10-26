@@ -11,6 +11,7 @@ from custom_components.tarifwacht.engine import PRICE_WAIT, Engine, migrate_v1
 from custom_components.tarifwacht.meter import MeterTracker
 from custom_components.tarifwacht.prices import ParsedPrices
 from custom_components.tarifwacht.tariffs import (
+    BasePeriod,
     ComposedPrice,
     FixedPrice,
     Tariff,
@@ -77,18 +78,36 @@ def test_quarters_in_day(day: datetime, quarters: int) -> None:
     assert quarters_in_day(day, BERLIN) == quarters
 
 
+MONTH, YEAR = BasePeriod.MONTH, BasePeriod.YEAR
+
+
 def test_base_price_dst_day_and_parts() -> None:
-    assert base_price_between(DAY_START, DAY_END, 31.0, BERLIN) == pytest.approx(1.0)
+    assert base_price_between(DAY_START, DAY_END, 31.0, MONTH, BERLIN) == (
+        pytest.approx(1.0)
+    )
     # One quarter hour of the 100.
     assert base_price_between(
-        DAY_START, DAY_START + QUARTER, 31.0, BERLIN
+        DAY_START, DAY_START + QUARTER, 31.0, MONTH, BERLIN
     ) == pytest.approx(0.01)
     # Over a month boundary: last day of October, first of November (30 days).
     start, end = utc(2026, 10, 30, 23), utc(2026, 11, 1, 23)
-    assert base_price_between(start, end, 30.0, BERLIN) == pytest.approx(
+    assert base_price_between(start, end, 30.0, MONTH, BERLIN) == pytest.approx(
         30 / 31 + 30 / 30
     )
-    assert base_price_between(end, start, 30.0, BERLIN) == 0
+    assert base_price_between(end, start, 30.0, MONTH, BERLIN) == 0
+
+
+@pytest.mark.parametrize(("year", "days"), [(2026, 365), (2028, 366)])
+def test_base_price_per_year(year: int, days: int) -> None:
+    """A yearly price: each day gets price / days of the year."""
+    new_year = datetime(year, 1, 1, tzinfo=BERLIN).astimezone(UTC)
+    next_year = datetime(year + 1, 1, 1, tzinfo=BERLIN).astimezone(UTC)
+    assert base_price_between(new_year, next_year, 146.0, YEAR, BERLIN) == (
+        pytest.approx(146.0)
+    )
+    assert base_price_between(
+        new_year, new_year + timedelta(days=1), 146.0, YEAR, BERLIN
+    ) == pytest.approx(146.0 / days)
 
 
 @pytest.mark.parametrize("step", [QUARTER, timedelta(days=3)])

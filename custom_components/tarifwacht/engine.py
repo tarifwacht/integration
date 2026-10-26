@@ -148,9 +148,13 @@ class Engine:
         if self._base_until is None or self._base_until >= current:
             return
         for key, tariff in self.tariffs.items():
-            if tariff.base_per_month:
+            if tariff.base_price:
                 self.totals[key].base_cost += base_price_between(
-                    self._base_until, current, tariff.base_per_month, self.tz
+                    self._base_until,
+                    current,
+                    tariff.base_price,
+                    tariff.base_period,
+                    self.tz,
                 )
         self._base_until = current
 

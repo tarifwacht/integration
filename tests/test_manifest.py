@@ -6,8 +6,10 @@ import json
 import tomllib
 from pathlib import Path
 
-from custom_components.tarifwacht.const import DOMAIN, VERSION
-from custom_components.tarifwacht.sensor import SENSORS
+from custom_components.tarifwacht.config_flow import _tariff_schema
+from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
+from custom_components.tarifwacht.sensor import DIFFERENCE, ENERGY, TARIFF_SENSORS
+from custom_components.tarifwacht.tariffs import BasePeriod
 
 ROOT = Path(__file__).parent.parent
 INTEGRATION = ROOT / "custom_components" / DOMAIN
@@ -59,7 +61,22 @@ def test_translations_complete() -> None:
 
 def test_every_sensor_translated() -> None:
     strings = load(INTEGRATION / "strings.json")
-    assert set(strings["entity"]["sensor"]) == {d.key for d in SENSORS}
+    keys = {d.key for d in (*TARIFF_SENSORS, DIFFERENCE, ENERGY)} | {"cheapest"}
+    assert set(strings["entity"]["sensor"]) == keys
+
+
+def test_tariff_kinds_translated() -> None:
+    tariff = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]
+    assert set(tariff["step"]["user"]["menu_options"]) == set(KINDS)
+    for kind in KINDS:
+        fields = {str(key) for key in _tariff_schema(kind).schema}
+        assert set(tariff["step"][kind]["data"]) == fields, kind
+
+
+def test_base_periods_translated() -> None:
+    strings = load(INTEGRATION / "strings.json")
+    options = strings["selector"]["base_period"]["options"]
+    assert set(options) == {p.value for p in BasePeriod}
 
 
 def test_reconfigure_step_matches_user_step() -> None:

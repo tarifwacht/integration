@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, time, timedelta, tzinfo
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
+from enum import StrEnum
 from typing import Protocol
 
 from .timeslots import QUARTER
@@ -43,12 +44,20 @@ class ComposedPrice:
         return None if price is None else (price + self.surcharge) * (1 + self.vat)
 
 
+class BasePeriod(StrEnum):
+    """What a base price is quoted for."""
+
+    MONTH = "month"
+    YEAR = "year"
+
+
 @dataclass(frozen=True)
 class Tariff:
-    """Energy price per quarter hour plus an optional monthly base price."""
+    """Energy price per quarter hour plus an optional base price."""
 
     prices: PriceSource
-    base_per_month: float = 0.0
+    base_price: float = 0.0
+    base_period: BasePeriod = BasePeriod.MONTH
 
 
 @dataclass
@@ -85,23 +94,32 @@ def quarters_in_day(slot: datetime, tz: tzinfo) -> int:
     return int((end - start) / QUARTER)
 
 
-def base_price_between(
-    start: datetime, end: datetime, per_month: float, tz: tzinfo
-) -> float:
-    """Share of a monthly base price falling on the quarter hours [start, end).
+def _days_in_period(local: date, period: BasePeriod) -> int:
+    if period is BasePeriod.YEAR:
+        return 366 if calendar.isleap(local.year) else 365
+    return calendar.monthrange(local.year, local.month)[1]
 
-    Each local day gets the monthly price divided by the days of its month,
-    spread evenly over the day's quarter hours, so a month adds up to exactly
-    the monthly price. Computed day by day, not per quarter hour.
+
+def base_price_between(
+    start: datetime,
+    end: datetime,
+    amount: float,
+    period: BasePeriod,
+    tz: tzinfo,
+) -> float:
+    """Share of a base price falling on the quarter hours [start, end).
+
+    Each local day gets the price divided by the days of its month (or year),
+    spread evenly over the day's quarter hours, so a month (or year) adds up
+    to exactly the quoted price. Computed day by day, not per quarter hour.
     """
     total = 0.0
     cursor = start
     while cursor < end:
-        local = cursor.astimezone(tz)
-        days = calendar.monthrange(local.year, local.month)[1]
+        days = _days_in_period(cursor.astimezone(tz).date(), period)
         day_end = _local_midnight_utc(cursor, tz, days=1)
         segment_end = min(end, day_end)
         share = (segment_end - cursor) / QUARTER / quarters_in_day(cursor, tz)
-        total += per_month / days * share
+        total += amount / days * share
         cursor = segment_end
     return total

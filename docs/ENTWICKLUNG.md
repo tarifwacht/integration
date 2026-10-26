@@ -66,7 +66,11 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 ## 5. Entscheidungen
 
 - Liest vorhandene Entitäten (Bezugszähler, Preissensoren), keine Cloud, keine `requirements`. Erscheint als Integration (`integration_type: service`), wie die Einspeisewacht.
-- Nur UI-Config-Flow, kein YAML. Tarife als Untereinträge (ab Stufe 2).
+- Nur UI-Config-Flow, kein YAML.
+- **Tarife als Untereinträge** (Stufe 2, Entscheidung 2026-10-26; Muster wie die Kern-Integration `bayesian`): Die Einrichtung fragt Zähler, Festpreis und Gesamtpreis-Sensor und legt daraus zwei Untereinträge an; „Tarif hinzufügen“ bietet Festpreis, dynamisch mit Gesamtpreis-Sensor und dynamisch aus Börsenpreis + Bestandteilen (Netzentgelt, Steuern/Abgaben/Umlagen, Anbieteraufschlag, je ct/kWh netto, plus MwSt. in %). Jede Änderung lädt den Eintrag neu (Update-Listener; deshalb `async_update_and_abort`, nicht `…reload…`, das ab HA 2026.12 mit Listener scheitert) und berechnet den ganzen Zeitraum neu.
+- **Referenztarif** per Haken „Mein aktueller Tarif“ im Tarif; setzt man ihn, verschwindet er beim bisherigen. Jeder andere Tarif hat „Differenz zum aktuellen Tarif“ (positiv = teurer).
+- **Ein Gerät je Tarif** („Haus Festpreis“): Verbrauchskosten, Kosten gesamt, Durchschnittspreis (ct/kWh, inkl. Grundpreis), ggf. Differenz. Am Zähler-Gerät: Strombezug, Günstigster Tarif (mit Rangfolge als Attribut). Unique IDs `{entry_id}_{key}_{sensor}`; die beiden Tarife aus 0.1.0b1 behalten die Schlüssel `fixed`/`dynamic`, neue Tarife nutzen ihre Subentry-ID. Beim Update von 0.1.0b1 (Eintragsversion 1 → 2) entstehen die Untereinträge, „Mehrkosten dynamisch“ wird zur Differenz des dynamischen Tarifs (Unique ID umbenannt, Entity-ID und Verlauf bleiben).
+- **Grundpreis pro Monat oder pro Jahr** (Auswahl je Tarif): pro Jahr tagesgenau Jahrespreis ÷ 365 bzw. 366.
 - **Grundpreise optional** je Tarif (€/Monat, leer = 0). Jeder Tag erhält €/Monat ÷ Tage des Monats, gleichmäßig verteilt auf seine 92/96/100 Viertelstunden; ein Monat ergibt so genau den Monatspreis (Entscheidung 2026-10-26; anbieterabhängige Abrechnung, z. B. Jahrespreis ÷ 365, kann später als Option folgen). Gebucht ab der ersten Viertelstunde nach der Einrichtung; Zeiten, in denen HA aus war, werden nachgebucht (der Grundpreis fällt trotzdem an).
 - **Kostensensoren** mit `device_class: monetary` haben `state_class: total` – Home Assistant erlaubt für Geldbeträge nichts anderes (die Übergabe nannte `total_increasing`).
 - **Fehlt ein dynamischer Preis**, wartet die Menge bis zu 24 h; danach wird sie gezählt (`energy_without_price`, Diagnose), aber **nie mit 0 € bewertet**.
@@ -86,6 +90,5 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
 ## 7. Offene Fragen
 
 - **Preisbestandteile:** Wie erklärt man Nutzern am besten, welche Bestandteile im Aufschlag eines dynamischen Tarifs stecken müssen (Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer, Anbieteraufschlag)? Stufe 2: Börsenpreis + einzeln eingetragene Bestandteile.
-- **Grundpreis:** Wie rechnen Anbieter tagesgenau ab (Monatspreis ÷ Tage des Monats oder Jahrespreis ÷ 365)?
 - **Historische Preise** für die rückwirkende Berechnung: SMARD.de (Nutzungsbedingungen, CC BY 4.0, inoffizielle Schnittstelle – Erfahrung der Einspeisewacht nutzen).
 - Brand-Bilder; `categories` im Manifest.

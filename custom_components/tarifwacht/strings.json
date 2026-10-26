@@ -27,7 +27,7 @@
       },
       "tariffs": {
         "title": "Tariffs",
-        "description": "Enter all prices including VAT. For a fair comparison, both sides must contain the same price components (grid fees, levies, taxes).",
+        "description": "Enter all prices including VAT. For a fair comparison, both sides must contain the same price components (grid fees, levies, taxes). More tariffs can be added afterwards.",
         "data": {
           "fixed_price": "Fixed price: energy price",
           "fixed_base": "Fixed price: base price per month",
@@ -57,25 +57,117 @@
       "reconfigure_successful": "The entry was changed."
     }
   },
+  "config_subentries": {
+    "tariff": {
+      "entry_type": "Tariff",
+      "initiate_flow": {
+        "user": "Add tariff"
+      },
+      "step": {
+        "user": {
+          "title": "Add tariff",
+          "description": "Which kind of tariff? Tarifwacht computes every tariff over the whole period since setup.",
+          "menu_options": {
+            "fixed": "Fixed price",
+            "dynamic_total": "Dynamic: sensor with the total price",
+            "dynamic_market": "Dynamic: exchange price plus surcharges"
+          }
+        },
+        "fixed": {
+          "title": "Fixed price",
+          "description": "Prices including VAT, as on your contract or offer.",
+          "data": {
+            "name": "Name",
+            "price": "Energy price",
+            "base_price": "Base price",
+            "base_period": "Base price per",
+            "current": "My current tariff"
+          },
+          "data_description": {
+            "name": "For example the supplier. Used in entity names.",
+            "base_price": "Optional. Booked pro rata per day.",
+            "current": "The other tariffs show their difference to this one."
+          }
+        },
+        "dynamic_total": {
+          "title": "Dynamic tariff: total price sensor",
+          "description": "A sensor that already contains the whole price per kWh: exchange price plus grid fee, levies, taxes, supplier surcharge and VAT.",
+          "data": {
+            "name": "Name",
+            "price_entity": "Total price sensor",
+            "base_price": "Base price",
+            "base_period": "Base price per",
+            "current": "My current tariff"
+          },
+          "data_description": {
+            "name": "For example the supplier. Used in entity names.",
+            "price_entity": "In €/kWh, ideally with a forecast attribute `data`, e.g. the total price of the EPEX Spot integration.",
+            "base_price": "Optional, incl. VAT. Booked pro rata per day.",
+            "current": "The other tariffs show their difference to this one."
+          }
+        },
+        "dynamic_market": {
+          "title": "Dynamic tariff: exchange price plus surcharges",
+          "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.",
+          "data": {
+            "name": "Name",
+            "price_entity": "Exchange price sensor",
+            "grid_fee": "Grid fee",
+            "levies": "Taxes, levies and concession fee",
+            "margin": "Supplier surcharge",
+            "vat": "VAT",
+            "base_price": "Base price",
+            "base_period": "Base price per",
+            "current": "My current tariff"
+          },
+          "data_description": {
+            "name": "For example the supplier. Used in entity names.",
+            "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast attribute `data`, e.g. the market price of the EPEX Spot integration.",
+            "grid_fee": "Energy-related grid fee of your grid operator, net.",
+            "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
+            "margin": "What the supplier adds per kWh, net.",
+            "base_price": "Optional, incl. VAT. Booked pro rata per day.",
+            "current": "The other tariffs show their difference to this one."
+          }
+        }
+      },
+      "error": {
+        "name_required": "Please enter a name.",
+        "name_in_use": "Another tariff already has this name.",
+        "price_required": "Please enter the energy price.",
+        "entity_missing": "The entity does not exist or has no state yet.",
+        "price_unit": "The price sensor must report €/kWh.",
+        "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state."
+      }
+    }
+  },
+  "selector": {
+    "base_period": {
+      "options": {
+        "month": "Month",
+        "year": "Year"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "energy": {
         "name": "Grid purchase"
       },
-      "fixed_consumption_cost": {
-        "name": "Fixed price consumption cost"
+      "cheapest": {
+        "name": "Cheapest tariff"
       },
-      "fixed_cost": {
-        "name": "Fixed price total cost"
+      "consumption_cost": {
+        "name": "Consumption cost"
       },
-      "dynamic_consumption_cost": {
-        "name": "Dynamic consumption cost"
+      "cost": {
+        "name": "Total cost"
       },
-      "dynamic_cost": {
-        "name": "Dynamic total cost"
+      "average_price": {
+        "name": "Average price"
       },
-      "dynamic_extra_cost": {
-        "name": "Extra cost dynamic"
+      "difference": {
+        "name": "Difference to current tariff"
       }
     }
   }

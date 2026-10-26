@@ -1,4 +1,4 @@
-"""Setup, booking through real state changes, restart and removal."""
+"""Setup, booking through real state changes, restart, tariffs and removal."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -16,35 +16,56 @@ from custom_components.tarifwacht.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 
-from .conftest import METER, METER_ATTRIBUTES, PRICE, entry_data, price_attributes
+from .conftest import (
+    DYNAMIC_SUBENTRY,
+    FIXED_SUBENTRY,
+    METER,
+    METER_ATTRIBUTES,
+    PRICE,
+    mock_entry,
+    price_attributes,
+)
 
 # 25.10.2026 17:00:30 CET. Fixture prices: 0.04577 €/kWh (17:00-17:15),
 # 0.06856 €/kWh (17:15-17:30).
 START = datetime(2026, 10, 25, 16, 0, 30, tzinfo=UTC)
 P1, P2 = 0.04577, 0.06856
+DYNAMIC = P1 + P1 / 30 + P2 * 29 / 30
 
 
-def value(hass: HomeAssistant, entry: MockConfigEntry, key: str) -> float:
+def state(hass: HomeAssistant, entry: MockConfigEntry, key: str) -> str:
     registry = er.async_get(hass)
     entity_id = registry.async_get_entity_id(
         "sensor", DOMAIN, f"{entry.entry_id}_{key}"
     )
     assert entity_id, key
-    state = hass.states.get(entity_id)
-    assert state is not None, key
-    return float(state.state)
+    current = hass.states.get(entity_id)
+    assert current is not None, key
+    return current.state
 
 
-async def setup(hass: HomeAssistant, **changes) -> MockConfigEntry:
+def value(hass: HomeAssistant, entry: MockConfigEntry, key: str) -> float:
+    return float(state(hass, entry, key))
+
+
+async def setup(hass: HomeAssistant) -> MockConfigEntry:
     hass.states.async_set(PRICE, "0.04577", price_attributes())
     hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
-    entry = MockConfigEntry(
-        domain=DOMAIN, unique_id=METER, title="Haus", data=entry_data(**changes)
-    )
+    entry = mock_entry()
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+async def two_kwh(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """17:00:30-17:14:30 1 kWh; 17:14:30-17:29:30 1 kWh (30 s in 17:00)."""
+    freezer.move_to(datetime(2026, 10, 25, 16, 14, 30, tzinfo=UTC))
+    hass.states.async_set(METER, "1001000", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    freezer.move_to(datetime(2026, 10, 25, 16, 29, 30, tzinfo=UTC))
+    hass.states.async_set(METER, "1002000", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
 
 
 @pytest.mark.freeze_time(START)
@@ -55,7 +76,6 @@ async def test_booking_and_restart(
     assert entry.state is ConfigEntryState.LOADED
     assert value(hass, entry, "energy") == 0
 
-    # 17:00:30-17:14:30: 1 kWh, all in the first quarter hour.
     freezer.move_to(datetime(2026, 10, 25, 16, 14, 30, tzinfo=UTC))
     hass.states.async_set(METER, "1001000", METER_ATTRIBUTES)
     await hass.async_block_till_done()
@@ -63,29 +83,81 @@ async def test_booking_and_restart(
     assert value(hass, entry, "fixed_consumption_cost") == pytest.approx(0.30)
     assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(P1)
 
-    # 17:14:30-17:29:30: 1 kWh, 30 s of it in the first quarter hour.
     freezer.move_to(datetime(2026, 10, 25, 16, 29, 30, tzinfo=UTC))
     hass.states.async_set(METER, "1002000", METER_ATTRIBUTES)
     await hass.async_block_till_done()
-    dynamic = P1 + P1 / 30 + P2 * 29 / 30
-    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(dynamic)
+    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(DYNAMIC)
     assert value(hass, entry, "fixed_consumption_cost") == pytest.approx(0.60)
 
-    # Restart: totals come back; the ended quarter hour 17:00 gets its base
-    # price (31 €/month in October, 100 quarter hours on 25.10.: 0.01 €).
+    # Restart: everything is recomputed from the stored quarter hours; the
+    # ended quarter hour 17:00 gets its base price (31 €/month, 100 quarter
+    # hours on 25.10.: 0.01 €).
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(dynamic)
+    assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(DYNAMIC)
     assert value(hass, entry, "fixed_cost") == pytest.approx(0.61)
-    assert value(hass, entry, "dynamic_cost") == pytest.approx(dynamic)
-    assert value(hass, entry, "dynamic_extra_cost") == pytest.approx(dynamic - 0.61)
+    assert value(hass, entry, "dynamic_cost") == pytest.approx(DYNAMIC)
+    # The fixed tariff is the current one: only the dynamic one has a difference.
+    assert value(hass, entry, "dynamic_difference") == pytest.approx(DYNAMIC - 0.61)
+    registry = er.async_get(hass)
+    assert (
+        registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_fixed_difference"
+        )
+        is None
+    )
+    assert value(hass, entry, "fixed_average_price") == pytest.approx(61 / 2)
+    assert state(hass, entry, "cheapest") == "Dynamic"
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     assert "name" not in diagnostics["config"]
     assert diagnostics["prices"][PRICE]["resolution_minutes"] == 15
-    assert diagnostics["wrong_price_unit"] is None
+    assert diagnostics["prices"][PRICE]["wrong_unit"] is None
     assert diagnostics["consumption"]["quarter_hours"] == 2
+    assert set(diagnostics["tariffs"]) == {"fixed", "dynamic"}
+
+
+@pytest.mark.freeze_time(START)
+async def test_entities_belong_to_their_tariff(hass: HomeAssistant) -> None:
+    entry = await setup(hass)
+    registry = er.async_get(hass)
+    for key, subentry in (
+        ("fixed_cost", FIXED_SUBENTRY),
+        ("dynamic_difference", DYNAMIC_SUBENTRY),
+        ("energy", None),
+    ):
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_{key}"
+        )
+        assert entity_id
+        assert registry.async_get(entity_id).config_subentry_id == subentry, key
+
+
+@pytest.mark.freeze_time(START)
+async def test_added_tariff_covers_whole_period(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A tariff added later is computed from the start, not from now."""
+    entry = await setup(hass)
+    await two_kwh(hass, freezer)
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "tariff"), context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "fixed"}
+    )
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"],
+        {"name": "Günstig", "price": 25.0, "base_period": "month", "current": False},
+    )
+    await hass.async_block_till_done()
+    added = next(s for s in entry.subentries.values() if s.title == "Günstig")
+    key = added.subentry_id
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(0.50)
+    # The reload at 17:29:30 books the base price of the ended 17:00 quarter.
+    assert value(hass, entry, f"{key}_difference") == pytest.approx(0.50 - 0.61)
+    assert value(hass, entry, "energy") == pytest.approx(2.0)
 
 
 @pytest.mark.freeze_time(START)
@@ -140,7 +212,7 @@ async def test_wrong_price_unit_is_ignored(
     # Booked with the prices known before, not with the ct values.
     assert value(hass, entry, "dynamic_consumption_cost") == pytest.approx(P1)
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    assert diagnostics["wrong_price_unit"] == "ct/kWh"
+    assert diagnostics["prices"][PRICE]["wrong_unit"] == "ct/kWh"
 
 
 @pytest.mark.freeze_time(START)

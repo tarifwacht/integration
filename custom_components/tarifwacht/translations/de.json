@@ -27,7 +27,7 @@
       },
       "tariffs": {
         "title": "Tarife",
-        "description": "Alle Preise brutto (mit Mehrwertsteuer). Für einen fairen Vergleich müssen beide Seiten dieselben Preisbestandteile enthalten (Netzentgelte, Umlagen, Steuern).",
+        "description": "Alle Preise brutto (mit Mehrwertsteuer). Für einen fairen Vergleich müssen beide Seiten dieselben Preisbestandteile enthalten (Netzentgelte, Umlagen, Steuern). Weitere Tarife lassen sich danach hinzufügen.",
         "data": {
           "fixed_price": "Festpreis: Arbeitspreis",
           "fixed_base": "Festpreis: Grundpreis pro Monat",
@@ -57,25 +57,117 @@
       "reconfigure_successful": "Der Eintrag wurde geändert."
     }
   },
+  "config_subentries": {
+    "tariff": {
+      "entry_type": "Tarif",
+      "initiate_flow": {
+        "user": "Tarif hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Tarif hinzufügen",
+          "description": "Welche Art von Tarif? Tarifwacht rechnet jeden Tarif über den ganzen Zeitraum seit der Einrichtung.",
+          "menu_options": {
+            "fixed": "Festpreis",
+            "dynamic_total": "Dynamisch: Sensor mit Gesamtpreis",
+            "dynamic_market": "Dynamisch: Börsenpreis plus Aufschläge"
+          }
+        },
+        "fixed": {
+          "title": "Festpreis",
+          "description": "Preise brutto, wie in deinem Vertrag oder Angebot.",
+          "data": {
+            "name": "Name",
+            "price": "Arbeitspreis",
+            "base_price": "Grundpreis",
+            "base_period": "Grundpreis pro",
+            "current": "Mein aktueller Tarif"
+          },
+          "data_description": {
+            "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
+            "base_price": "Optional. Wird tageweise anteilig gebucht.",
+            "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+          }
+        },
+        "dynamic_total": {
+          "title": "Dynamischer Tarif: Sensor mit Gesamtpreis",
+          "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält: Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer.",
+          "data": {
+            "name": "Name",
+            "price_entity": "Sensor mit Gesamtpreis",
+            "base_price": "Grundpreis",
+            "base_period": "Grundpreis pro",
+            "current": "Mein aktueller Tarif"
+          },
+          "data_description": {
+            "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
+            "price_entity": "In €/kWh, am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot.",
+            "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
+            "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+          }
+        },
+        "dynamic_market": {
+          "title": "Dynamischer Tarif: Börsenpreis plus Aufschläge",
+          "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.",
+          "data": {
+            "name": "Name",
+            "price_entity": "Sensor mit Börsenpreis",
+            "grid_fee": "Netzentgelt",
+            "levies": "Steuern, Abgaben und Konzessionsabgabe",
+            "margin": "Anbieteraufschlag",
+            "vat": "Mehrwertsteuer",
+            "base_price": "Grundpreis",
+            "base_period": "Grundpreis pro",
+            "current": "Mein aktueller Tarif"
+          },
+          "data_description": {
+            "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
+            "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose-Attribut `data`, z. B. der Marktpreis der Integration EPEX Spot.",
+            "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
+            "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
+            "margin": "Was der Anbieter je kWh aufschlägt, netto.",
+            "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
+            "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+          }
+        }
+      },
+      "error": {
+        "name_required": "Bitte einen Namen eingeben.",
+        "name_in_use": "Ein anderer Tarif hat schon diesen Namen.",
+        "price_required": "Bitte den Arbeitspreis eingeben.",
+        "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
+        "price_unit": "Der Preissensor muss €/kWh liefern.",
+        "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert."
+      }
+    }
+  },
+  "selector": {
+    "base_period": {
+      "options": {
+        "month": "Monat",
+        "year": "Jahr"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "energy": {
         "name": "Strombezug"
       },
-      "fixed_consumption_cost": {
-        "name": "Festpreis Verbrauchskosten"
+      "cheapest": {
+        "name": "Günstigster Tarif"
       },
-      "fixed_cost": {
-        "name": "Festpreis Kosten gesamt"
+      "consumption_cost": {
+        "name": "Verbrauchskosten"
       },
-      "dynamic_consumption_cost": {
-        "name": "Dynamisch Verbrauchskosten"
+      "cost": {
+        "name": "Kosten gesamt"
       },
-      "dynamic_cost": {
-        "name": "Dynamisch Kosten gesamt"
+      "average_price": {
+        "name": "Durchschnittspreis"
       },
-      "dynamic_extra_cost": {
-        "name": "Mehrkosten dynamisch"
+      "difference": {
+        "name": "Differenz zum aktuellen Tarif"
       }
     }
   }
