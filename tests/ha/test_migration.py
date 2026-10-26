@@ -14,6 +14,8 @@ import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.recorder import Recorder
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.recorder.common import (
@@ -61,6 +63,13 @@ async def test_update_from_0_1_0b1(
         version=1,
     )
     entry.add_to_hass(hass)
+    # The single device of 0.1.0b1, placed in an area by the user.
+    area = ar.async_get(hass).async_create("Technikraum")
+    devices = dr.async_get(hass)
+    meter_device = devices.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(DOMAIN, entry.entry_id)}
+    )
+    devices.async_update_device(meter_device.id, area_id=area.id)
     # Entities as 0.1.0b1 registered them.
     registry = er.async_get(hass)
     old = {
@@ -121,6 +130,15 @@ async def test_update_from_0_1_0b1(
     assert float(hass.states.get(old["dynamic_extra_cost"]).state) == pytest.approx(
         DYNAMIC - 0.61
     )
+
+    # The tariff devices keep the area of the old device.
+    for key in ("fixed", "dynamic"):
+        device = devices.async_get_device(
+            identifiers={(DOMAIN, f"{entry.entry_id}_{key}")}
+        )
+        assert device is not None, key
+        assert device.area_id == area.id, key
+    assert registry.async_get(old["fixed_cost"]).device_id != meter_device.id
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     assert diagnostics["backfill"] == {"pending_until": None, "error": None}

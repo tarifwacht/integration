@@ -7,9 +7,10 @@ from types import MappingProxyType
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import Event, HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from .const import SUBENTRY_TARIFF, TARIFF_DYNAMIC
+from .const import CONF_KEY, DOMAIN, SUBENTRY_TARIFF, TARIFF_DYNAMIC
 from .runtime import MeterRuntime
 from .tariff_config import default_titles, entry_data, initial_tariffs
 
@@ -61,22 +62,34 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.version > 2:
         return False
     if entry.version == 1:
+        devices = dr.async_get(hass)
+        meter_device = devices.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
         titles = default_titles(hass.config.language)
         for title, data in initial_tariffs(entry.data, titles):
-            hass.config_entries.async_add_subentry(
-                entry,
-                ConfigSubentry(
-                    data=MappingProxyType(data),
-                    subentry_type=SUBENTRY_TARIFF,
-                    title=title,
-                    unique_id=None,
-                ),
+            subentry = ConfigSubentry(
+                data=MappingProxyType(data),
+                subentry_type=SUBENTRY_TARIFF,
+                title=title,
+                unique_id=None,
             )
+            hass.config_entries.async_add_subentry(entry, subentry)
+            if meter_device is not None and meter_device.area_id:
+                # The tariff sensors move to a device of their own; it keeps
+                # the area the user gave the single device of 0.1.0b1.
+                device = devices.async_get_or_create(
+                    config_entry_id=entry.entry_id,
+                    config_subentry_id=subentry.subentry_id,
+                    identifiers={(DOMAIN, f"{entry.entry_id}_{data[CONF_KEY]}")},
+                    name=f"{entry.title} {title}",
+                    manufacturer="Tarifwacht",
+                    entry_type=dr.DeviceEntryType.SERVICE,
+                )
+                devices.async_update_device(device.id, area_id=meter_device.area_id)
         # "Extra cost dynamic" becomes the dynamic tariff's difference to the
         # current (fixed) tariff; keep its entity id and history.
         registry = er.async_get(hass)
         old = f"{entry.entry_id}_{TARIFF_DYNAMIC}_extra_cost"
-        if entity_id := registry.async_get_entity_id("sensor", "tarifwacht", old):
+        if entity_id := registry.async_get_entity_id("sensor", DOMAIN, old):
             registry.async_update_entity(
                 entity_id,
                 new_unique_id=f"{entry.entry_id}_{TARIFF_DYNAMIC}_difference",
