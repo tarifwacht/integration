@@ -9,7 +9,7 @@
 
 🇩🇪 [Deutsch](https://github.com/tarifwacht/integration/blob/main/README.md) · 🇬🇧 **English**
 
-> ℹ️ **Beta.** Tarifwacht is new and currently being tested. Feedback is very welcome – see [Reporting issues](#reporting-issues).
+> ℹ️ **New.** Tarifwacht is new and currently being tested. Feedback is very welcome – see [Reporting issues](#reporting-issues).
 
 **What would your electricity have cost with a different tariff?** Tarifwacht ("tariff watch") prices your actual grid consumption in Home Assistant quarter hour by quarter hour against any number of tariffs – fixed price, dynamic, with or without Modul 3 – and shows which one would have been cheaper. Each dynamic tariff gets the price of **exactly that quarter hour**, not the price of whatever moment the meter happens to report.
 
@@ -70,7 +70,7 @@ A sensor without a forecast works too: its current value applies until it change
 2. **Fixed-price tariff:** energy price (ct/kWh, gross), optionally the base price per month. It becomes "My current tariff".
 3. **Dynamic tariff:** first choose the kind – **exchange price plus surcharges** (recommended, see [Adding a dynamic tariff](#adding-a-dynamic-tariff)) or a sensor with the total price (calculates only from the setup on) –, then the prices.
 
-This creates the first two tariffs. If you set up Tarifwacht before 0.1.0b10 with a total price sensor: add the dynamic tariff a second time as "exchange price plus surcharges", then you can delete the old one.
+This creates the first two tariffs. If you set up Tarifwacht before 0.1.0 with a total price sensor: add the dynamic tariff a second time as "exchange price plus surcharges", then you can delete the old one.
 
 ### More tariffs
 

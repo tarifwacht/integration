@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0 – 2026-10-27
+
+Erste stabile Version, inhaltlich gleich 0.1.0b10. HACS hat 0.1.0b10 nicht als Update angeboten: GitHub liefert die Releases so sortiert, dass b10 hinter b6 landet, und HACS hielt b9 für die neueste Version. Wer noch 0.1.0b9 hat, bekommt mit 0.1.0 die Neuerungen von b10 (geführte Einrichtung des dynamischen Tarifs).
+
 ## 0.1.0b10 – 2026-10-27
 
 - **Einrichtung:** Der dynamische Tarif wird jetzt in einem eigenen Schritt angelegt – erst die Art wählen, „Börsenpreis plus Aufschläge“ steht als empfohlen vorn, dann dieselben Felder wie beim Hinzufügen eines Tarifs (MwSt. mit 19 % vorausgefüllt). Bisher legte die Einrichtung immer einen Gesamtpreis-Sensor an, mit dem es keinen Rückblick und kein Nachtragen der Statistik gibt. Bestehende Einträge bleiben unverändert.

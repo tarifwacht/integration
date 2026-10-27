@@ -9,7 +9,7 @@
 
 🇩🇪 **Deutsch** · 🇬🇧 [English](https://github.com/tarifwacht/integration/blob/main/README.en.md)
 
-> ℹ️ **Beta.** Tarifwacht ist neu und wird gerade erprobt. Rückmeldungen sind sehr willkommen – siehe [Fehler melden](#fehler-melden).
+> ℹ️ **Neu.** Tarifwacht ist neu und wird gerade erprobt. Rückmeldungen sind sehr willkommen – siehe [Fehler melden](#fehler-melden).
 
 **Was hätte dein Strom mit einem anderen Tarif gekostet?** Tarifwacht rechnet deinen tatsächlichen Strombezug in Home Assistant Viertelstunde für Viertelstunde gegen beliebig viele Tarife – Festpreis, dynamisch, mit oder ohne Modul 3 – und zeigt, welcher günstiger gewesen wäre. Jeder dynamische Tarif bekommt dabei den Preis **genau dieser Viertelstunde**, nicht den Preis des Augenblicks, in dem der Zähler zufällig meldet.
 
@@ -68,7 +68,7 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 2. **Festpreistarif:** Arbeitspreis (ct/kWh, brutto), optional der Grundpreis pro Monat. Er wird „Mein aktueller Tarif“.
 3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (rechnet nur ab der Einrichtung) –, dann die Preise.
 
-Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0b10 mit einem Gesamtpreis-Sensor eingerichtet: den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen, danach kannst du den alten löschen.
+Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0 mit einem Gesamtpreis-Sensor eingerichtet: den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen, danach kannst du den alten löschen.
 
 ### Weitere Tarife
 
