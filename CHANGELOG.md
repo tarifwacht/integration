@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.0b8 – 2026-10-27
 
 - **Blueprint „Monatsübersicht“:** schickt am Ersten jedes Monats Strombezug, Kosten jedes Tarifs, Differenz zum aktuellen Tarif und den günstigsten Tarif des Vormonats – als Benachrichtigung in Home Assistant oder mit einer eigenen Aktion. Import per Knopf im README.
 - Intern: Der Quellen-Check erwartet in Wochen mit Zeitumstellung 668 bzw. 676 Viertelstunden statt immer 672 (meldete „676 von 672“).

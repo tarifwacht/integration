@@ -2879,7 +2879,7 @@ wheels = [
 
 [[package]]
 name = "tarifwacht"
-version = "0.1.0b7"
+version = "0.1.0b8"
 source = { virtual = "." }
 
 [package.dev-dependencies]
