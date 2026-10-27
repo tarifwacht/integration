@@ -121,6 +121,8 @@ Für den Vergleich im MVP heißt das: Tarifwacht sollte etwas **mehr** Verbrauch
   - Das Attribut `ranking` von „Günstigster Tarif“ wird nicht aufgezeichnet (`_unrecorded_attributes`).
   - Grenze: Späte Änderungen an Tagen eines **früheren** Jahres (z. B. ein im Januar nachgelieferter Dezemberpreis) landen erst beim nächsten Archiv-Durchlauf jenes Jahres – praktisch nie nötig.
 - README-Hinweise: Der Vergleich unterstellt gleiches Verbrauchsverhalten (mit dynamischem Tarif verschieben Nutzer oft Verbrauch); alle Preisbestandteile auf beiden Seiten gleich erfassen.
+- **Manifest-Kategorien** (Entscheidung 2026-10-27, Hinweis der HACS-Prüfung „The integration manifest has no categories“): `energy.energy_prices` und `helpers.calculate_value`. Quelle: <https://contributors.home-assistant.io/core/integrations/categories/> (ein bis drei Werte, `parent` oder `parent.child`; für Custom-Integrationen optional, der Katalog übernimmt sie).
+- **Blueprint „Monatsübersicht“** (`blueprints/automation/tarifwacht/monatsuebersicht.yaml`, Muster der Einspeisewacht): Zeit-Auslöser zur gewählten Uhrzeit, Bedingung „Monatserster“ als Template (keine native Bedingung für den Tag im Monat), `tarifwacht.compare` für den Vormonat in Ortszeit, Text als Variablen `title`/`message` an eine frei wählbare Aktion (Standard: `persistent_notification.create`). Tarife ohne alle Preise stehen mit „Preise fehlen“ statt einer Differenz. Test: `tests/ha/test_blueprints.py` mit nachgebildeter Antwort.
 
 ## 6. Arbeitsweise
 

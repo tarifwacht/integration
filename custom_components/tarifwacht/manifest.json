@@ -4,6 +4,10 @@
   "after_dependencies": [
     "recorder"
   ],
+  "categories": [
+    "energy.energy_prices",
+    "helpers.calculate_value"
+  ],
   "codeowners": [
     "@n42net"
   ],

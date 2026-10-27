@@ -1,0 +1,84 @@
+blueprint:
+  name: Tarifwacht – Monatsübersicht
+  description: >-
+    Schickt am Ersten jedes Monats eine Übersicht über den Vormonat: Strombezug,
+    Kosten jedes Tarifs, die Differenz zum aktuellen Tarif und den günstigsten
+    Tarif. Grundlage ist die Aktion „Tarife vergleichen“ von Tarifwacht.
+  domain: automation
+  author: Tarifwacht
+  homeassistant:
+    min_version: "2026.3.0"
+  source_url: https://github.com/tarifwacht/integration/blob/main/blueprints/automation/tarifwacht/monatsuebersicht.yaml
+  input:
+    meter:
+      name: Zähler
+      description: Der Tarifwacht-Eintrag, der ausgewertet wird.
+      selector:
+        config_entry:
+          integration: tarifwacht
+    time:
+      name: Uhrzeit
+      description: Wann am Monatsersten die Übersicht kommt.
+      default: "08:00:00"
+      selector:
+        time: {}
+    notify_actions:
+      name: Benachrichtigung
+      description: >-
+        Was mit der Übersicht geschieht. Text und Überschrift stehen in den
+        Variablen `message` und `title`, z. B. für eine Aktion
+        `notify.mobile_app_…` mit `message: "{{ message }}"`.
+      default:
+        - action: persistent_notification.create
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+      selector:
+        action: {}
+
+mode: single
+
+triggers:
+  - trigger: time
+    at: !input time
+
+conditions:
+  # No native condition for the day of the month.
+  - condition: template
+    value_template: "{{ now().day == 1 }}"
+
+actions:
+  - action: tarifwacht.compare
+    data:
+      config_entry: !input meter
+      # The previous calendar month, in local time.
+      start: >-
+        {{ (now().replace(day=1) - timedelta(days=1)).strftime('%Y-%m-01 00:00:00') }}
+      end: "{{ now().strftime('%Y-%m-01 00:00:00') }}"
+    response_variable: result
+  - variables:
+      title: >-
+        {%- set last_day = now().replace(day=1) - timedelta(days=1) -%}
+        {%- set names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+          'August', 'September', 'Oktober', 'November', 'Dezember'] -%}
+        Strom im {{ names[last_day.month - 1] }} {{ last_day.year }}
+      message: >-
+        {%- set ns = namespace(lines=['Strombezug: '
+          ~ ('%.1f' | format(result.energy_kwh) | replace('.', ',')) ~ ' kWh']) -%}
+        {%- for t in result.tariffs -%}
+          {%- set text = t.tariff ~ ': '
+            ~ ('%.2f' | format(t.cost) | replace('.', ',')) ~ ' €' -%}
+          {%- if t.energy_without_price_kwh > 0 -%}
+            {%- set text = text ~ ' (Preise fehlen)' -%}
+          {%- elif t.difference_to_current -%}
+            {%- set text = text ~ ' ('
+              ~ ('%+.2f' | format(t.difference_to_current) | replace('.', ','))
+              ~ ' € gegenüber dem aktuellen Tarif)' -%}
+          {%- endif -%}
+          {%- set ns.lines = ns.lines + [text] -%}
+        {%- endfor -%}
+        {%- if result.cheapest -%}
+          {%- set ns.lines = ns.lines + ['Günstigster Tarif: ' ~ result.cheapest] -%}
+        {%- endif -%}
+        {{ ns.lines | join('\n') }}
+  - sequence: !input notify_actions

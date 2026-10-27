@@ -171,7 +171,11 @@ Liegt der Beginn vor der Einrichtung, rechnet Tarifwacht diese Zeit nach:
 - Unter `estimate` steht, bis wann geschätzt wurde, wie viel Energie das war und wie viele Stunden in der Statistik fehlen (z. B. weil es den Zähler noch nicht gab); dazu die Quellenangabe von SMARD.de, falls Börsenpreise von dort nötig waren.
 - Preise und Grundpreise gelten so, wie der Tarif heute eingetragen ist (mit seinen Preisänderungen). Für einen Vergleich über einen Jahreswechsel die alten Preise als Preisänderung eintragen, z. B. die Netzentgelte des Vorjahres.
 
-Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_variable`), z. B. für eine Monatsübersicht per Benachrichtigung.
+Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_variable`) – fertig als Blueprint:
+
+| Blueprint | Was er tut | |
+| --- | --- | --- |
+| **Monatsübersicht** | schickt am Ersten jedes Monats Strombezug, Kosten jedes Tarifs, Differenz zum aktuellen Tarif und den günstigsten Tarif des Vormonats – als Benachrichtigung in Home Assistant oder mit einer eigenen Aktion (z. B. ans Handy) | [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftarifwacht%2Fmonatsuebersicht.yaml) |
 
 ## Statistik nachtragen
 

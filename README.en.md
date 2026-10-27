@@ -173,7 +173,11 @@ If the start lies before the setup, Tarifwacht calculates that time as well:
 - `estimate` shows until when it was estimated, how much energy that was and how many hours are missing in the statistics (e.g. because the meter did not exist yet); plus the SMARD.de attribution if exchange prices from there were needed.
 - Prices and base prices apply as the tariff is entered today (with its price changes). For a comparison across a turn of the year, enter the old prices as a price change, e.g. last year's grid fees.
 
-You can also use the response in scripts and automations (`response_variable`), e.g. for a monthly summary as a notification.
+You can also use the response in scripts and automations (`response_variable`) – ready-made as a blueprint (texts in German):
+
+| Blueprint | What it does | |
+| --- | --- | --- |
+| **Monthly summary** (Monatsübersicht) | on the first of each month, sends the previous month's grid purchase, the cost of each tariff, the difference to the current tariff and the cheapest tariff – as a notification in Home Assistant or with an action of your own (e.g. to your phone) | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftarifwacht%2Fmonatsuebersicht.yaml) |
 
 ## Import statistics
 
