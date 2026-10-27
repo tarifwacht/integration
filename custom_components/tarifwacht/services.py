@@ -52,12 +52,21 @@ def _as_utc(moment: datetime) -> datetime:
 def _tariff_rows(
     runtime: MeterRuntime, costs: PeriodCosts, *, details: bool
 ) -> list[dict[str, Any]]:
-    """One row per tariff: complete ones (every kWh priced) by cost, then the rest."""
+    """One row per tariff: complete ones (every kWh priced) by cost, then the rest.
+
+    The difference to the current tariff only if both priced every kWh: a
+    tariff with energy without price would look cheaper than it is.
+    """
     current = runtime.current
-    current_cost = costs.totals[current.key].cost if current is not None else None
+    current_totals = costs.totals[current.key] if current is not None else None
     rows: list[dict[str, Any]] = []
     for tariff in runtime.tariffs.values():
         totals = costs.totals[tariff.key]
+        difference = None
+        if current_totals is not None and not (
+            current_totals.energy_without_price or totals.energy_without_price
+        ):
+            difference = round(totals.cost - current_totals.cost, 4)
         row: dict[str, Any] = {"tariff": tariff.title}
         if details:
             average = totals.average_price
@@ -71,9 +80,7 @@ def _tariff_rows(
             }
         row |= {
             "cost": round(totals.cost, 4),
-            "difference_to_current": None
-            if current_cost is None
-            else round(totals.cost - current_cost, 4),
+            "difference_to_current": difference,
             "energy_without_price_kwh": round(totals.energy_without_price, 4),
         }
         rows.append(row)
@@ -128,8 +135,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 "until": dt_util.as_local(lookback.until).isoformat(),
                 "energy_kwh": round(result.estimated_energy, 4),
                 "hours_without_energy": lookback.hours_without_energy,
-                "exchange_prices": ATTRIBUTION,
             }
+            if lookback.uses_smard:
+                response["estimate"]["exchange_prices"] = ATTRIBUTION
         months = []
         for month, costs in result.months.items():
             month_rows = _tariff_rows(runtime, costs, details=False)

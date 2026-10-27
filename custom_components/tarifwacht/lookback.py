@@ -50,6 +50,8 @@ class Lookback:
     until: datetime
     # Hours in the period without a statistics row (meter missing or offline).
     hours_without_energy: int = 0
+    # Exchange prices of SMARD.de were needed (attribution in the response).
+    uses_smard: bool = False
 
 
 def spread_hours(

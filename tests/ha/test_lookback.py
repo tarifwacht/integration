@@ -109,7 +109,7 @@ async def import_meter_statistics(hass: HomeAssistant) -> None:
     await async_wait_recording_done(hass)
 
 
-async def setup_entry(hass: HomeAssistant) -> MockConfigEntry:
+async def setup_entry(hass: HomeAssistant, *, market: bool = True) -> MockConfigEntry:
     await hass.config.async_set_time_zone("Europe/Berlin")
     hass.states.async_set(PRICE, "0.04577", price_attributes())
     hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
@@ -119,7 +119,7 @@ async def setup_entry(hass: HomeAssistant) -> MockConfigEntry:
         title="Haus",
         data=entry_data(),
         version=2,
-        subentries_data=[*subentries_data(), market_subentry()],
+        subentries_data=[*subentries_data(), *([market_subentry()] if market else [])],
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -174,17 +174,43 @@ async def test_compare_before_setup(
         expected += energy * (smard[slot] + 0.10) * 1.19
         slot += QUARTER
     assert tariffs["Market"]["cost"] == pytest.approx(expected, abs=1e-4)
-    # The total price sensor has no prices from before the setup.
+    assert tariffs["Market"]["difference_to_current"] == pytest.approx(
+        tariffs["Market"]["cost"] - tariffs["Fixed price"]["cost"], abs=1e-4
+    )
+    # The total price sensor has no prices from before the setup: no
+    # difference, it would look cheaper than the current tariff.
     assert tariffs["Dynamic"]["energy_without_price_kwh"] == pytest.approx(4.0)
+    assert tariffs["Dynamic"]["difference_to_current"] is None
     assert result["tariffs"][-1]["tariff"] == "Dynamic"
     assert result["cheapest"] in {"Fixed price", "Market"}
     assert [m["month"] for m in result["months"]] == ["2026-10"]
+    month = {t["tariff"]: t for t in result["months"][0]["tariffs"]}
+    assert month["Dynamic"]["difference_to_current"] is None
+    assert month["Market"]["difference_to_current"] is not None
 
     # Prices are kept: a second comparison needs no download.
     assert "tarifwacht.smard.2026" in hass_storage
     calls = aioclient_mock.call_count
     await compare(hass, entry, start="2026-10-24 16:00:00")
     assert aioclient_mock.call_count == calls
+
+
+@pytest.mark.freeze_time(START)
+async def test_compare_before_setup_without_market_tariff(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """No exchange price tariff: no download, no SMARD.de attribution."""
+    entry = await setup_entry(hass, market=False)
+    await import_meter_statistics(hass)
+
+    result = await compare(hass, entry, start="2026-10-24 15:00:00")
+    assert aioclient_mock.call_count == 0
+    assert result["estimate"]["energy_kwh"] == pytest.approx(4.0)
+    assert "exchange_prices" not in result["estimate"]
+    tariffs = {t["tariff"]: t for t in result["tariffs"]}
+    assert tariffs["Fixed price"]["difference_to_current"] == 0
+    assert tariffs["Dynamic"]["difference_to_current"] is None
+    assert result["cheapest"] == "Fixed price"
 
 
 @pytest.mark.freeze_time(START)

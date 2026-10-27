@@ -210,7 +210,10 @@ class MeterRuntime:
         hourly = await self._async_hourly_energy(hour_start(start), until)
         subentries = tariff_subentries(self.entry)
         smard: PriceTable = PriceTable()
-        if any(s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET for s in subentries):
+        uses_smard = any(
+            s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET for s in subentries
+        )
+        if uses_smard:
             smard = await smard_cache(self.hass).async_prices(start, until)
 
         def market(entity: str) -> FallbackPrice:
@@ -226,6 +229,7 @@ class MeterRuntime:
             },
             until=until,
             hours_without_energy=hours_without_energy(hourly, start, until),
+            uses_smard=uses_smard,
         )
 
     async def _async_hourly_energy(
