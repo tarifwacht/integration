@@ -1,11 +1,12 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.0b6 – 2026-10-27
 
 - **Tarife vergleichen:** Ein Tarif, dem für einen Teil des Zeitraums Preise fehlen (z. B. ein Gesamtpreis-Sensor im Rückblick vor der Einrichtung), hat keine Differenz zum aktuellen Tarif mehr (`null`). Bisher stand dort die Differenz der unvollständigen Kosten – der Tarif sah um Hunderte Euro günstiger aus. Ebenso, wenn dem aktuellen Tarif selbst Preise fehlen.
 - **Differenz zum aktuellen Tarif und Günstigster Tarif (Sensoren):** Fehlt einem Tarif dauerhaft der Preis einer Viertelstunde (Preis-Integration länger als 24 Stunden ausgefallen), lassen beide diese Viertelstunde jetzt für alle Tarife aus. Bisher fehlte sie nur beim betroffenen Tarif, der dadurch dauerhaft günstiger aussah. Die ausgelassene Energie steht im Attribut `energy_left_out_kwh`. Ohne Preisausfall ändert sich nichts.
 - **Tarife vergleichen:** Die Quellenangabe von SMARD.de (`estimate.exchange_prices`) steht nur noch in der Antwort, wenn Börsenpreise von dort gebraucht wurden.
 - **Preisänderung hinzufügen:** Das Formular schlägt die heute gültigen Werte jetzt nach deutscher Zeit vor, wie die Preisänderungen selbst gelten. Bisher zählte das Datum in der Zeitzone von Home Assistant – das wich nur bei einer anderen Zeitzone und nur rund um Mitternacht ab.
+- README: Die Bilder der Geräteseite eines Tarifs und der Antwort von „Tarife vergleichen“ sind wieder da (Demo-Eintrag mit erfundenen Werten).
 - Intern: wöchentlicher Quellen-Check (`tools/source_check.py`, Workflow „Quellen-Check“, montags): lädt Index und die beiden neuesten Wochen von SMARD.de mit dem echten Parser und prüft Format, Aktualität, Viertelstundenraster und Preisspanne – die Schnittstelle ist nicht offiziell dokumentiert. Bei Problemen öffnet er ein Issue mit Label `quellen-check` und schließt es wieder, sobald alles geht.
 - Intern: Entwicklungs- und Testumgebung auf Home Assistant 2026.10.4 angehoben (Testbibliothek 0.13.375), wie bei Streckenwacht.
 
