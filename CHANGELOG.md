@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.0b10 – 2026-10-27
 
 - **Einrichtung:** Der dynamische Tarif wird jetzt in einem eigenen Schritt angelegt – erst die Art wählen, „Börsenpreis plus Aufschläge“ steht als empfohlen vorn, dann dieselben Felder wie beim Hinzufügen eines Tarifs (MwSt. mit 19 % vorausgefüllt). Bisher legte die Einrichtung immer einen Gesamtpreis-Sensor an, mit dem es keinen Rückblick und kein Nachtragen der Statistik gibt. Bestehende Einträge bleiben unverändert.
 
