@@ -6,7 +6,7 @@ from typing import Final
 from zoneinfo import ZoneInfo
 
 DOMAIN: Final = "tarifwacht"
-VERSION: Final = "0.1.0b6"
+VERSION: Final = "0.1.0b7"
 USER_AGENT: Final = f"Tarifwacht/{VERSION} (+https://github.com/tarifwacht/integration)"
 
 # Days (pro-rata base prices) and months follow German local time.
