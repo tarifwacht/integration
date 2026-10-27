@@ -38,6 +38,6 @@ Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und
 - Home Assistant läuft auf diesem Windows-Rechner nicht (`fcntl` fehlt, kein WSL/Docker). Oberfläche und Screenshots über den gesteuerten Browser im HA des Nutzers; anmelden tut er sich selbst. HA-MCP ist nur lesend.
 - HA-Tests: Zeitzone ist US/Pacific → `hass.config.async_set_time_zone("Europe/Berlin")`. Recorder-Tests in eigener Datei mit autouse-Fixture, die `recorder_mock` vor `hass` anfordert. `device_registry.async_get_device` ist veraltet (wirft) → `dr.async_entries_for_config_entry`. Die Tests laufen auch gegen HA 2026.3 (`compat`-Job): neue HA-APIs absichern.
 - Der EPEX-Spot-Sensor kennt per Prognose den ganzen laufenden Tag – auch die Stunden vor der Einrichtung. In Tests für den Rückblick deshalb den Vortag nehmen.
-- Ein Preissensor ohne Prognose liefert nur seinen aktuellen Wert: Der Viertelstunden-Tick muss ihn für jede neue Viertelstunde übernehmen (in der Einspeisewacht steckt dieselbe Stelle noch, gemeldet 2026-10-26).
+- Ein Preissensor ohne Prognose liefert nur seinen aktuellen Wert: Der Viertelstunden-Tick muss ihn für jede neue Viertelstunde übernehmen (in der Einspeisewacht ebenso behoben, Commit `027f447`, 0.1.0b9).
 - Shell-Heredocs mit Anführungszeichen scheitern: Bearbeitungsskripte als Datei in den Scratchpad schreiben. Python-Dateien mit `newline="\n"` schreiben (sonst CRLF).
 - In HA 2026.10 heißen die Entwicklerwerkzeuge *Einstellungen → Werkzeuge*; in der Doku beide Wege nennen.
