@@ -14,6 +14,7 @@ htmlcov/
 
 # Editor / OS
 CLAUDE.local.md
+NOTES.md
 .claude/settings.local.json
 .vscode/*
 !.vscode/extensions.json
