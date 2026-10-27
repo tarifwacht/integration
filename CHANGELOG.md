@@ -3,6 +3,7 @@
 ## Unveröffentlicht
 
 - Intern: Der Quellen-Check erwartet in Wochen mit Zeitumstellung 668 bzw. 676 Viertelstunden statt immer 672 (meldete „676 von 672“).
+- Intern: Dependabot schlägt Aktualisierungen jetzt für `dev` vor statt für `main`.
 
 ## 0.1.0b7 – 2026-10-27
 
