@@ -121,3 +121,8 @@ async def test_monthly_summary(
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert (len(compare), len(notify)) == (1, 1)
+
+    # Detach the time trigger, or its next timer outlives the test.
+    await hass.services.async_call(
+        "automation", "turn_off", {"entity_id": "all"}, blocking=True
+    )
