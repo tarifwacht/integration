@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Preisänderung hinzufügen:** Das Formular schlägt die heute gültigen Werte jetzt nach deutscher Zeit vor, wie die Preisänderungen selbst gelten. Bisher zählte das Datum in der Zeitzone von Home Assistant – das wich nur bei einer anderen Zeitzone und nur rund um Mitternacht ab.
 - Intern: wöchentlicher Quellen-Check (`tools/source_check.py`, Workflow „Quellen-Check“, montags): lädt Index und die beiden neuesten Wochen von SMARD.de mit dem echten Parser und prüft Format, Aktualität, Viertelstundenraster und Preisspanne – die Schnittstelle ist nicht offiziell dokumentiert. Bei Problemen öffnet er ein Issue mit Label `quellen-check` und schließt es wieder, sobald alles geht.
 - Intern: Entwicklungs- und Testumgebung auf Home Assistant 2026.10.4 angehoben (Testbibliothek 0.13.375), wie bei Streckenwacht.
 

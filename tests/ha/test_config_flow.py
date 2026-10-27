@@ -311,6 +311,28 @@ async def test_price_changes(hass: HomeAssistant) -> None:
     assert "changes" not in entry.subentries[FIXED_SUBENTRY].data
 
 
+# 1 January 2027, 00:30 in Germany; still 31 December in the test time zone (US/Pacific).
+@pytest.mark.freeze_time("2026-12-31 23:30:00+00:00")
+async def test_price_change_prefill_uses_german_date(hass: HomeAssistant) -> None:
+    entry = added_entry(hass)
+    change = {"from": "2027-01-01", "price": 29.9, "base_period": "month"}
+    result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "add_change"}
+    )
+    await configure_tariff(hass, result, change)
+
+    result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "add_change"}
+    )
+    suggested = {
+        str(key): (key.description or {}).get("suggested_value")
+        for key in result["data_schema"].schema
+    }
+    assert suggested["price"] == 29.9
+
+
 async def test_modul3(hass: HomeAssistant) -> None:
     entry = added_entry(hass)
     result = await start_tariff(hass, entry, "dynamic_market")

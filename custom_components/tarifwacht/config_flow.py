@@ -29,6 +29,7 @@ from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    BERLIN,
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
     CONF_CHANGES,
@@ -480,11 +481,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 fields[vol.Required(key)] = PRICE_NUMBER
             else:
                 fields[vol.Optional(key)] = PRICE_NUMBER
-        # Prefilled with the values valid today.
+        # Prefilled with the values valid today; changes start at midnight German time.
         if user_input is not None:
             suggested = user_input
         else:
-            today = state_at(subentry.data, dt_util.now().date())
+            today = state_at(subentry.data, dt_util.now(BERLIN).date())
             suggested = {**today, **_modul3_suggested(today.get(CONF_MODUL3))}
         return self.async_show_form(
             step_id="add_change",
