@@ -20,9 +20,9 @@ Fahrplan:
 
 1. **MVP:** ein Bezugszähler, zwei Tarife (Festpreis, dynamisch mit Gesamtpreis-Sensor), Kostensensoren, Differenz. Parallel zum Eigenbau laufen lassen und vergleichen.
 2. Beliebig viele Tarife (Untereinträge), Grundpreise, Durchschnittspreise, Service mit Antwortdaten für frei wählbare Zeiträume.
-3. Rückwirkende Berechnung: Verbrauch aus der Recorder-Statistik, historische Preise von SMARD.de – umgesetzt als Rückblick der Aktion „Tarife vergleichen“ (2026-10-26). Offen: Vergangenheit in die Langzeitstatistik der Sensoren schreiben (wie „Statistik nachtragen“ der Einspeisewacht).
-4. Optional: dynamisch mit Modul-3-Netzentgelt (Zeitfenster manuell eingetragen).
-5. Veröffentlichung: README, Release, Vorstellung im simon42-Thread „Kostenvergleich von dynamischem und normalem Stromtarif“.
+3. Rückwirkende Berechnung: Verbrauch aus der Recorder-Statistik, historische Preise von SMARD.de – umgesetzt als Rückblick der Aktion „Tarife vergleichen“ (2026-10-26) und „Statistik nachtragen“ (0.1.0b7, 2026-10-27).
+4. Optional: dynamisch mit Modul-3-Netzentgelt (Zeitfenster manuell eingetragen) – umgesetzt (0.1.0b4).
+5. Veröffentlichung: 0.1.1 stabil (2026-10-27). **Bekanntmachen:** simon42 Community ([Thema 94979](https://community.simon42.com/t/tarifwacht-was-haette-mein-strom-mit-dynamischem-tarif-gekostet-hacs-integration/94979), 2026-10-27). Offen: kurzer Hinweis im Thread [„Kostenvergleich von dynamischem und normalem Stromtarif“](https://community.simon42.com/t/kostenvergleich-von-dynamischem-und-normalem-stromtarif/87387) (tariff_compare, Ideengeber), HACS-Standardliste (Lehre aus der Einspeisewacht siehe `NOTES.md`), HA Community (englisch).
 
 ## 2. Buchungskern (aus der Einspeisewacht)
 
