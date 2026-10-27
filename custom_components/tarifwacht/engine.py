@@ -65,6 +65,22 @@ def month_bounds(
 
 
 @dataclass
+class Comparison:
+    """Consumption cost of every tariff in the quarter hours priced in all of them.
+
+    Differences and the cheapest tariff compare like with like: a quarter hour
+    without a price in one tariff (price sensor failed) is left out for all,
+    instead of making that tariff look cheaper.
+    """
+
+    consumption_cost: dict[str, float] = field(default_factory=dict)
+    energy: float = 0.0
+    energy_left_out: float = 0.0
+    # slot -> energy while a tariff still waits for the slot's price
+    pending: dict[datetime, float] = field(default_factory=dict)
+
+
+@dataclass
 class Engine:
     """Books every meter reading into each tariff."""
 
@@ -86,6 +102,7 @@ class Engine:
     # Derived, not stored.
     energy: float = 0.0
     totals: dict[str, TariffTotals] = field(default_factory=dict)
+    comparison: Comparison = field(default_factory=Comparison)
     _base_until: datetime | None = None
 
     def price_table(self, source: str) -> PriceTable:
@@ -101,6 +118,7 @@ class Engine:
         """Totals of every tariff from the stored consumption and prices."""
         self.energy = 0.0
         self.totals = {key: TariffTotals() for key in self.tariffs}
+        self.comparison = Comparison()
         self._book(self.consumption.items(), now)
         self._base_until = self.started
         self._book_base_prices(now)
@@ -220,13 +238,45 @@ class Engine:
                 pending, totals.pending = totals.pending, {}
                 for slot, energy in sorted(pending.items()):
                     self._book_one(key, totals, slot, energy, now)
+        if self.comparison.pending:
+            pending, self.comparison.pending = self.comparison.pending, {}
+            for slot, energy in sorted(pending.items()):
+                self._compare(slot, energy)
         self._book_base_prices(now)
+
+    def compared_cost(self, key: str) -> float | None:
+        """Total cost of a tariff for comparisons (see `Comparison`).
+
+        None if consumption was left out and none could be compared.
+        """
+        comparison = self.comparison
+        if comparison.energy_left_out and not comparison.energy:
+            return None
+        return comparison.consumption_cost.get(key, 0.0) + self.totals[key].base_cost
 
     def _book(self, pieces: Iterable[tuple[datetime, float]], now: datetime) -> None:
         for slot, energy in pieces:
             self.energy += energy
             for key, totals in self.totals.items():
                 self._book_one(key, totals, slot, energy, now)
+            self._compare(slot, energy)
+
+    def _compare(self, slot: datetime, energy: float) -> None:
+        """Add a quarter hour's energy to the comparison once every tariff is done."""
+        comparison = self.comparison
+        if any(slot in totals.pending for totals in self.totals.values()):
+            comparison.pending[slot] = comparison.pending.get(slot, 0.0) + energy
+            return
+        prices: dict[str, float] = {}
+        for key, tariff in self.tariffs.items():
+            if (price := tariff.price(slot)) is None:
+                comparison.energy_left_out += energy
+                return
+            prices[key] = price
+        comparison.energy += energy
+        costs = comparison.consumption_cost
+        for key, price in prices.items():
+            costs[key] = costs.get(key, 0.0) + energy * price
 
     def _book_one(
         self,

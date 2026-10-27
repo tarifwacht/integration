@@ -111,7 +111,7 @@ Am Gerät des Zählers (z. B. „Haus“):
 | Entität | Einheit | Bedeutung |
 |---|---|---|
 | Strombezug | kWh | erfasste Menge seit der Einrichtung – zum Abgleich mit deinem Zähler |
-| Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen |
+| Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen (fehlende Preise siehe unten) |
 
 An jedem Tarif (z. B. „Haus Festpreis“):
 
@@ -120,7 +120,7 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 | Verbrauchskosten | € | Strombezug × Preis der jeweiligen Viertelstunde |
 | Kosten gesamt | € | Verbrauchskosten plus Grundpreis |
 | Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug |
-| Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst) |
+| Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst; fehlende Preise siehe unten) |
 
 Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
 
@@ -187,7 +187,7 @@ Tarifwacht meldet Probleme unter *Einstellungen → Reparaturen*:
 
 - **Preissensor mit nicht unterstützter Einheit:** Der Sensor liefert z. B. ct/kWh oder €/MWh. Tarifwacht braucht €/kWh und ignoriert seine Preise bis dahin.
 - **Zähler mit nicht unterstützter Einheit:** Tarifwacht bucht nichts, bis der Zähler Wh, kWh oder MWh liefert.
-- **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos.
+- **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos. Damit der betroffene Tarif nicht günstiger aussieht, lassen „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ solche Viertelstunden für alle Tarife aus; wie viel Strom das war, steht im Attribut `energy_left_out_kwh`.
 
 Weiteres:
 

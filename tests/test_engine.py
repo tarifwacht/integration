@@ -219,6 +219,56 @@ def test_missing_dynamic_price_is_never_free() -> None:
     assert engine.energy == pytest.approx(1.0)
 
 
+def test_comparison_leaves_out_quarter_hours_without_price() -> None:
+    engine = make_engine(fixed_base=31.0)
+    start = utc(2026, 1, 5, 9)
+    engine.start(start)
+    engine.price_table(TOTAL).merge({start: 0.25})
+    engine.on_meter(100.0, start, start)
+    # 09:00-09:20: 0.75 kWh priced in both tariffs, 0.25 kWh in 09:15 only
+    # in the fixed one.
+    engine.on_meter(101.0, utc(2026, 1, 5, 9, 20), utc(2026, 1, 5, 9, 20))
+    comparison = engine.comparison
+    assert comparison.energy == pytest.approx(0.75)
+    # Waits as long as the dynamic tariff waits for the price.
+    assert comparison.pending
+    assert engine.compared_cost("dynamic") is not None
+
+    later = utc(2026, 1, 5, 9, 30) + PRICE_WAIT
+    engine.tick(later)
+    assert comparison.pending == {}
+    assert comparison.energy_left_out == pytest.approx(0.25)
+    fixed, dynamic = engine.totals["fixed"], engine.totals["dynamic"]
+    # The tariffs' own costs keep their rules: fixed costs all of it.
+    assert fixed.consumption_cost == pytest.approx(1.0 * FIXED)
+    assert dynamic.energy_without_price == pytest.approx(0.25)
+    # Compared: only the 0.75 kWh both priced, plus the base prices.
+    assert engine.compared_cost("fixed") == pytest.approx(
+        0.75 * FIXED + fixed.base_cost
+    )
+    assert engine.compared_cost("dynamic") == pytest.approx(0.75 * 0.25)
+
+    # The same after a restart (recomputed from the stored history).
+    restored = restart(engine, later, fixed_base=31.0)
+    assert restored.comparison.energy == pytest.approx(0.75)
+    assert restored.comparison.energy_left_out == pytest.approx(0.25)
+    assert restored.compared_cost("fixed") == pytest.approx(
+        engine.compared_cost("fixed")
+    )
+
+
+def test_compared_cost_without_any_compared_energy() -> None:
+    engine = make_engine()
+    start = utc(2026, 1, 5, 9)
+    engine.start(start)
+    engine.on_meter(100.0, start, start)
+    engine.on_meter(100.5, utc(2026, 1, 5, 9, 10), utc(2026, 1, 5, 9, 10))
+    engine.tick(start + QUARTER + PRICE_WAIT)
+    assert engine.comparison.energy_left_out == pytest.approx(0.5)
+    assert engine.compared_cost("fixed") is None
+    assert engine.compared_cost("dynamic") is None
+
+
 def test_meter_reset_books_nothing() -> None:
     engine = make_engine()
     engine.start(utc(2026, 1, 5, 9))

@@ -113,7 +113,7 @@ On the meter's device (e.g. "Home"):
 | Entity | Unit | Meaning |
 |---|---|---|
 | Grid purchase | kWh | energy recorded since setup – to check against your meter |
-| Cheapest tariff | text | tariff with the lowest total cost; attribute `ranking` with all tariffs |
+| Cheapest tariff | text | tariff with the lowest total cost; attribute `ranking` with all tariffs (missing prices: see below) |
 
 On every tariff (e.g. "Home Fixed price"):
 
@@ -122,7 +122,7 @@ On every tariff (e.g. "Home Fixed price"):
 | Consumption cost | € | grid purchase × price of the respective quarter hour |
 | Total cost | € | consumption cost plus base price |
 | Average price | ct/kWh | total cost ÷ grid purchase |
-| Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself) |
+| Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself; missing prices: see below) |
 
 For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for its price; usually it is known since the day before.
 
@@ -189,7 +189,7 @@ Tarifwacht reports problems under *Settings → Repairs*:
 
 - **Price sensor with an unsupported unit:** the sensor delivers e.g. ct/kWh or €/MWh. Tarifwacht needs €/kWh and ignores its prices until then.
 - **Meter with an unsupported unit:** Tarifwacht books nothing until the meter delivers Wh, kWh or MWh.
-- **Prices missing:** the price of a past quarter hour is missing; the price integration has probably failed. After 24 hours the consumption is counted without a price – never as free.
+- **Prices missing:** the price of a past quarter hour is missing; the price integration has probably failed. After 24 hours the consumption is counted without a price – never as free. So that the affected tariff does not look cheaper, "Difference to current tariff" and "Cheapest tariff" leave such quarter hours out for all tariffs; how much energy that was is in the attribute `energy_left_out_kwh`.
 
 Further:
 

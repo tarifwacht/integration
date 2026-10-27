@@ -393,3 +393,49 @@ async def test_repair_issue_for_late_prices(
     assert issue is not None
     assert issue.translation_placeholders["tariffs"] == "Dynamic"
     assert value(hass, entry, "fixed_consumption_cost") == pytest.approx(0.15)
+
+
+@pytest.mark.freeze_time(START)
+async def test_difference_leaves_out_quarter_hours_without_price(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A price that never comes: compared without that quarter hour."""
+    hass.states.async_set(PRICE, "0.31", {"unit_of_measurement": "€/kWh"})
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    # 16:00:30-16:20: 0.5 kWh, of it 5 of 19.5 minutes in 16:15 (no price).
+    freezer.move_to(datetime(2026, 10, 25, 16, 20, tzinfo=UTC))
+    hass.states.async_set(METER, "1000500", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    freezer.move_to(datetime(2026, 10, 26, 16, 30, 1, tzinfo=UTC))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    left_out = 0.5 * 5 / 19.5
+    registry = er.async_get(hass)
+    difference_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_dynamic_difference"
+    )
+    cheapest_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_cheapest"
+    )
+    assert difference_id and cheapest_id
+    difference = hass.states.get(difference_id)
+    cheapest = hass.states.get(cheapest_id)
+    assert difference is not None and cheapest is not None
+    assert difference.attributes["energy_left_out_kwh"] == pytest.approx(
+        left_out, abs=1e-3
+    )
+    assert cheapest.attributes["energy_left_out_kwh"] == pytest.approx(
+        left_out, abs=1e-3
+    )
+    # The fixed tariff's own cost includes the quarter hour, the comparison not.
+    expected = (
+        value(hass, entry, "dynamic_cost")
+        - value(hass, entry, "fixed_cost")
+        + 0.30 * left_out
+    )
+    assert float(difference.state) == pytest.approx(expected, abs=1e-4)

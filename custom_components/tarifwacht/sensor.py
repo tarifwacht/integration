@@ -34,6 +34,13 @@ class TariffSensorDescription(SensorEntityDescription):
     """A value of one tariff's totals."""
 
     value: Callable[[MeterRuntime, TariffInfo], float | None]
+    attributes: Callable[[MeterRuntime], dict[str, Any]] | None = None
+
+
+def _left_out(runtime: MeterRuntime) -> dict[str, Any]:
+    """Energy not compared because a tariff has no price for it (kWh)."""
+    left_out = runtime.engine.comparison.energy_left_out
+    return {"energy_left_out_kwh": round(left_out, 3)} if left_out else {}
 
 
 def _totals(runtime: MeterRuntime, tariff: TariffInfo) -> TariffTotals:
@@ -46,15 +53,27 @@ def _average_ct(runtime: MeterRuntime, tariff: TariffInfo) -> float | None:
 
 
 def _difference(runtime: MeterRuntime, tariff: TariffInfo) -> float | None:
-    """Positive: this tariff would have cost more than the current one."""
+    """Positive: this tariff would have cost more than the current one.
+
+    Only quarter hours priced in every tariff count (see `Comparison`).
+    """
     current = runtime.current
     if current is None:
         return None
-    return _totals(runtime, tariff).cost - _totals(runtime, current).cost
+    engine = runtime.engine
+    cost, current_cost = (
+        engine.compared_cost(tariff.key),
+        engine.compared_cost(current.key),
+    )
+    if cost is None or current_cost is None:
+        return None
+    return cost - current_cost
 
 
 def _money(
-    key: str, value: Callable[[MeterRuntime, TariffInfo], float | None]
+    key: str,
+    value: Callable[[MeterRuntime, TariffInfo], float | None],
+    attributes: Callable[[MeterRuntime], dict[str, Any]] | None = None,
 ) -> TariffSensorDescription:
     # Home Assistant allows only "total" for monetary sensors.
     return TariffSensorDescription(
@@ -65,6 +84,7 @@ def _money(
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value=value,
+        attributes=attributes,
     )
 
 
@@ -80,7 +100,7 @@ TARIFF_SENSORS = (
         value=_average_ct,
     ),
 )
-DIFFERENCE = _money("difference", _difference)
+DIFFERENCE = _money("difference", _difference, _left_out)
 
 ENERGY = SensorEntityDescription(
     key="energy",
@@ -126,7 +146,11 @@ class EnergySensor(MeterEntity, SensorEntity):
 
 
 class CheapestSensor(MeterEntity, SensorEntity):
-    """The tariff with the lowest total cost so far."""
+    """The tariff with the lowest total cost so far.
+
+    Ranked by the cost in the quarter hours priced in every tariff (see
+    `Comparison`), so a failed price sensor does not make its tariff cheapest.
+    """
 
     # The costs in the ranking change all the time; recording every change
     # would add a row of attributes per update.
@@ -136,9 +160,12 @@ class CheapestSensor(MeterEntity, SensorEntity):
         super().__init__(entry, "cheapest")
 
     def _ranking(self) -> list[tuple[TariffInfo, float]]:
-        totals = self.runtime.engine.totals
+        engine = self.runtime.engine
+        costs = (
+            (t, engine.compared_cost(t.key)) for t in self.runtime.tariffs.values()
+        )
         return sorted(
-            ((t, totals[t.key].cost) for t in self.runtime.tariffs.values()),
+            ((t, cost) for t, cost in costs if cost is not None),
             key=lambda item: item[1],
         )
 
@@ -153,7 +180,8 @@ class CheapestSensor(MeterEntity, SensorEntity):
             "ranking": [
                 {"tariff": tariff.title, "cost": round(cost, 2)}
                 for tariff, cost in self._ranking()
-            ]
+            ],
+            **_left_out(self.runtime),
         }
 
 
@@ -190,3 +218,8 @@ class TariffSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         return self.entity_description.value(self.runtime, self.tariff)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        attributes = self.entity_description.attributes
+        return attributes(self.runtime) if attributes is not None else None
