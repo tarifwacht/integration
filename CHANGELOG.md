@@ -1,8 +1,10 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.0b9 – 2026-10-27
 
 - **Neuer Tarif mit neuem Preissensor:** Die Zeit seit der Einrichtung, die länger als 24 Stunden zurückliegt, wurde bis zum nächsten Neustart „ohne Preis“ gezählt – die Neuberechnung beim Laden lief, bevor der neue Sensor seine Preise geliefert hatte. Kommen Preise für schon so gezählte Viertelstunden, rechnet Tarifwacht jetzt neu. Das hilft auch, wenn ein Preissensor beim Start von Home Assistant noch nicht bereit ist.
+- **Dynamischen Tarif richtig anlegen:** README und Dialoge empfehlen jetzt „Börsenpreis plus Aufschläge“ – nur damit gibt es Rückblick und Statistik nachtragen. Für EPEX Spot zeigt eine kleine Tabelle, welche Werte wohin gehören (absoluter Aufschlag in Cent, Steuer als MwSt.); dann rechnet der Tarif genau wie der Gesamtpreis von EPEX Spot.
+- README: fertiger Dashboard-Abschnitt „Tarifvergleich“ (günstigster Tarif, Durchschnittspreise, Kosten und Differenz heute und im Monat, Balken je Tag) statt der einzelnen Monatskarte; Hinweis, dass nachgetragene Statistik bei späteren Preiskorrekturen nicht mitrechnet.
 
 ## 0.1.0b8 – 2026-10-27
 
