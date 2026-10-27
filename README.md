@@ -17,6 +17,8 @@
 
 Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines Home Assistant.
 
+<img alt="Gerät eines Tarifs mit Kosten, Durchschnittspreis und Differenz zum aktuellen Tarif" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/geraet.png" width="640">
+
 ## Was Tarifwacht kann
 
 - **Kosten je Tarif** (€): Verbrauchskosten und Kosten gesamt (mit Grundpreis) – mit Langzeitstatistik für Statistik-Karten und Energie-Dashboard.
@@ -154,6 +156,8 @@ data:
   start: "2026-11-01 00:00:00"
   end: "2026-12-01 00:00:00"
 ```
+
+<img alt="Antwort der Aktion „Tarife vergleichen“" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
 Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat. Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
 
