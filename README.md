@@ -66,6 +66,7 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 
 1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler.
 2. **Tarife:** Arbeitspreis eines Festpreistarifs (ct/kWh, brutto) und ein Sensor mit dem Gesamtpreis eines dynamischen Tarifs, für beide optional der Grundpreis pro Monat. Daraus entstehen die ersten beiden Tarife; der Festpreis ist „Mein aktueller Tarif“.
+3. **Empfohlen:** den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen – siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen). Den Gesamtpreis-Tarif kannst du danach löschen.
 
 ### Weitere Tarife
 
@@ -76,10 +77,24 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 | Art | Eingaben |
 |---|---|
 | Festpreis | Arbeitspreis (ct/kWh, brutto) |
-| Dynamisch: Sensor mit Gesamtpreis | Sensor, der schon alle Bestandteile enthält |
+| Dynamisch: Sensor mit Gesamtpreis | Sensor, der schon alle Bestandteile enthält – rechnet nur ab der Einrichtung |
 | Dynamisch: Börsenpreis plus Aufschläge | Börsenpreis-Sensor; Netzentgelt, Steuern/Abgaben, Anbieteraufschlag (je ct/kWh netto); Mehrwertsteuer (%) |
 
 Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Schalter **Mein aktueller Tarif** – die anderen Tarife zeigen ihre Differenz zu diesem.
+
+### Dynamischen Tarif anlegen
+
+Nimm **Börsenpreis plus Aufschläge**. Nur damit kann Tarifwacht auch die Zeit vor der Einrichtung rechnen ([Rückblick](#rückblick-vor-der-einrichtung), [Statistik nachtragen](#statistik-nachtragen)) – die Börsenpreise von damals kommen von SMARD.de. Ein Sensor mit Gesamtpreis kennt nur die Zeit seit der Einrichtung.
+
+Hast du in **EPEX Spot** einen Aufschlag und eine Steuer eingestellt, übernimm einfach diese Werte – dann rechnet der Tarif genau wie der Gesamtpreis von EPEX Spot:
+
+| In EPEX Spot | In Tarifwacht |
+|---|---|
+| Sensor mit dem Marktpreis (Market Price) | Sensor mit Börsenpreis |
+| Aufschlag absolut, z. B. 0,15 €/kWh | Anbieteraufschlag **15** ct/kWh (Tarifwacht rechnet in Cent: € × 100) |
+| Steuer, z. B. 19 % | Mehrwertsteuer 19 % |
+
+Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Geprüft für einen absoluten Aufschlag; einen prozentualen haben wir noch nicht nachgerechnet. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Tarif bearbeiten*).
 
 ### Tarif ändern
 
@@ -126,24 +141,83 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 
 Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
 
-## Dashboard: Kosten je Monat
+## Dashboard: Tarifvergleich
 
-Tages-, Monats- und Jahreswerte liefert die Langzeitstatistik – eigene Zähler braucht es nicht. Beispiel für eine Statistik-Karte (*Dashboard bearbeiten → Karte hinzufügen → Manuell*); die Entitäts-IDs hängen von deinen Namen ab:
+Tages-, Monats- und Jahreswerte liefert die Langzeitstatistik – eigene Zähler braucht es nicht. Ein fertiger Abschnitt für eine Sektionen-Ansicht: günstigster Tarif, Durchschnittspreise, Kosten heute und im Monat, die Differenz und ein Balkendiagramm je Tag. Am Desktop stehen vier Karten nebeneinander, am Handy zwei. *Dashboard bearbeiten → Abschnitt hinzufügen → ⋮ → Im Code-Editor bearbeiten*; die Entitäts-IDs hängen von deinen Namen ab (hier Zähler „Haus“, Tarife „Festpreis“ und „Dynamisch“):
 
 ```yaml
-type: statistics-graph
-title: Stromkosten je Monat
-chart_type: bar
-period: month
-stat_types:
-  - change
-days_to_show: 365
-entities:
-  - entity: sensor.haus_festpreis_kosten_gesamt
-    name: Festpreis
-  - entity: sensor.haus_dynamisch_kosten_gesamt
-    name: Dynamisch
+type: grid
+column_span: 2
+cards:
+  - type: heading
+    heading: Tarifvergleich
+    icon: mdi:scale-balance
+  - type: tile
+    entity: sensor.haus_gunstigster_tarif
+    name: Günstigster Tarif
+    grid_options: {columns: 12}
+  - type: tile
+    entity: sensor.haus_festpreis_durchschnittspreis
+    name: Ø Festpreis
+    grid_options: {columns: 6}
+  - type: tile
+    entity: sensor.haus_dynamisch_durchschnittspreis
+    name: Ø Dynamisch
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_festpreis_kosten_gesamt
+    name: Festpreis heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Dynamisch heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_festpreis_kosten_gesamt
+    name: Festpreis Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Dynamisch Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
+    name: Differenz heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 12}
+  - type: statistic
+    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
+    name: Differenz Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 12}
+  - type: heading
+    heading_style: subtitle
+    heading: "Differenz positiv: dynamisch wäre teurer gewesen"
+  - type: statistics-graph
+    title: Kosten je Tag
+    chart_type: bar
+    period: day
+    days_to_show: 30
+    stat_types: [change]
+    entities:
+      - entity: sensor.haus_festpreis_kosten_gesamt
+        name: Festpreis
+      - entity: sensor.haus_dynamisch_kosten_gesamt
+        name: Dynamisch
+    grid_options: {columns: full}
 ```
+
+Für einen Jahresüberblick im Diagramm `period: month` und `days_to_show: 365`. Mit [Statistik nachtragen](#statistik-nachtragen) zeigen die Karten auch die Zeit vor der Einrichtung.
 
 ## Vergleich für einen Zeitraum
 
@@ -167,7 +241,7 @@ Liegt der Beginn vor der Einrichtung, rechnet Tarifwacht diese Zeit nach:
 
 - **Verbrauch:** aus der Langzeitstatistik deines Bezugszählers. Sie hat Stundenwerte; jede Stunde wird gleichmäßig auf ihre vier Viertelstunden verteilt. Für einen Festpreis ist das exakt, bei dynamischen Preisen eine gute Näherung (seit 1. Oktober 2025 wechselt der Börsenpreis jede Viertelstunde).
 - **Börsenpreise:** von [SMARD.de](https://www.smard.de) (Bundesnetzagentur), Day-Ahead DE-LU – dieselben Preise wie der Marktpreis von EPEX Spot. Tarifwacht lädt sie beim ersten Vergleich einer Zeit (je Woche eine Anfrage, ein Jahr dauert etwa eine halbe Minute) und speichert sie; danach geht es ohne Abruf.
-- **Welche Tarife:** Festpreis und „Börsenpreis plus Aufschläge“ (auch mit Modul 3 und Preisänderungen). Ein **Sensor mit Gesamtpreis** kennt nur die Zeit seit der Einrichtung – solche Tarife stehen dann mit `energy_without_price_kwh` am Ende, zählen nicht als günstigster und haben keine Differenz zum aktuellen Tarif (`null`), weil sie sonst günstiger aussähen, als sie sind. Tipp: Den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen.
+- **Welche Tarife:** Festpreis und „Börsenpreis plus Aufschläge“ (auch mit Modul 3 und Preisänderungen). Ein **Sensor mit Gesamtpreis** kennt nur die Zeit seit der Einrichtung – solche Tarife stehen dann mit `energy_without_price_kwh` am Ende, zählen nicht als günstigster und haben keine Differenz zum aktuellen Tarif (`null`), weil sie sonst günstiger aussähen, als sie sind. Tipp: den dynamischen Tarif als „Börsenpreis plus Aufschläge“ anlegen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen).
 - Unter `estimate` steht, bis wann geschätzt wurde, wie viel Energie das war und wie viele Stunden in der Statistik fehlen (z. B. weil es den Zähler noch nicht gab); dazu die Quellenangabe von SMARD.de, falls Börsenpreise von dort nötig waren.
 - Preise und Grundpreise gelten so, wie der Tarif heute eingetragen ist (mit seinen Preisänderungen). Für einen Vergleich über einen Jahreswechsel die alten Preise als Preisänderung eintragen, z. B. die Netzentgelte des Vorjahres.
 
@@ -179,7 +253,7 @@ Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_v
 
 ## Statistik nachtragen
 
-Die Sensoren haben Langzeitstatistik erst ab der Einrichtung. Damit Statistik-Karten und Diagramme (z. B. [Kosten je Monat](#dashboard-kosten-je-monat)) auch die Zeit davor zeigen, gibt es die Aktion **Tarifwacht: Statistik nachtragen** (*Einstellungen → Werkzeuge → Aktionen*, früher *Entwicklerwerkzeuge → Aktionen*):
+Die Sensoren haben Langzeitstatistik erst ab der Einrichtung. Damit Statistik-Karten und Diagramme (z. B. der [Tarifvergleich](#dashboard-tarifvergleich)) auch die Zeit davor zeigen, gibt es die Aktion **Tarifwacht: Statistik nachtragen** (*Einstellungen → Werkzeuge → Aktionen*, früher *Entwicklerwerkzeuge → Aktionen*):
 
 ```yaml
 action: tarifwacht.import_statistics
@@ -191,6 +265,7 @@ data:
 - Sie rechnet wie der [Rückblick](#rückblick-vor-der-einrichtung) und schreibt die Stunden **vor** dem ersten vorhandenen Statistikwert in die Langzeitstatistik von Strombezug, Verbrauchskosten, Kosten gesamt und Differenz; die späteren Summen werden passend verschoben. Ein später hinzugefügter Tarif bekommt so auch die Zeit seit der Einrichtung.
 - Der Beginn muss vor der Einrichtung liegen; früher als die Langzeitstatistik deines Zählers geht es nicht (die Antwort nennt den tatsächlichen Beginn).
 - Ein Tarif, dem im Zeitraum Preise fehlen – etwa ein **Sensor mit Gesamtpreis** –, wird ganz übersprungen und unter `skipped` genannt: lieber keine Vergangenheit als eine mit Lücken.
+- Nachgetragene Stunden bleiben, wie sie geschrieben wurden: Korrigierst du später Preise eines Tarifs, rechnen Sensoren und Aktion neu, die nachgetragene Statistik nicht. Dafür die Statistik der Sensoren dieses Tarifs löschen (*Werkzeuge → Statistik*) und erneut nachtragen.
 - **Das greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.** Ein zweiter Aufruf findet nichts mehr nachzutragen.
 
 ## Datenschutz

@@ -68,6 +68,7 @@ A sensor without a forecast works too: its current value applies until it change
 
 1. **Grid import meter:** name (e.g. "Home") and meter.
 2. **Tariffs:** energy price of a fixed-price tariff (ct/kWh, gross) and a sensor with the total price of a dynamic tariff, for both optionally the base price per month. This creates the first two tariffs; the fixed price is "My current tariff".
+3. **Recommended:** add the dynamic tariff a second time as "exchange price plus surcharges" – see [Adding a dynamic tariff](#adding-a-dynamic-tariff). You can delete the total-price tariff afterwards.
 
 ### More tariffs
 
@@ -78,10 +79,24 @@ A sensor without a forecast works too: its current value applies until it change
 | Kind | Inputs |
 |---|---|
 | Fixed price | energy price (ct/kWh, gross) |
-| Dynamic: sensor with the total price | sensor that already contains all components |
+| Dynamic: sensor with the total price | sensor that already contains all components – calculates only from the setup on |
 | Dynamic: exchange price plus surcharges | exchange price sensor; grid fee, taxes/levies, supplier surcharge (each ct/kWh net); VAT (%) |
 
 Every tariff has an optional base price (per month or per year) and the switch **My current tariff** – the other tariffs show their difference to this one.
+
+### Adding a dynamic tariff
+
+Choose **exchange price plus surcharges**. Only then can Tarifwacht also calculate the time before the setup ([looking back](#looking-back-before-the-setup), [import statistics](#import-statistics)) – the exchange prices of that time come from SMARD.de. A sensor with the total price only knows the time since setup.
+
+If you set a surcharge and a tax in **EPEX Spot**, simply copy these values – the tariff then calculates exactly like EPEX Spot's total price:
+
+| In EPEX Spot | In Tarifwacht |
+|---|---|
+| sensor with the market price (Market Price) | sensor with the exchange price |
+| absolute surcharge, e.g. 0.15 €/kWh | supplier surcharge **15** ct/kWh (Tarifwacht uses cents: € × 100) |
+| tax, e.g. 19 % | VAT 19 % |
+
+Leave grid fee and taxes/levies empty – they are already in the surcharge. Checked for an absolute surcharge; a percentage surcharge has not been verified yet. Once you have the price sheets, you can split the surcharge later (*Edit tariff*).
 
 ### Changing a tariff
 
@@ -128,24 +143,83 @@ On every tariff (e.g. "Home Fixed price"):
 
 For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for its price; usually it is known since the day before.
 
-## Dashboard: cost per month
+## Dashboard: tariff comparison
 
-Daily, monthly and yearly values come from the long-term statistics – no extra meters needed. Example of a statistics graph card (*Edit dashboard → Add card → Manual*); the entity IDs depend on your names:
+Daily, monthly and yearly values come from the long-term statistics – no extra meters needed. A ready-made section for a sections view: cheapest tariff, average prices, cost today and this month, the difference and a bar chart per day. Four cards side by side on a desktop, two on a phone. *Edit dashboard → Add section → ⋮ → Edit in code editor*; the entity IDs depend on your names (here meter "Home", tariffs "Fixed price" and "Dynamic"):
 
 ```yaml
-type: statistics-graph
-title: Electricity cost per month
-chart_type: bar
-period: month
-stat_types:
-  - change
-days_to_show: 365
-entities:
-  - entity: sensor.home_fixed_price_total_cost
-    name: Fixed price
-  - entity: sensor.home_dynamic_total_cost
-    name: Dynamic
+type: grid
+column_span: 2
+cards:
+  - type: heading
+    heading: Tariff comparison
+    icon: mdi:scale-balance
+  - type: tile
+    entity: sensor.home_cheapest_tariff
+    name: Cheapest tariff
+    grid_options: {columns: 12}
+  - type: tile
+    entity: sensor.home_fixed_price_average_price
+    name: Avg. fixed price
+    grid_options: {columns: 6}
+  - type: tile
+    entity: sensor.home_dynamic_average_price
+    name: Avg. dynamic
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_fixed_price_total_cost
+    name: Fixed price today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_total_cost
+    name: Dynamic today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_fixed_price_total_cost
+    name: Fixed price this month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_total_cost
+    name: Dynamic this month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_difference_to_current_tariff
+    name: Difference today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 12}
+  - type: statistic
+    entity: sensor.home_dynamic_difference_to_current_tariff
+    name: Difference this month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 12}
+  - type: heading
+    heading_style: subtitle
+    heading: "Positive difference: dynamic would have cost more"
+  - type: statistics-graph
+    title: Cost per day
+    chart_type: bar
+    period: day
+    days_to_show: 30
+    stat_types: [change]
+    entities:
+      - entity: sensor.home_fixed_price_total_cost
+        name: Fixed price
+      - entity: sensor.home_dynamic_total_cost
+        name: Dynamic
+    grid_options: {columns: full}
 ```
+
+For a yearly overview in the chart, use `period: month` and `days_to_show: 365`. With [import statistics](#import-statistics) the cards also show the time before the setup.
 
 ## Comparison for a period
 
@@ -169,7 +243,7 @@ If the start lies before the setup, Tarifwacht calculates that time as well:
 
 - **Consumption:** from your grid import meter's long-term statistics. They hold hourly values; each hour is spread evenly over its four quarter hours. Exact for a fixed price, a good approximation for dynamic prices (the exchange price changes every quarter hour since 1 October 2025).
 - **Exchange prices:** from [SMARD.de](https://www.smard.de) (Bundesnetzagentur), day-ahead DE-LU – the same prices as the EPEX Spot market price. Tarifwacht loads them on the first comparison of a period (one request per week, a year takes about half a minute) and keeps them; after that no download is needed.
-- **Which tariffs:** fixed price and "exchange price plus surcharges" (also with Modul 3 and price changes). A **sensor with the total price** only knows the time since setup – such tariffs are listed last with `energy_without_price_kwh`, are not counted as the cheapest and have no difference to the current tariff (`null`), since they would look cheaper than they are. Tip: add your dynamic tariff a second time as "exchange price plus surcharges".
+- **Which tariffs:** fixed price and "exchange price plus surcharges" (also with Modul 3 and price changes). A **sensor with the total price** only knows the time since setup – such tariffs are listed last with `energy_without_price_kwh`, are not counted as the cheapest and have no difference to the current tariff (`null`), since they would look cheaper than they are. Tip: add your dynamic tariff as "exchange price plus surcharges", see [Adding a dynamic tariff](#adding-a-dynamic-tariff).
 - `estimate` shows until when it was estimated, how much energy that was and how many hours are missing in the statistics (e.g. because the meter did not exist yet); plus the SMARD.de attribution if exchange prices from there were needed.
 - Prices and base prices apply as the tariff is entered today (with its price changes). For a comparison across a turn of the year, enter the old prices as a price change, e.g. last year's grid fees.
 
@@ -181,7 +255,7 @@ You can also use the response in scripts and automations (`response_variable`) �
 
 ## Import statistics
 
-The sensors only have long-term statistics from the setup on. So that statistics cards and graphs (e.g. [cost per month](#dashboard-cost-per-month)) also show the time before, there is the action **Tarifwacht: Import statistics** (*Settings → Tools → Actions*, formerly *Developer tools → Actions*):
+The sensors only have long-term statistics from the setup on. So that statistics cards and graphs (e.g. the [tariff comparison](#dashboard-tariff-comparison)) also show the time before, there is the action **Tarifwacht: Import statistics** (*Settings → Tools → Actions*, formerly *Developer tools → Actions*):
 
 ```yaml
 action: tarifwacht.import_statistics
@@ -193,6 +267,7 @@ data:
 - It calculates like [looking back](#looking-back-before-the-setup) and writes the hours **before** the first existing statistic into the long-term statistics of grid purchase, consumption cost, total cost and difference; the later sums are shifted to match. A tariff added later thus also gets the time since setup.
 - The start must be before the setup; it cannot go back further than your meter's long-term statistics (the response names the actual start).
 - A tariff lacking prices in the period – such as a **sensor with the total price** – is skipped entirely and listed under `skipped`: better no history than one with gaps.
+- Imported hours stay as written: if you later correct a tariff's prices, sensors and the action recalculate, the imported statistics do not. To redo them, delete the statistics of that tariff's sensors (*Tools → Statistics*) and import again.
 - **This changes the statistics database – create a backup first.** A second call finds nothing left to import.
 
 ## Privacy

@@ -37,7 +37,7 @@
         "data_description": {
           "fixed_price": "Preis je kWh aus deinem Vertrag oder Angebot.",
           "fixed_base": "Optional. Wird tageweise anteilig gebucht.",
-          "dynamic_price_entity": "Ein Sensor mit dem Gesamtpreis je Viertelstunde in €/kWh (Börsenpreis plus alle Aufschläge, brutto), am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot.",
+          "dynamic_price_entity": "Ein Sensor mit dem Gesamtpreis je Viertelstunde in €/kWh (Börsenpreis plus alle Aufschläge, brutto), am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot. Dieser Tarif rechnet nur ab der Einrichtung – für den Rückblick lege ihn danach zusätzlich als „Börsenpreis plus Aufschläge“ an.",
           "dynamic_base": "Optional. Wird tageweise anteilig gebucht."
         }
       }
@@ -91,7 +91,7 @@
         },
         "dynamic_total": {
           "title": "Dynamischer Tarif: Sensor mit Gesamtpreis",
-          "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält: Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer.",
+          "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält: Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer. Rechnet nur ab der Einrichtung (kein Rückblick, kein Nachtragen der Statistik) – dafür „Börsenpreis plus Aufschläge“ wählen.",
           "data": {
             "name": "Name",
             "price_entity": "Sensor mit Gesamtpreis",
@@ -125,7 +125,7 @@
             "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose: der Marktpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS, jeweils ohne MwSt. und Aufschläge.",
             "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
             "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
-            "margin": "Was der Anbieter je kWh aufschlägt, netto.",
+            "margin": "Was der Anbieter je kWh aufschlägt, netto. Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
           }
