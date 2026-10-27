@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Einrichtung:** Der dynamische Tarif wird jetzt in einem eigenen Schritt angelegt – erst die Art wählen, „Börsenpreis plus Aufschläge“ steht als empfohlen vorn, dann dieselben Felder wie beim Hinzufügen eines Tarifs (MwSt. mit 19 % vorausgefüllt). Bisher legte die Einrichtung immer einen Gesamtpreis-Sensor an, mit dem es keinen Rückblick und kein Nachtragen der Statistik gibt. Bestehende Einträge bleiben unverändert.
+
 ## 0.1.0b9 – 2026-10-27
 
 - **Neuer Tarif mit neuem Preissensor:** Die Zeit seit der Einrichtung, die länger als 24 Stunden zurückliegt, wurde bis zum nächsten Neustart „ohne Preis“ gezählt – die Neuberechnung beim Laden lief, bevor der neue Sensor seine Preise geliefert hatte. Kommen Preise für schon so gezählte Viertelstunden, rechnet Tarifwacht jetzt neu. Das hilft auch, wenn ein Preissensor beim Start von Home Assistant noch nicht bereit ist.

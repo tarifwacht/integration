@@ -26,19 +26,54 @@
         }
       },
       "tariffs": {
-        "title": "Tarife",
-        "description": "Alle Preise brutto (mit Mehrwertsteuer). Für einen fairen Vergleich müssen beide Seiten dieselben Preisbestandteile enthalten (Netzentgelte, Umlagen, Steuern). Weitere Tarife lassen sich danach hinzufügen.",
+        "title": "Festpreistarif",
+        "description": "Dein Festpreistarif wird „Mein aktueller Tarif“ – die anderen zeigen ihre Differenz zu ihm. Preise brutto (mit Mehrwertsteuer). Weitere Tarife lassen sich danach hinzufügen.",
         "data": {
-          "fixed_price": "Festpreis: Arbeitspreis",
-          "fixed_base": "Festpreis: Grundpreis pro Monat",
-          "dynamic_price_entity": "Dynamisch: Sensor mit Gesamtpreis",
-          "dynamic_base": "Dynamisch: Grundpreis pro Monat"
+          "fixed_price": "Arbeitspreis",
+          "fixed_base": "Grundpreis pro Monat"
         },
         "data_description": {
           "fixed_price": "Preis je kWh aus deinem Vertrag oder Angebot.",
-          "fixed_base": "Optional. Wird tageweise anteilig gebucht.",
-          "dynamic_price_entity": "Ein Sensor mit dem Gesamtpreis je Viertelstunde in €/kWh (Börsenpreis plus alle Aufschläge, brutto), am besten mit Prognose-Attribut `data`, z. B. der Gesamtpreis der Integration EPEX Spot. Dieser Tarif rechnet nur ab der Einrichtung – für den Rückblick lege ihn danach zusätzlich als „Börsenpreis plus Aufschläge“ an.",
-          "dynamic_base": "Optional. Wird tageweise anteilig gebucht."
+          "fixed_base": "Optional. Wird tageweise anteilig gebucht."
+        }
+      },
+      "dynamic": {
+        "title": "Dynamischer Tarif",
+        "description": "Woher kennt Home Assistant den Preis deines dynamischen Tarifs? Empfohlen: Börsenpreis plus Aufschläge – nur damit rechnet Tarifwacht auch die Zeit vor der Einrichtung (Rückblick, Statistik nachtragen).",
+        "menu_options": {
+          "dynamic_market": "Börsenpreis plus Aufschläge (empfohlen)",
+          "dynamic_total": "Sensor mit Gesamtpreis (nur ab der Einrichtung)"
+        }
+      },
+      "dynamic_market": {
+        "title": "Dynamischer Tarif: Börsenpreis plus Aufschläge",
+        "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.",
+        "data": {
+          "price_entity": "Sensor mit Börsenpreis",
+          "grid_fee": "Netzentgelt",
+          "levies": "Steuern, Abgaben und Konzessionsabgabe",
+          "margin": "Anbieteraufschlag",
+          "vat": "Mehrwertsteuer",
+          "base_price": "Grundpreis pro Monat"
+        },
+        "data_description": {
+          "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose: der Marktpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS, jeweils ohne MwSt. und Aufschläge.",
+          "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
+          "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
+          "margin": "Was der Anbieter je kWh aufschlägt, netto. Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
+          "base_price": "Optional, brutto. Wird tageweise anteilig gebucht."
+        }
+      },
+      "dynamic_total": {
+        "title": "Dynamischer Tarif: Sensor mit Gesamtpreis",
+        "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält: Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer. Rechnet nur ab der Einrichtung (kein Rückblick, kein Nachtragen der Statistik) – dafür „Börsenpreis plus Aufschläge“ wählen.",
+        "data": {
+          "price_entity": "Sensor mit Gesamtpreis",
+          "base_price": "Grundpreis pro Monat"
+        },
+        "data_description": {
+          "price_entity": "In €/kWh, am besten mit Preisprognose je Viertelstunde oder Stunde: der Gesamtpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS.",
+          "base_price": "Optional, brutto. Wird tageweise anteilig gebucht."
         }
       }
     },

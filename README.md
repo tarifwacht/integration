@@ -65,8 +65,10 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 ## Einrichtung
 
 1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler.
-2. **Tarife:** Arbeitspreis eines Festpreistarifs (ct/kWh, brutto) und ein Sensor mit dem Gesamtpreis eines dynamischen Tarifs, für beide optional der Grundpreis pro Monat. Daraus entstehen die ersten beiden Tarife; der Festpreis ist „Mein aktueller Tarif“.
-3. **Empfohlen:** den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen – siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen). Den Gesamtpreis-Tarif kannst du danach löschen.
+2. **Festpreistarif:** Arbeitspreis (ct/kWh, brutto), optional der Grundpreis pro Monat. Er wird „Mein aktueller Tarif“.
+3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (rechnet nur ab der Einrichtung) –, dann die Preise.
+
+Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0b10 mit einem Gesamtpreis-Sensor eingerichtet: den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen, danach kannst du den alten löschen.
 
 ### Weitere Tarife
 

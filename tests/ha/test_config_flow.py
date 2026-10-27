@@ -27,11 +27,7 @@ from .conftest import (
 )
 
 METER_STEP = {"name": "Haus", "meter_entity": METER}
-TARIFFS = {
-    "fixed_price": 30.0,
-    "fixed_base": 31.0,
-    "dynamic_price_entity": PRICE,
-}
+FIXED_STEP = {"fixed_price": 30.0, "fixed_base": 31.0}
 MARKET = "sensor.epex_spot_data_market_price"
 
 
@@ -86,12 +82,26 @@ async def configure_tariff(hass: HomeAssistant, result: dict, user_input: dict) 
 # --- setup -------------------------------------------------------------------------
 
 
+async def dynamic_step(hass: HomeAssistant, kind: str) -> dict:
+    """Through meter and fixed price to the form of the dynamic tariff."""
+    result = await configure(hass, await start(hass), METER_STEP)
+    result = await configure(hass, result, FIXED_STEP)
+    assert result["type"] is FlowResultType.MENU
+    # The recommended kind comes first.
+    assert result["menu_options"] == ["dynamic_market", "dynamic_total"]
+    return await configure(hass, result, {"next_step_id": kind})
+
+
 async def test_full_flow(hass: HomeAssistant) -> None:
     result = await start(hass)
     assert result["step_id"] == "user"
     result = await configure(hass, result, METER_STEP)
     assert result["step_id"] == "tariffs"
-    result = await configure(hass, result, TARIFFS)
+    result = await configure(hass, result, FIXED_STEP)
+    assert result["step_id"] == "dynamic"
+    result = await configure(hass, result, {"next_step_id": "dynamic_total"})
+    assert result["step_id"] == "dynamic_total"
+    result = await configure(hass, result, {"price_entity": PRICE})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Haus"
     assert result["data"] == entry_data()
@@ -101,6 +111,40 @@ async def test_full_flow(hass: HomeAssistant) -> None:
     tariffs = {s.title: dict(s.data) for s in entry.subentries.values()}
     # No dynamic base price entered: stored as 0.
     assert tariffs == {"Fixed price": fixed_tariff(), "Dynamic": dynamic_tariff()}
+
+
+async def test_setup_with_exchange_price(hass: HomeAssistant) -> None:
+    """The recommended way: exchange price plus surcharges, VAT prefilled."""
+    result = await dynamic_step(hass, "dynamic_market")
+    assert result["step_id"] == "dynamic_market"
+    fields = {str(key): key for key in result["data_schema"].schema}
+    assert set(fields) == {
+        "price_entity",
+        "grid_fee",
+        "levies",
+        "margin",
+        "vat",
+        "base_price",
+    }
+    assert fields["vat"].description == {"suggested_value": 19.0}
+    result = await configure(
+        hass, result, {"price_entity": MARKET, "margin": 15.0, "vat": 19.0}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    tariffs = {s.title: dict(s.data) for s in result["result"].subentries.values()}
+    assert tariffs["Fixed price"] == fixed_tariff()
+    assert tariffs["Dynamic"] == {
+        "key": "dynamic",
+        "kind": "dynamic_market",
+        "price_entity": MARKET,
+        "grid_fee": 0.0,
+        "levies": 0.0,
+        "margin": 15.0,
+        "vat": 19.0,
+        "base_price": 0.0,
+        "base_period": "month",
+        "current": False,
+    }
 
 
 async def test_meter_errors(hass: HomeAssistant) -> None:
@@ -126,26 +170,24 @@ async def test_price_errors(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.price_ct", "10.5", {"unit_of_measurement": "ct/kWh"})
     hass.states.async_set("sensor.text", "cheap", {"unit_of_measurement": "€/kWh"})
     result = await configure(hass, await start(hass), METER_STEP)
+    result = await configure(hass, result, {**FIXED_STEP, "fixed_price": 0})
+    assert result["errors"] == {"fixed_price": "price_required"}
+
+    result = await dynamic_step(hass, "dynamic_total")
     for price, error in (
         ("sensor.missing", "entity_missing"),
         ("sensor.price_ct", "price_unit"),
         ("sensor.text", "price_invalid"),
     ):
-        result = await configure(
-            hass, result, {**TARIFFS, "dynamic_price_entity": price}
-        )
-        assert result["errors"] == {"dynamic_price_entity": error}
-    result = await configure(hass, result, {**TARIFFS, "fixed_price": 0})
-    assert result["errors"] == {"fixed_price": "price_required"}
+        result = await configure(hass, result, {"price_entity": price})
+        assert result["errors"] == {"price_entity": error}
 
 
 async def test_state_only_price_sensor(hass: HomeAssistant) -> None:
     """Without a forecast attribute the current state is the price."""
     hass.states.async_set("sensor.price_now", "0.31", {"unit_of_measurement": "€/kWh"})
-    result = await configure(hass, await start(hass), METER_STEP)
-    result = await configure(
-        hass, result, {**TARIFFS, "dynamic_price_entity": "sensor.price_now"}
-    )
+    result = await dynamic_step(hass, "dynamic_total")
+    result = await configure(hass, result, {"price_entity": "sensor.price_now"})
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 

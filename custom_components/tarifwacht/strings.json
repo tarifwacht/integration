@@ -26,19 +26,54 @@
         }
       },
       "tariffs": {
-        "title": "Tariffs",
-        "description": "Enter all prices including VAT. For a fair comparison, both sides must contain the same price components (grid fees, levies, taxes). More tariffs can be added afterwards.",
+        "title": "Fixed-price tariff",
+        "description": "Your fixed-price tariff becomes “My current tariff” – the others show their difference to it. Prices incl. VAT. More tariffs can be added afterwards.",
         "data": {
-          "fixed_price": "Fixed price: energy price",
-          "fixed_base": "Fixed price: base price per month",
-          "dynamic_price_entity": "Dynamic: total price sensor",
-          "dynamic_base": "Dynamic: base price per month"
+          "fixed_price": "Energy price",
+          "fixed_base": "Base price per month"
         },
         "data_description": {
           "fixed_price": "Price per kWh from your contract or offer.",
-          "fixed_base": "Optional. Booked pro rata per day.",
-          "dynamic_price_entity": "A sensor with the total price per quarter hour in €/kWh (exchange price plus all surcharges, incl. VAT), ideally with a forecast attribute `data`, e.g. the total price of the EPEX Spot integration. This tariff calculates only from the setup on – to also look back, add it afterwards as “exchange price plus surcharges”.",
-          "dynamic_base": "Optional. Booked pro rata per day."
+          "fixed_base": "Optional. Booked pro rata per day."
+        }
+      },
+      "dynamic": {
+        "title": "Dynamic tariff",
+        "description": "How does Home Assistant know your dynamic tariff's price? Recommended: exchange price plus surcharges – only then can Tarifwacht also calculate the time before the setup (looking back, importing statistics).",
+        "menu_options": {
+          "dynamic_market": "Exchange price plus surcharges (recommended)",
+          "dynamic_total": "Sensor with the total price (from the setup on only)"
+        }
+      },
+      "dynamic_market": {
+        "title": "Dynamic tariff: exchange price plus surcharges",
+        "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.",
+        "data": {
+          "price_entity": "Exchange price sensor",
+          "grid_fee": "Grid fee",
+          "levies": "Taxes, levies and concession fee",
+          "margin": "Supplier surcharge",
+          "vat": "VAT",
+          "base_price": "Base price per month"
+        },
+        "data_description": {
+          "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast: the market price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS, each without VAT and surcharges.",
+          "grid_fee": "Energy-related grid fee of your grid operator, net.",
+          "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
+          "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
+          "base_price": "Optional, incl. VAT. Booked pro rata per day."
+        }
+      },
+      "dynamic_total": {
+        "title": "Dynamic tariff: total price sensor",
+        "description": "A sensor that already contains the whole price per kWh: exchange price plus grid fee, levies, taxes, supplier surcharge and VAT. Calculates only from the setup on (no lookback, no import of statistics) – for that, choose “exchange price plus surcharges”.",
+        "data": {
+          "price_entity": "Total price sensor",
+          "base_price": "Base price per month"
+        },
+        "data_description": {
+          "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS.",
+          "base_price": "Optional, incl. VAT. Booked pro rata per day."
         }
       }
     },

@@ -1,8 +1,9 @@
 """Config flow: meter and two tariffs; more tariffs as subentries.
 
-Setup asks for the meter, then a fixed price and a total-price sensor; both
-become tariff subentries. "Add tariff" offers three kinds: fixed price, total
-price sensor, exchange price plus surcharges. Reconfiguring the entry changes
+Setup asks for the meter, the fixed price, then how the dynamic tariff is
+priced: exchange price plus surcharges (recommended, the only kind that can
+look back before the setup) or a total-price sensor; both tariffs become
+subentries. "Add tariff" offers the same three kinds. Reconfiguring the entry changes
 name and meter; reconfiguring a tariff shows its form again. Every change
 reloads the entry (update listener), which recomputes the whole period.
 """
@@ -34,8 +35,6 @@ from .const import (
     CONF_BASE_PRICE,
     CONF_CHANGES,
     CONF_CURRENT,
-    CONF_DYNAMIC_BASE,
-    CONF_DYNAMIC_PRICE,
     CONF_FIXED_BASE,
     CONF_FIXED_PRICE,
     CONF_FROM,
@@ -57,6 +56,7 @@ from .const import (
     KIND_FIXED,
     KINDS,
     SUBENTRY_TARIFF,
+    TARIFF_DYNAMIC,
 )
 from .meter import UNIT_FACTORS
 from .modul3 import WindowError, overlaps, parse_windows
@@ -65,7 +65,7 @@ from .tariff_config import (
     change_fields,
     default_titles,
     entry_data,
-    initial_tariffs,
+    initial_fixed_tariff,
     state_at,
 )
 from .tariffs import BasePeriod
@@ -209,24 +209,20 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_tariffs(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 2: fixed price and total-price sensor, optional base prices."""
+        """Step 2: the fixed price (the current tariff), optional base price."""
         errors: dict[str, str] = {}
         if user_input is not None:
             if not user_input.get(CONF_FIXED_PRICE):
                 errors[CONF_FIXED_PRICE] = "price_required"
-            if error := validate_price_entity(
-                self.hass, user_input[CONF_DYNAMIC_PRICE]
-            ):
-                errors[CONF_DYNAMIC_PRICE] = error
-            if not errors:
-                return await self._async_create(user_input)
+            else:
+                self._data[CONF_FIXED_PRICE] = user_input[CONF_FIXED_PRICE]
+                self._data[CONF_FIXED_BASE] = user_input.get(CONF_FIXED_BASE)
+                return await self.async_step_dynamic()
 
         schema = vol.Schema(
             {
                 vol.Required(CONF_FIXED_PRICE): PRICE_NUMBER,
                 vol.Optional(CONF_FIXED_BASE): BASE_NUMBER,
-                vol.Required(CONF_DYNAMIC_PRICE): PRICE_SENSOR,
-                vol.Optional(CONF_DYNAMIC_BASE): BASE_NUMBER,
             }
         )
         return self.async_show_form(
@@ -237,11 +233,69 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _async_create(self, tariffs: dict[str, Any]) -> ConfigFlowResult:
+    async def async_step_dynamic(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 3: how the dynamic tariff is priced, the recommended way first."""
+        return self.async_show_menu(
+            step_id="dynamic", menu_options=[KIND_DYNAMIC_MARKET, KIND_DYNAMIC_TOTAL]
+        )
+
+    async def async_step_dynamic_market(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_dynamic_step(KIND_DYNAMIC_MARKET, user_input)
+
+    async def async_step_dynamic_total(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_dynamic_step(KIND_DYNAMIC_TOTAL, user_input)
+
+    async def _async_dynamic_step(
+        self, kind: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        """Step 4: the dynamic tariff's fields; its base price is per month."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if error := validate_price_entity(self.hass, user_input[CONF_PRICE_ENTITY]):
+                errors[CONF_PRICE_ENTITY] = error
+            else:
+                return await self._async_create(
+                    _tariff_data(
+                        kind,
+                        {
+                            **user_input,
+                            CONF_BASE_PERIOD: BasePeriod.MONTH.value,
+                            CONF_CURRENT: False,
+                        },
+                    )
+                )
+
+        hidden = (CONF_NAME, CONF_BASE_PERIOD, CONF_CURRENT)
+        schema = vol.Schema(
+            {
+                key: value
+                for key, value in _tariff_schema(kind).schema.items()
+                if key.schema not in hidden
+            }
+        )
+        return self.async_show_form(
+            step_id=kind,
+            data_schema=self.add_suggested_values_to_schema(
+                schema, user_input or {CONF_VAT: DEFAULT_VAT}
+            ),
+            errors=errors,
+        )
+
+    async def _async_create(self, dynamic: dict[str, Any]) -> ConfigFlowResult:
         meter = self._data[CONF_METER]
         await self.async_set_unique_id(meter)
         self._abort_if_unique_id_configured()
-        titles = default_titles(self.hass.config.language)
+        fixed_title, dynamic_title = default_titles(self.hass.config.language)
+        tariffs = [
+            (fixed_title, initial_fixed_tariff(self._data)),
+            (dynamic_title, {CONF_KEY: TARIFF_DYNAMIC, **dynamic}),
+        ]
         return self.async_create_entry(
             title=self._data[CONF_NAME],
             data=entry_data(self._data),
@@ -252,7 +306,7 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                     title=title,
                     unique_id=None,
                 )
-                for title, data in initial_tariffs(tariffs, titles)
+                for title, data in tariffs
             ],
         )
 

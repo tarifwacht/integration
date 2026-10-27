@@ -67,8 +67,10 @@ A sensor without a forecast works too: its current value applies until it change
 ## Setup
 
 1. **Grid import meter:** name (e.g. "Home") and meter.
-2. **Tariffs:** energy price of a fixed-price tariff (ct/kWh, gross) and a sensor with the total price of a dynamic tariff, for both optionally the base price per month. This creates the first two tariffs; the fixed price is "My current tariff".
-3. **Recommended:** add the dynamic tariff a second time as "exchange price plus surcharges" – see [Adding a dynamic tariff](#adding-a-dynamic-tariff). You can delete the total-price tariff afterwards.
+2. **Fixed-price tariff:** energy price (ct/kWh, gross), optionally the base price per month. It becomes "My current tariff".
+3. **Dynamic tariff:** first choose the kind – **exchange price plus surcharges** (recommended, see [Adding a dynamic tariff](#adding-a-dynamic-tariff)) or a sensor with the total price (calculates only from the setup on) –, then the prices.
+
+This creates the first two tariffs. If you set up Tarifwacht before 0.1.0b10 with a total price sensor: add the dynamic tariff a second time as "exchange price plus surcharges", then you can delete the old one.
 
 ### More tariffs
 

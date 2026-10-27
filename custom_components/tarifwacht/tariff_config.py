@@ -156,27 +156,29 @@ def default_titles(language: str) -> tuple[str, str]:
     return ("Fixed price", "Dynamic")
 
 
+def initial_fixed_tariff(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Data of the fixed tariff of the setup form: the current one."""
+    return {
+        CONF_KEY: TARIFF_FIXED,
+        CONF_KIND: KIND_FIXED,
+        CONF_PRICE: float(config[CONF_FIXED_PRICE]),
+        CONF_BASE_PRICE: float(config.get(CONF_FIXED_BASE) or 0),
+        CONF_BASE_PERIOD: BasePeriod.MONTH.value,
+        CONF_CURRENT: True,
+    }
+
+
 def initial_tariffs(
     config: Mapping[str, Any], titles: tuple[str, str]
 ) -> list[tuple[str, dict[str, Any]]]:
-    """(title, data) of the fixed and the dynamic tariff of the setup form.
+    """(title, data) of the two tariffs of 0.1.0b1, for its migration.
 
-    Used for new entries and to migrate entries of 0.1.0b1; the keys keep the
-    unique ids of that version's entities. The fixed tariff is the current one.
+    The keys keep the unique ids of that version's entities. The fixed
+    tariff is the current one.
     """
     fixed_title, dynamic_title = titles
     return [
-        (
-            fixed_title,
-            {
-                CONF_KEY: TARIFF_FIXED,
-                CONF_KIND: KIND_FIXED,
-                CONF_PRICE: float(config[CONF_FIXED_PRICE]),
-                CONF_BASE_PRICE: float(config.get(CONF_FIXED_BASE) or 0),
-                CONF_BASE_PERIOD: BasePeriod.MONTH.value,
-                CONF_CURRENT: True,
-            },
-        ),
+        (fixed_title, initial_fixed_tariff(config)),
         (
             dynamic_title,
             {
