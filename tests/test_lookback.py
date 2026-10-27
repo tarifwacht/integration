@@ -18,6 +18,7 @@ from custom_components.tarifwacht.engine import Engine, month_bounds
 from custom_components.tarifwacht.lookback import (
     FallbackPrice,
     Lookback,
+    hourly_costs,
     hours_without_energy,
     spread_hours,
 )
@@ -114,6 +115,37 @@ def test_hours_without_energy() -> None:
         )
         == 3
     )
+
+
+def test_hourly_costs() -> None:
+    table = PriceTable()
+    tariffs = {
+        "fixed": Tariff(FixedPrice(0.30), 31.0),  # 1 €/day in October
+        "dynamic": Tariff(table, 0.0),
+    }
+    # 10:30-11:15 UTC on 25.10. (100 quarter hours: 0.01 € base each).
+    start, end = utc(2026, 10, 25, 10, 30), utc(2026, 10, 25, 11, 15)
+    table.merge({utc(2026, 10, 25, 10, 30): 0.20, utc(2026, 10, 25, 10, 45): 0.40})
+    quarters = [
+        (utc(2026, 10, 25, 10, 15), 9.0),  # before the period
+        (utc(2026, 10, 25, 10, 30), 1.0),
+        (utc(2026, 10, 25, 10, 45), 0.5),
+        (utc(2026, 10, 25, 11, 0), 0.0),  # no energy: a missing price is fine
+    ]
+    costs = hourly_costs(quarters, tariffs, start, end, BERLIN)
+    h10, h11 = utc(2026, 10, 25, 10), utc(2026, 10, 25, 11)
+    assert costs.energy == {h10: 1.5, h11: 0.0}
+    assert costs.consumption_cost["fixed"] == {h10: pytest.approx(0.45), h11: 0.0}
+    assert costs.cost["fixed"] == {
+        h10: pytest.approx(0.45 + 0.02),
+        h11: pytest.approx(0.01),
+    }
+    assert costs.cost["dynamic"][h10] == pytest.approx(0.20 + 0.20)
+    assert costs.incomplete == set()
+
+    # Energy in a quarter hour without price: the tariff is incomplete.
+    quarters.append((utc(2026, 10, 25, 11, 0), 0.25))
+    assert hourly_costs(quarters, tariffs, start, end, BERLIN).incomplete == {"dynamic"}
 
 
 def test_fallback_only_before_until() -> None:

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 
 from .tariffs import PriceSource, Tariff
 from .timeslots import QUARTER, slot_start
@@ -66,6 +66,59 @@ def spread_hours(
             if first <= slot < last:
                 quarters[slot] = energy / 4
     return quarters
+
+
+@dataclass
+class HourlyCosts:
+    """Energy and costs per UTC hour: the rows of long-term statistics."""
+
+    energy: dict[datetime, float]
+    consumption_cost: dict[str, dict[datetime, float]]
+    # Consumption cost plus base price.
+    cost: dict[str, dict[datetime, float]]
+    # Tariffs without the price of a quarter hour with energy.
+    incomplete: set[str]
+
+
+def hourly_costs(
+    quarters: Iterable[tuple[datetime, float]],
+    tariffs: dict[str, Tariff],
+    start: datetime,
+    end: datetime,
+    tz: tzinfo,
+) -> HourlyCosts:
+    """Sum the quarter hours in [start, end) per hour, every hour of it listed.
+
+    Hours without energy still carry the base price.
+    """
+    hours: list[datetime] = []
+    hour = hour_start(start)
+    while hour < end:
+        hours.append(hour)
+        hour += HOUR
+    energy = dict.fromkeys(hours, 0.0)
+    consumption = {key: dict.fromkeys(hours, 0.0) for key in tariffs}
+    incomplete: set[str] = set()
+    for slot, kwh in quarters:
+        if not start <= slot < end:
+            continue
+        hour = hour_start(slot)
+        energy[hour] += kwh
+        for key, tariff in tariffs.items():
+            if (price := tariff.price(slot)) is None:
+                if kwh:
+                    incomplete.add(key)
+                continue
+            consumption[key][hour] += kwh * price
+    cost = {
+        key: {
+            hour: consumption[key][hour]
+            + tariff.base_between(max(hour, start), min(hour + HOUR, end), tz)
+            for hour in hours
+        }
+        for key, tariff in tariffs.items()
+    }
+    return HourlyCosts(energy, consumption, cost, incomplete)
 
 
 def hours_without_energy(

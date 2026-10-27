@@ -262,6 +262,20 @@
           "description": "Optional. Ohne Angabe: bis jetzt."
         }
       }
+    },
+    "import_statistics": {
+      "name": "Statistik nachtragen",
+      "description": "Schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren (Strombezug, Kosten, Differenz), damit Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.",
+      "fields": {
+        "config_entry": {
+          "name": "Zähler",
+          "description": "Der Tarifwacht-Eintrag, dessen Sensoren die Vergangenheit bekommen."
+        },
+        "start": {
+          "name": "Beginn",
+          "description": "Erster Tag, der nachgetragen wird, vor der Einrichtung. Nicht früher als die Langzeitstatistik des Zählers."
+        }
+      }
     }
   },
   "exceptions": {
@@ -270,6 +284,18 @@
     },
     "smard_failed": {
       "message": "Börsenpreise von SMARD.de konnten nicht geladen werden ({error}). Bitte später noch einmal versuchen."
+    },
+    "import_start_after_setup": {
+      "message": "Der Beginn muss vor der Einrichtung dieses Eintrags liegen – danach haben die Sensoren schon Statistik."
+    },
+    "import_no_statistics_yet": {
+      "message": "Die Sensoren haben noch keine Statistik. Home Assistant legt sie stündlich an – bitte in einer Stunde erneut versuchen."
+    },
+    "import_nothing_to_import": {
+      "message": "Nichts nachzutragen: Die Statistik reicht bereits bis zu diesem Tag zurück."
+    },
+    "import_prices_missing": {
+      "message": "Nichts nachgetragen: Allen Tarifen fehlen in diesem Zeitraum Preise. Ein Tarif mit Gesamtpreis-Sensor hat keine Preise von vor der Einrichtung – lege ihn zusätzlich als „Börsenpreis plus Aufschläge“ an."
     }
   },
   "issues": {

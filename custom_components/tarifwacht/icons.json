@@ -24,6 +24,9 @@
   "services": {
     "compare": {
       "service": "mdi:scale-balance"
+    },
+    "import_statistics": {
+      "service": "mdi:database-import"
     }
   }
 }

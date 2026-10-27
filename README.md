@@ -28,7 +28,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
-- **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet?
+- **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet? Auf Wunsch auch [in die Langzeitstatistik nachgetragen](#statistik-nachtragen).
 - **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum.
 - **Verliert nichts:** Fällt der Zähler aus oder startet Home Assistant neu, wird der Verbrauch der Lücke nachgebucht. Fehlt ein Preis, rechnet Tarifwacht nie mit 0 €. Zähler-Resets und unplausible Sprünge werden erkannt und nicht gebucht.
 - **Schont SD-Karten:** schreibt nur einmal pro Viertelstunde (abgeschlossene Tage einmal am Tag ins Jahresarchiv) und aktualisiert die Sensoren höchstens einmal pro Minute.
@@ -173,6 +173,22 @@ Liegt der Beginn vor der Einrichtung, rechnet Tarifwacht diese Zeit nach:
 
 Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_variable`), z. B. für eine Monatsübersicht per Benachrichtigung.
 
+## Statistik nachtragen
+
+Die Sensoren haben Langzeitstatistik erst ab der Einrichtung. Damit Statistik-Karten und Diagramme (z. B. [Kosten je Monat](#dashboard-kosten-je-monat)) auch die Zeit davor zeigen, gibt es die Aktion **Tarifwacht: Statistik nachtragen** (*Einstellungen → Werkzeuge → Aktionen*, früher *Entwicklerwerkzeuge → Aktionen*):
+
+```yaml
+action: tarifwacht.import_statistics
+data:
+  config_entry: <Zähler auswählen>
+  start: "2026-01-01"
+```
+
+- Sie rechnet wie der [Rückblick](#rückblick-vor-der-einrichtung) und schreibt die Stunden **vor** dem ersten vorhandenen Statistikwert in die Langzeitstatistik von Strombezug, Verbrauchskosten, Kosten gesamt und Differenz; die späteren Summen werden passend verschoben. Ein später hinzugefügter Tarif bekommt so auch die Zeit seit der Einrichtung.
+- Der Beginn muss vor der Einrichtung liegen; früher als die Langzeitstatistik deines Zählers geht es nicht (die Antwort nennt den tatsächlichen Beginn).
+- Ein Tarif, dem im Zeitraum Preise fehlen – etwa ein **Sensor mit Gesamtpreis** –, wird ganz übersprungen und unter `skipped` genannt: lieber keine Vergangenheit als eine mit Lücken.
+- **Das greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.** Ein zweiter Aufruf findet nichts mehr nachzutragen.
+
 ## Datenschutz
 
 Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme: Vergleichst du eine Zeit vor der Einrichtung, lädt Tarifwacht öffentliche Börsenpreise von SMARD.de. Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
@@ -181,7 +197,7 @@ Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzig
 
 - **Keine Abrechnung:** Abweichungen zur Rechnung sind normal (anderer Zähler, Rundung, Abschläge).
 - **Kein verändertes Verhalten:** Der Vergleich rechnet deinen tatsächlichen Verbrauch – was du mit einem dynamischen Tarif verschieben würdest, sieht er nicht.
-- **Sensoren beginnen bei der Einrichtung:** Die Zeit davor gibt es nur über die Aktion „Tarife vergleichen“, nicht in Statistik-Karten.
+- **Sensoren beginnen bei der Einrichtung:** Die Zeit davor gibt es über die Aktion „Tarife vergleichen“ und – für Statistik-Karten – über [Statistik nachtragen](#statistik-nachtragen).
 - **Keine Netzeinspeisung:** Tarifwacht rechnet nur den Bezug. Für die Einspeisung gibt es das Schwesterprojekt [Einspeisewacht](https://github.com/einspeisewacht/integration).
 - **Module 1 und 2** nach § 14a EnWG bildet Tarifwacht nicht eigens ab.
 

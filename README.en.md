@@ -30,7 +30,7 @@ The user interface is available in German and English and follows the language o
 - **Modul 3** (§ 14a EnWG): time-variable grid fee with low-load and high-load windows per quarter.
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
 - **Base prices** optional, per month or per year, booked pro rata per day.
-- **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff?
+- **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff? On request also [written into the long-term statistics](#import-statistics).
 - **Prices every tariff from the setup on:** consumption and prices are stored per quarter hour. A tariff added or corrected later therefore applies to the whole period.
 - **Loses nothing:** if the meter drops out or Home Assistant restarts, the consumption of the gap is booked afterwards. If a price is missing, Tarifwacht never uses 0 €. Meter resets and implausible jumps are detected and not booked.
 - **Easy on SD cards:** writes only once per quarter hour (closed days once a day into a yearly archive) and updates the sensors at most once a minute.
@@ -175,6 +175,22 @@ If the start lies before the setup, Tarifwacht calculates that time as well:
 
 You can also use the response in scripts and automations (`response_variable`), e.g. for a monthly summary as a notification.
 
+## Import statistics
+
+The sensors only have long-term statistics from the setup on. So that statistics cards and graphs (e.g. [cost per month](#dashboard-cost-per-month)) also show the time before, there is the action **Tarifwacht: Import statistics** (*Settings → Tools → Actions*, formerly *Developer tools → Actions*):
+
+```yaml
+action: tarifwacht.import_statistics
+data:
+  config_entry: <choose the meter>
+  start: "2026-01-01"
+```
+
+- It calculates like [looking back](#looking-back-before-the-setup) and writes the hours **before** the first existing statistic into the long-term statistics of grid purchase, consumption cost, total cost and difference; the later sums are shifted to match. A tariff added later thus also gets the time since setup.
+- The start must be before the setup; it cannot go back further than your meter's long-term statistics (the response names the actual start).
+- A tariff lacking prices in the period – such as a **sensor with the total price** – is skipped entirely and listed under `skipped`: better no history than one with gaps.
+- **This changes the statistics database – create a backup first.** A second call finds nothing left to import.
+
 ## Privacy
 
 Tarifwacht calculates locally and only reads the entities you select. Only exception: if you compare a time before the setup, Tarifwacht loads public exchange prices from SMARD.de. Nothing about you is transferred – just the download of the price files with the identifier `Tarifwacht/<version>`. The diagnostics file contains your tariff settings (prices, sensors), but no names, meter readings, energy or cost totals.
@@ -183,7 +199,7 @@ Tarifwacht calculates locally and only reads the entities you select. Only excep
 
 - **No billing:** differences to your bill are normal (different meter, rounding, instalments).
 - **No changed behaviour:** the comparison prices your actual consumption – what you would shift with a dynamic tariff is not visible to it.
-- **Sensors start at setup:** the time before is only available through the action Compare tariffs, not in statistics cards.
+- **Sensors start at setup:** the time before is available through the action Compare tariffs and – for statistics cards – through [Import statistics](#import-statistics).
 - **No grid feed-in:** Tarifwacht only prices grid consumption. For feed-in there is the sister project [Einspeisewacht](https://github.com/einspeisewacht/integration).
 - **Modul 1 and 2** under § 14a EnWG are not modelled separately.
 

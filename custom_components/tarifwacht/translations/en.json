@@ -262,6 +262,20 @@
           "description": "Optional. Without it: until now."
         }
       }
+    },
+    "import_statistics": {
+      "name": "Import statistics",
+      "description": "Writes the hours before the sensors' first long-term statistics (energy, costs, difference) so statistics cards and graphs also show the time before the setup. Changes the statistics database – create a backup first.",
+      "fields": {
+        "config_entry": {
+          "name": "Meter",
+          "description": "The Tarifwacht entry whose sensors get the history."
+        },
+        "start": {
+          "name": "Start",
+          "description": "First day to import, before the setup. Not earlier than the meter's long-term statistics."
+        }
+      }
     }
   },
   "exceptions": {
@@ -270,6 +284,18 @@
     },
     "smard_failed": {
       "message": "Exchange prices could not be loaded from SMARD.de ({error}). Please try again later."
+    },
+    "import_start_after_setup": {
+      "message": "The start must be before the setup of this entry – after it, the sensors already have statistics."
+    },
+    "import_no_statistics_yet": {
+      "message": "The sensors have no statistics yet. Home Assistant creates them every hour – please try again in an hour."
+    },
+    "import_nothing_to_import": {
+      "message": "Nothing to import: the statistics already reach back to this day."
+    },
+    "import_prices_missing": {
+      "message": "Nothing imported: every tariff lacks prices in this period. A tariff with a total price sensor has no prices from before the setup – add it as “exchange price plus surcharges” as well."
     }
   },
   "issues": {

@@ -22,6 +22,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .smard import ATTRIBUTION
 from .smard_cache import SmardError
+from .statistics_import import StatisticsImportError, async_import_history
 
 if TYPE_CHECKING:
     from . import TarifwachtConfigEntry
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from .runtime import MeterRuntime
 
 SERVICE_COMPARE = "compare"
+SERVICE_IMPORT_STATISTICS = "import_statistics"
 ATTR_CONFIG_ENTRY = "config_entry"
 ATTR_START = "start"
 ATTR_END = "end"
@@ -38,6 +40,12 @@ COMPARE_SCHEMA = vol.Schema(
         vol.Required(ATTR_CONFIG_ENTRY): ConfigEntrySelector({"integration": DOMAIN}),
         vol.Optional(ATTR_START): cv.datetime,
         vol.Optional(ATTR_END): cv.datetime,
+    }
+)
+IMPORT_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY): ConfigEntrySelector({"integration": DOMAIN}),
+        vol.Required(ATTR_START): cv.date,
     }
 )
 
@@ -152,10 +160,35 @@ def async_setup_services(hass: HomeAssistant) -> None:
         response["months"] = months
         return response
 
+    async def import_statistics(call: ServiceCall) -> ServiceResponse:
+        entry: TarifwachtConfigEntry = service.async_get_config_entry(
+            hass, DOMAIN, call.data[ATTR_CONFIG_ENTRY]
+        )
+        try:
+            result = await async_import_history(hass, entry, call.data[ATTR_START])
+        except StatisticsImportError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key=f"import_{err.key}"
+            ) from err
+        except SmardError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="smard_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        return result if call.return_response else None
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_COMPARE,
         compare,
         schema=COMPARE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_IMPORT_STATISTICS,
+        import_statistics,
+        schema=IMPORT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )

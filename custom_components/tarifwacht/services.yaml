@@ -11,3 +11,15 @@ compare:
     end:
       selector:
         datetime:
+import_statistics:
+  fields:
+    config_entry:
+      required: true
+      selector:
+        config_entry:
+          integration: tarifwacht
+    start:
+      required: true
+      example: "2026-01-01"
+      selector:
+        date:
