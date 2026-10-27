@@ -41,7 +41,7 @@ BERLIN = ZoneInfo("Europe/Berlin")  # week files start on Monday 00:00 local tim
 TIMEOUT = aiohttp.ClientTimeout(total=30)
 INDEX_MAX_AGE = timedelta(days=14)  # newest week file must start within this
 PRICES_MAX_AGE = timedelta(days=2)  # day-ahead prices reach into tomorrow
-FULL_WEEK_SLOTS = 7 * 96
+QUARTER = timedelta(minutes=15)
 MIN_WEEK_SHARE = 0.95
 PRICE_RANGE = (-0.5, 5.0)  # EUR/kWh; market limits are -500 and +4000 EUR/MWh
 
@@ -70,6 +70,13 @@ async def get_json(session: aiohttp.ClientSession, url: str) -> Any:
 
 def ms_to_utc(ms: int) -> datetime:
     return datetime.fromtimestamp(ms / 1000, UTC)
+
+
+def week_slots(start: datetime) -> int:
+    """Quarter-hours in the week file from start: 672, or 668/676 with a DST change."""
+    # Seven local days later; subtract in UTC (same-tzinfo subtraction is naive).
+    end = (start.astimezone(BERLIN) + timedelta(days=7)).astimezone(UTC)
+    return (end - start.astimezone(UTC)) // QUARTER
 
 
 async def run_checks(
@@ -116,12 +123,13 @@ async def run_checks(
     previous, current = weeks
     prices = {**previous, **current}
 
+    expected = week_slots(ms_to_utc(index[-2]))
     rows.append(
         (
             "Vorwoche: Viertelstunden mit Preis",
-            f"{len(previous)} von {FULL_WEEK_SLOTS}",
+            f"{len(previous)} von {expected}",
             "Lücken im Viertelstundenraster (Zeitstempel geändert?)"
-            if len(previous) < MIN_WEEK_SHARE * FULL_WEEK_SLOTS
+            if len(previous) < MIN_WEEK_SHARE * expected
             else None,
         )
     )

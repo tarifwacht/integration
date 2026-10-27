@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- Intern: Der Quellen-Check erwartet in Wochen mit Zeitumstellung 668 bzw. 676 Viertelstunden statt immer 672 (meldete „676 von 672“).
+
 ## 0.1.0b7 – 2026-10-27
 
 - **Statistik nachtragen** (neue Aktion `tarifwacht.import_statistics`): schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren – Strombezug, Verbrauchskosten, Kosten gesamt und Differenz – so dass Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Gerechnet wird wie beim Rückblick; die späteren Summen werden passend verschoben. Ein Tarif, dem im Zeitraum Preise fehlen (z. B. ein Gesamtpreis-Sensor), wird ganz übersprungen. Vorher ein Backup anlegen.
