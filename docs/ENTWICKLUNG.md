@@ -75,6 +75,7 @@ Nicht unterstützt (zu unsicher oder nicht vorhanden): HA-Core Nord Pool und Tib
 
 - Format, Endpunkte und Eigenheiten wie in der Einspeisewacht (`docs/ENTWICKLUNG.md` dort, Abschnitt 3, Stand Commit 65857dc): Index `…/4169/DE-LU/index_quarterhour.json`, Wochendateien ab Montag 00:00 Ortszeit, €/MWh, `null` für fehlende Werte, vor dem 01.10.2025 jeder Stundenpreis viermal. Die `chart_data`-Endpunkte sind **nicht als API dokumentiert**.
 - Fixtures aus der Einspeisewacht übernommen (`tests/fixtures/smard_*.json`, Herkunft in `_index.json`). Test: Am 25.10.2026 stimmen alle 100 Viertelstunden mit dem EPEX-Spot-Marktpreis überein – SMARD ergänzt deshalb nur Tarife „Börsenpreis plus Aufschläge“, nie einen Gesamtpreis-Sensor.
+- **Quellen-Check:** `uv run tools/source_check.py` prüft Index und die beiden neuesten Wochen (Format, Aktualität, Viertelstundenraster, Preisspanne) mit dem echten Code; läuft montags per `.github/workflows/source-check.yml`, öffnet bei Problemen ein Issue (Label `quellen-check`), kommentiert ein offenes und schließt es, sobald alles wieder geht. Zeitgesteuerte Workflows laufen nur von `main` und schlafen nach 60 Tagen ohne Repo-Aktivität ein.
 - Lizenz CC BY 4.0, Quellenangabe „Bundesnetzagentur | SMARD.de“ (README, Antwort der Aktion unter `estimate.exchange_prices`).
 
 ### Bezugszähler
