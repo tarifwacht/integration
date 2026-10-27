@@ -219,6 +219,33 @@ def test_missing_dynamic_price_is_never_free() -> None:
     assert engine.energy == pytest.approx(1.0)
 
 
+def test_prices_arriving_after_the_start_are_booked() -> None:
+    """A tariff added with a new price sensor: the start recomputes first."""
+    engine = make_engine()
+    start = utc(2026, 1, 5, 9)
+    engine.start(start)
+    engine.on_meter(100.0, start, start)
+    engine.on_meter(101.0, utc(2026, 1, 5, 9, 30), utc(2026, 1, 5, 9, 30))
+    # Two days later the sensor has never reported these prices.
+    later = utc(2026, 1, 7, 9)
+    restored = restart(engine, later)
+    assert restored.totals["dynamic"].energy_without_price == pytest.approx(1.0)
+
+    restored.on_prices(TOTAL, ParsedPrices(prices={start: 0.20}), later)
+    assert restored.totals["dynamic"].energy_without_price == pytest.approx(0.5)
+
+    # A price for a quarter hour without energy: no recomputation.
+    totals = restored.totals
+    restored.on_prices(TOTAL, ParsedPrices(prices={later: 0.30}), later)
+    assert restored.totals is totals
+
+    restored.on_prices(TOTAL, ParsedPrices(prices={start + QUARTER: 0.40}), later)
+    dynamic = restored.totals["dynamic"]
+    assert dynamic.energy_without_price == 0
+    assert dynamic.consumption_cost == pytest.approx(0.5 * 0.20 + 0.5 * 0.40)
+    assert restored.comparison.energy_left_out == 0
+
+
 def test_comparison_leaves_out_quarter_hours_without_price() -> None:
     engine = make_engine(fixed_base=31.0)
     start = utc(2026, 1, 5, 9)

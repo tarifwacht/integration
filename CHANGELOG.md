@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Neuer Tarif mit neuem Preissensor:** Die Zeit seit der Einrichtung, die länger als 24 Stunden zurückliegt, wurde bis zum nächsten Neustart „ohne Preis“ gezählt – die Neuberechnung beim Laden lief, bevor der neue Sensor seine Preise geliefert hatte. Kommen Preise für schon so gezählte Viertelstunden, rechnet Tarifwacht jetzt neu. Das hilft auch, wenn ein Preissensor beim Start von Home Assistant noch nicht bereit ist.
+
 ## 0.1.0b8 – 2026-10-27
 
 - **Blueprint „Monatsübersicht“:** schickt am Ersten jedes Monats Strombezug, Kosten jedes Tarifs, Differenz zum aktuellen Tarif und den günstigsten Tarif des Vormonats – als Benachrichtigung in Home Assistant oder mit einer eigenen Aktion. Import per Knopf im README.

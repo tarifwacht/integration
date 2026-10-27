@@ -228,7 +228,16 @@ class Engine:
     def on_prices(self, source: str, parsed: ParsedPrices, now: datetime) -> None:
         """A new price forecast from a price sensor."""
         self.last_parse[source] = parsed
-        self.price_table(source).merge(parsed.prices)
+        table = self.price_table(source)
+        new = [slot for slot in parsed.prices if table.get(slot) is None]
+        table.merge(parsed.prices)
+        # Energy already counted without a price may get it after all: a
+        # tariff added with a new price sensor (its prices arrive after the
+        # recomputation on start) or a sensor that was not ready at start.
+        if any(t.energy_without_price for t in self.totals.values()) and any(
+            self.consumption.get(slot) for slot in new
+        ):
+            self.recompute(now)
         self.tick(now)
 
     def tick(self, now: datetime) -> None:
