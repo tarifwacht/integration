@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -305,6 +305,46 @@ async def test_closed_days_move_to_yearly_archive(
 
 
 @pytest.mark.freeze_time(START)
+async def test_tick_archives_closed_days_while_running(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """At a UTC day change the quarter-hour tick archives without a restart."""
+    entry = await setup(hass)
+    await two_kwh(hass, freezer)
+    runtime = entry.runtime_data
+    key = f"{DOMAIN}.{entry.entry_id}.2026"
+    assert runtime.engine.archived_until == date(2026, 10, 24)
+
+    # First tick of 26.10. (UTC): 25.10. is yesterday and stays live.
+    freezer.move_to(datetime(2026, 10, 26, 0, 0, 1, tzinfo=UTC))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert runtime.engine.archived_until == date(2026, 10, 25)
+    archive = hass_storage.get(key, {}).get("data", {})
+    assert "2026-10-25" not in archive.get("consumption", {})
+
+    # First tick of 27.10. (UTC): 25.10. is closed and goes to the archive.
+    freezer.move_to(datetime(2026, 10, 27, 0, 0, 1, tzinfo=UTC))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.state is ConfigEntryState.LOADED
+    assert runtime.engine.archived_until == date(2026, 10, 26)
+    archive = hass_storage[key]["data"]
+    assert "2026-10-25" in archive["consumption"]
+    assert "2026-10-25" in archive["prices"][PRICE]
+    assert value(hass, entry, "energy") == pytest.approx(2.0)
+
+    # The live file no longer holds the archived day.
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    live = hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]
+    assert "2026-10-25" not in live["consumption"]
+    assert live["archived_until"] == "2026-10-26"
+    assert hass_storage[key]["data"]["consumption"] == archive["consumption"]
+
+
+@pytest.mark.freeze_time(START)
 async def test_compare_action(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
@@ -410,9 +450,10 @@ async def test_difference_leaves_out_quarter_hours_without_price(
     freezer.move_to(datetime(2026, 10, 25, 16, 20, tzinfo=UTC))
     hass.states.async_set(METER, "1000500", METER_ATTRIBUTES)
     await hass.async_block_till_done()
+    # The tick also starts archiving 24.10. (UTC); let it finish.
     freezer.move_to(datetime(2026, 10, 26, 16, 30, 1, tzinfo=UTC))
     async_fire_time_changed(hass)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     left_out = 0.5 * 5 / 19.5
     registry = er.async_get(hass)
