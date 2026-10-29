@@ -7,10 +7,12 @@ from typing import Any
 
 import aiohttp
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.recorder import Recorder
 from homeassistant.components.recorder.models import StatisticMeanType
 from homeassistant.components.recorder.models.statistics import StatisticMetaData
 from homeassistant.components.recorder.statistics import async_import_statistics
+from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -34,6 +36,9 @@ from custom_components.tarifwacht.const import (
     KIND_DYNAMIC_MARKET,
     SUBENTRY_TARIFF,
 )
+from custom_components.tarifwacht.diagnostics import (
+    async_get_config_entry_diagnostics,
+)
 from custom_components.tarifwacht.smard import INDEX_URL, parse_week, week_url
 from custom_components.tarifwacht.timeslots import QUARTER
 from tests.conftest import load_fixture
@@ -46,7 +51,7 @@ from .conftest import (
     price_attributes,
     subentries_data,
 )
-from .test_init import START
+from .test_init import START, two_kwh, value
 
 # Week file with 25.10.2026 (Monday 19.10. 00:00 CEST).
 WEEK_MS = 1792360800000
@@ -226,3 +231,99 @@ async def test_smard_failure_is_reported(
     result = await compare(hass, entry)
     assert "estimate" not in result
     assert START - timedelta(minutes=1) < datetime.fromisoformat(result["start"])
+
+
+# --- tariff added later ----------------------------------------------------------
+
+NEW_MARKET = "sensor.new_market_price"
+NEW_TOTAL = "sensor.new_total_price"
+PRICE_UNIT = {"unit_of_measurement": "€/kWh"}
+
+
+async def add_tariff(
+    hass: HomeAssistant, entry: MockConfigEntry, kind: str, user_input: dict[str, Any]
+) -> str:
+    """Add a tariff through its subentry flow (reloads the entry)."""
+    flows = hass.config_entries.subentries
+    result = await flows.async_init(
+        (entry.entry_id, "tariff"), context={"source": SOURCE_USER}
+    )
+    result = await flows.async_configure(result["flow_id"], {"next_step_id": kind})
+    base = {"base_period": "month", "current": False}
+    await flows.async_configure(result["flow_id"], {**user_input, **base})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    added = next(s for s in entry.subentries.values() if s.title == user_input["name"])
+    return added.subentry_id
+
+
+@pytest.mark.freeze_time(START)
+async def test_added_exchange_price_tariff_gets_smard_prices(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    aioclient_mock: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A tariff added later with a new sensor: the time since the setup before
+    the sensor's first price is completed from SMARD.de."""
+    aioclient_mock.get(INDEX_URL, json=load_fixture("smard_index_quarterhour.json"))
+    aioclient_mock.get(
+        week_url(WEEK_MS), json=load_fixture("smard_week_2026-10-19.json")
+    )
+    entry = await setup_entry(hass, market=False)
+    await two_kwh(hass, freezer)
+    # A new exchange price sensor without forecast: Tarifwacht reads it from
+    # the quarter hour 16:15 UTC on.
+    hass.states.async_set(NEW_MARKET, "0.05", PRICE_UNIT)
+    fees = {"grid_fee": 6.0, "levies": 3.0, "margin": 1.0, "vat": 19.0}
+    key = await add_tariff(
+        hass,
+        entry,
+        "dynamic_market",
+        {"name": "Börse", "price_entity": NEW_MARKET, **fees},
+    )
+
+    smard = parse_week(load_fixture("smard_week_2026-10-19.json"))
+    expected = (1 + 1 / 30) * (smard[utc(2026, 10, 25, 16)] + 0.10) * 1.19
+    expected += 29 / 30 * (0.05 + 0.10) * 1.19
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(expected)
+    assert "tarifwacht.smard.2026" in hass_storage
+    # Restart: the stored SMARD.de prices are used, no download.
+    calls = aioclient_mock.call_count
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert aioclient_mock.call_count == calls
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(expected)
+
+
+@pytest.mark.freeze_time(START)
+async def test_added_total_price_tariff_gets_recorded_prices(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A total price comes from the sensor's own recorded states, never from
+    SMARD.de."""
+    # The new sensor's states, recorded before it belongs to a tariff.
+    hass.states.async_set(NEW_TOTAL, "0.20", PRICE_UNIT)
+    entry = await setup_entry(hass, market=False)
+    for at, entity, state, attributes in (
+        (utc(2026, 10, 25, 16, 14, 30), METER, "1001000", METER_ATTRIBUTES),
+        (utc(2026, 10, 25, 16, 15, 0, 300000), NEW_TOTAL, "0.30", PRICE_UNIT),
+        (utc(2026, 10, 25, 16, 29, 30), METER, "1002000", METER_ATTRIBUTES),
+        (utc(2026, 10, 25, 16, 30, 0, 300000), NEW_TOTAL, "0.40", PRICE_UNIT),
+    ):
+        freezer.move_to(at)
+        hass.states.async_set(entity, state, attributes)
+        await hass.async_block_till_done()
+    await async_wait_recording_done(hass)
+    freezer.move_to(utc(2026, 10, 25, 16, 31))
+
+    key = await add_tariff(
+        hass, entry, "dynamic_total", {"name": "Gesamt", "price_entity": NEW_TOTAL}
+    )
+    expected = (1 + 1 / 30) * 0.20 + 29 / 30 * 0.30
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(expected)
+    assert aioclient_mock.call_count == 0
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    assert diagnostics["unpriced_until"] == {}
+    assert diagnostics["past_prices_error"] is None

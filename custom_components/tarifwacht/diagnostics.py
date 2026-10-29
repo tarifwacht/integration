@@ -76,4 +76,12 @@ async def async_get_config_entry_diagnostics(
             else None,
             "error": runtime.backfill_error,
         },
+        # Sensors read only after the start (tariff added later): their own
+        # prices begin here; before, SMARD.de or the recorder fill in.
+        "unpriced_until": {
+            source: until.isoformat()
+            for source in engine.prices
+            if (until := engine.unpriced_until(source)) is not None
+        },
+        "past_prices_error": runtime.past_prices_error,
     }

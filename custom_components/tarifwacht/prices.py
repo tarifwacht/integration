@@ -18,6 +18,10 @@ from .timeslots import QUARTER, slot_start
 # Price sensors report EUR/kWh with up to 6 decimals (EPEX Spot: 5 or 6).
 PRICE_DIGITS = 6
 
+# A recorded price state this soon after a quarter-hour boundary is an
+# ordinary price change (EPEX Spot changes 0.1-0.4 s after it).
+PRICE_CHANGE_DELAY = timedelta(seconds=10)
+
 
 @dataclass
 class ParsedPrices:
@@ -167,6 +171,41 @@ def parse_price_attributes(attributes: Mapping[str, Any]) -> ParsedPrices | None
         parsed.format = "entsoe"
         return parsed
     return None
+
+
+def prices_from_states(
+    states: Iterable[tuple[datetime, float | None]], start: datetime, end: datetime
+) -> dict[datetime, float]:
+    """Prices of the quarter hours in [start, end) from a sensor's recorded states.
+
+    For the past of a price sensor: the recorder keeps its state (the price of
+    the running quarter hour), not its forecast attributes. Each state (time,
+    price or None if unavailable) is the price of the quarter hour it was
+    recorded in; the last one within a quarter hour wins, as in live
+    operation. It also holds for the following quarter hours if the next
+    state is an ordinary price change (right after a quarter-hour boundary).
+    A next state at any other time may follow a restart of Home Assistant:
+    the quarter hours in between stay without a price rather than get one
+    that may have changed while it was off.
+    """
+    ordered = sorted(states, key=lambda state: state[0])
+    first = slot_start(start)
+    prices: dict[datetime, float] = {}
+    for i, (at, price) in enumerate(ordered):
+        if price is None:
+            continue
+        own = slot_start(at)
+        last = own
+        if i + 1 < len(ordered):
+            next_at = ordered[i + 1][0]
+            next_slot = slot_start(next_at)
+            if next_at - next_slot <= PRICE_CHANGE_DELAY:
+                last = max(own, next_slot - QUARTER)
+        slot = max(own, first)
+        while slot <= last and slot < end:
+            prices[slot] = price
+            slot += QUARTER
+    return prices
 
 
 def attribute_shape(attributes: Mapping[str, Any]) -> dict[str, Any]:

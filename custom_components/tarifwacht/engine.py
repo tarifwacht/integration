@@ -12,7 +12,7 @@ forecasts and clock ticks, and stores `as_dict()`.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from itertools import chain
@@ -214,6 +214,42 @@ class Engine:
         self.backfill_until = None
         # Older days may have changed: the archives are written again.
         self.archived_until = None
+
+    def unpriced_until(self, source: str) -> datetime | None:
+        """End of the time since `started` before the first price of `source`.
+
+        A tariff added later, or given another price sensor, has no prices
+        for the time before Tarifwacht read that sensor. None if the prices
+        reach back to `started`, if there are none yet, or if there was no
+        consumption in that time.
+        """
+        first = next((slot for slot, _ in self.price_table(source).items()), None)
+        started = self.started
+        if started is None or first is None or first <= started:
+            return None
+        for slot, energy in self.consumption.items():
+            if slot >= first:
+                break
+            if slot >= started and energy:
+                return first
+        return None
+
+    def add_past_prices(self, source: str, prices: Mapping[datetime, float]) -> bool:
+        """Prices of `source` from before Tarifwacht read it (recorder).
+
+        Only quarter hours without a price get one. Archived days that change
+        are archived again. Call `recompute()` afterwards. True if any price
+        was added.
+        """
+        table = self.price_table(source)
+        new = {slot: p for slot, p in prices.items() if table.get(slot) is None}
+        if not new:
+            return False
+        table.merge(new)
+        first_day = min(new).astimezone(UTC).date()
+        if self.archived_until is not None and first_day < self.archived_until:
+            self.archived_until = first_day
+        return True
 
     def on_meter(self, value_kwh: float, at: datetime, now: datetime) -> MeterUpdate:
         """A new meter reading in kWh."""

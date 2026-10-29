@@ -14,6 +14,7 @@ from custom_components.tarifwacht.prices import (
     parse_interval_prices,
     parse_price_attributes,
     parse_start_prices,
+    prices_from_states,
 )
 from custom_components.tarifwacht.timeslots import (
     QUARTER,
@@ -335,3 +336,65 @@ def test_attribute_shape_has_no_values() -> None:
     }
     assert "raw_tomorrow" not in shape  # empty lists are left out
     assert "0.557" not in str(shape)
+
+
+# --- prices from recorded states -------------------------------------------------
+
+
+def recorded_states(
+    prices: list[tuple[datetime, float]], delay: timedelta = timedelta(seconds=0.3)
+) -> list[tuple[datetime, float | None]]:
+    """States as the recorder keeps them: a row only when the price changes,
+    shortly after the quarter-hour boundary (EPEX Spot)."""
+    states: list[tuple[datetime, float | None]] = []
+    for slot, price in prices:
+        if not states or states[-1][1] != price:
+            states.append((slot + delay, price))
+    return states
+
+
+def test_prices_from_states_reproduce_the_fixture() -> None:
+    """The step function of the state gives every quarter-hour price back,
+    also runs of equal prices without a state change (48 at 0 €)."""
+    prices = list(fixture_prices().items())
+    start, end = prices[0][0], prices[-1][0] + QUARTER
+    states = recorded_states(prices)
+    assert len(states) < len(prices)
+    # A later state ends the last price (it would be the next price change).
+    states.append((end + timedelta(seconds=0.2), 0.5))
+    assert prices_from_states(states, start, end) == dict(prices)
+
+
+def test_prices_from_states_not_across_a_restart() -> None:
+    """A state that does not start a quarter hour may follow a restart: the
+    time before it gets no price, the price may have changed meanwhile."""
+    a = utc(2026, 10, 25, 10)
+    states: list[tuple[datetime, float | None]] = [
+        (a + timedelta(seconds=0.3), 0.10),
+        # Home Assistant off from about 10:05, back at 11:03:27.
+        (a + timedelta(hours=1, minutes=3, seconds=27), 0.20),
+        (a + timedelta(hours=1, minutes=15, seconds=0.2), 0.30),
+    ]
+    prices = prices_from_states(states, a, a + timedelta(hours=2))
+    assert prices == {
+        a: 0.10,
+        a + timedelta(hours=1): 0.20,
+        a + timedelta(hours=1, minutes=15): 0.30,
+    }
+
+
+def test_prices_from_states_unavailable_and_period() -> None:
+    a = utc(2026, 10, 25, 10)
+    states: list[tuple[datetime, float | None]] = [
+        # Before the period: holds into it up to the next price change.
+        (a - timedelta(minutes=29, seconds=59.7), 0.10),
+        (a + QUARTER + timedelta(seconds=0.3), 0.20),
+        # Unavailable right at a boundary: no price from here on.
+        (a + 2 * QUARTER + timedelta(seconds=0.1), None),
+        (a + 4 * QUARTER + timedelta(seconds=0.4), 0.40),
+        # Unavailable within a quarter hour: the earlier price stays.
+        (a + 4 * QUARTER + timedelta(minutes=5), None),
+    ]
+    prices = prices_from_states(states, a, a + 5 * QUARTER)
+    assert prices == {a: 0.10, a + QUARTER: 0.20, a + 4 * QUARTER: 0.40}
+    assert prices_from_states([], a, a + QUARTER) == {}

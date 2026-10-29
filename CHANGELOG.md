@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Später hinzugefügter dynamischer Tarif rechnet wieder ab der Einrichtung:** Kam ein dynamischer Tarif nach der Einrichtung dazu oder bekam er einen anderen Preissensor, fehlten ihm die Preise der Zeit davor – der neue Sensor kannte sie nicht. „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ verglichen deshalb erst ab dem Hinzufügen (der Rest stand in `energy_left_out_kwh`), die Grundpreise liefen dagegen ab der Einrichtung. Jetzt füllt Tarifwacht diese Zeit beim Laden im Hintergrund auf: bei „Börsenpreis plus Aufschläge“ mit den Börsenpreisen von SMARD.de (wie beim Rückblick), bei einem Sensor mit Gesamtpreis aus seinem Verlauf im Recorder (meist die letzten 10 Tage), nie mit SMARD.de. Was sich nicht füllen lässt, bleibt wie bisher außen vor und steht in `energy_left_out_kwh`. Gilt auch für die Aktionen „Tarife vergleichen“ und „Statistik nachtragen“.
+
 ## 0.1.1 – 2026-10-27
 
 Inhaltlich gleich 0.1.0 – nur eine neue Nummer, damit HACS die Version anbietet. GitHub sortiert alle Releases „0.1.0…“ willkürlich (0.1.0 landete hinter b10 und b6), HACS hielt deshalb weiter 0.1.0b9 für die neueste Version. Wer 0.1.0b9 hat, bekommt mit 0.1.1 die Neuerungen von 0.1.0b10 (geführte Einrichtung des dynamischen Tarifs).

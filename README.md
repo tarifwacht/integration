@@ -29,10 +29,10 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
 - **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet? Auf Wunsch auch [in die Langzeitstatistik nachgetragen](#statistik-nachtragen).
-- **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum.
+- **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum; kennt der Preissensor eines neuen Tarifs die Zeit davor nicht, holt Tarifwacht die Preise von SMARD.de bzw. aus dem Recorder.
 - **Verliert nichts:** Fällt der Zähler aus oder startet Home Assistant neu, wird der Verbrauch der Lücke nachgebucht. Fehlt ein Preis, rechnet Tarifwacht nie mit 0 €. Zähler-Resets und unplausible Sprünge werden erkannt und nicht gebucht.
 - **Schont SD-Karten:** schreibt nur einmal pro Viertelstunde (abgeschlossene Tage einmal am Tag ins Jahresarchiv) und aktualisiert die Sensoren höchstens einmal pro Minute.
-- Rein lokal: liest nur vorhandene Entitäten, keine Cloud. Nur für den Rückblick lädt Tarifwacht öffentliche Börsenpreise von SMARD.de.
+- Rein lokal: liest nur vorhandene Entitäten, keine Cloud. Nur für den Rückblick und für später hinzugefügte Börsenpreis-Tarife lädt Tarifwacht öffentliche Börsenpreise von SMARD.de.
 
 ## Hinweise zum Vergleich
 
@@ -86,7 +86,7 @@ Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Sc
 
 ### Dynamischen Tarif anlegen
 
-Nimm **Börsenpreis plus Aufschläge**. Nur damit kann Tarifwacht auch die Zeit vor der Einrichtung rechnen ([Rückblick](#rückblick-vor-der-einrichtung), [Statistik nachtragen](#statistik-nachtragen)) – die Börsenpreise von damals kommen von SMARD.de. Ein Sensor mit Gesamtpreis kennt nur die Zeit seit der Einrichtung.
+Nimm **Börsenpreis plus Aufschläge**. Nur damit kann Tarifwacht auch die Zeit vor der Einrichtung rechnen ([Rückblick](#rückblick-vor-der-einrichtung), [Statistik nachtragen](#statistik-nachtragen)) – die Börsenpreise von damals kommen von SMARD.de. Ein Sensor mit Gesamtpreis kennt nur die Zeit seit der Einrichtung – und fügst du ihn später hinzu, nur so weit, wie der Recorder seinen Verlauf aufbewahrt (meist 10 Tage).
 
 Hast du in **EPEX Spot** einen Aufschlag und eine Steuer eingestellt, übernimm einfach diese Werte – dann rechnet der Tarif genau wie der Gesamtpreis von EPEX Spot:
 
@@ -272,7 +272,7 @@ data:
 
 ## Datenschutz
 
-Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme: Vergleichst du eine Zeit vor der Einrichtung, lädt Tarifwacht öffentliche Börsenpreise von SMARD.de. Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
+Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme: Vergleichst du eine Zeit vor der Einrichtung oder fügst du später einen Tarif „Börsenpreis plus Aufschläge“ hinzu (bzw. wählst einen anderen Sensor), lädt Tarifwacht öffentliche Börsenpreise von SMARD.de – beim neuen Tarif für die Zeit seit der Einrichtung, die sein Sensor nicht kennt. Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
 
 ## Was Tarifwacht nicht kann
 
@@ -288,7 +288,7 @@ Tarifwacht meldet Probleme unter *Einstellungen → Reparaturen*:
 
 - **Preissensor mit nicht unterstützter Einheit:** Der Sensor liefert z. B. ct/kWh oder €/MWh. Tarifwacht braucht €/kWh und ignoriert seine Preise bis dahin.
 - **Zähler mit nicht unterstützter Einheit:** Tarifwacht bucht nichts, bis der Zähler Wh, kWh oder MWh liefert.
-- **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos. Damit der betroffene Tarif nicht günstiger aussieht, lassen „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ solche Viertelstunden für alle Tarife aus; wie viel Strom das war, steht im Attribut `energy_left_out_kwh`.
+- **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos. Damit der betroffene Tarif nicht günstiger aussieht, lassen „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ solche Viertelstunden für alle Tarife aus; wie viel Strom das war, steht im Attribut `energy_left_out_kwh`. Das gilt auch für einen später hinzugefügten Sensor mit Gesamtpreis, soweit sein Verlauf im Recorder nicht mehr bis zur Einrichtung zurückreicht.
 
 Weiteres:
 
@@ -315,4 +315,4 @@ Die Idee, den eigenen Verbrauch in Home Assistant direkt gegen beide Tarife zu r
 
 ## Lizenz
 
-MIT. Historische Börsenpreise (nur für Vergleiche vor der Einrichtung): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.
+MIT. Historische Börsenpreise (für Vergleiche vor der Einrichtung und später hinzugefügte Börsenpreis-Tarife): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.

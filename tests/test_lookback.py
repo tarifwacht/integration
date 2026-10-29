@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -23,7 +23,7 @@ from custom_components.tarifwacht.lookback import (
     spread_hours,
 )
 from custom_components.tarifwacht.meter import MeterTracker
-from custom_components.tarifwacht.prices import PriceTable
+from custom_components.tarifwacht.prices import PriceTable, prices_from_states
 from custom_components.tarifwacht.smard import (
     parse_index,
     parse_week,
@@ -296,3 +296,117 @@ def test_month_bounds_over_year_end() -> None:
     assert [key for key, _, _ in bounds] == ["2026-12", "2027-01"]
     assert bounds[0][2] == utc(2026, 12, 31, 23)  # midnight CET
     assert bounds[1][1] - bounds[0][1] == timedelta(hours=11)
+
+
+# --- tariff added later ----------------------------------------------------------
+
+
+ADDED = utc(2026, 10, 25, 12)  # a new price sensor is read from here on
+
+
+def engine_with_added_tariff() -> Engine:
+    """Started 24.10. 22:00 UTC with 0.25 kWh per quarter hour up to 25.10.
+    14:00 UTC; the exchange price tariff (+10 ct, 19 %) and the total-price
+    tariff were added at 12:00 with new sensors."""
+    engine = Engine(meter=MeterTracker(max_power_kw=100), tariffs={}, tz=BERLIN)
+    engine.started = utc(2026, 10, 24, 22)
+    slot = engine.started
+    while slot < utc(2026, 10, 25, 14):
+        engine.consumption.add(slot, 0.25)
+        slot += QUARTER
+    smard = smard_table()
+    engine.price_table(MARKET).merge(
+        {s: p for s, p in smard.items() if s >= ADDED and s < utc(2026, 10, 25, 23)}
+    )
+    engine.price_table(TOTAL).merge(
+        {s: (p + 0.10) * 1.19 for s, p in engine.price_table(MARKET).items()}
+    )
+    engine.tariffs = {
+        "fixed": Tariff(FixedPrice(0.30)),
+        "market": Tariff(ComposedPrice(engine.price_table(MARKET), 0.10, 0.19)),
+        "total": Tariff(engine.price_table(TOTAL)),
+    }
+    return engine
+
+
+def test_unpriced_until() -> None:
+    engine = engine_with_added_tariff()
+    assert engine.unpriced_until(MARKET) == ADDED
+    assert engine.unpriced_until(TOTAL) == ADDED
+    assert engine.unpriced_until("sensor.never_seen") is None
+    # Prices from the start on, or no consumption before the first price.
+    engine.price_table(MARKET).merge({engine.started: 0.1})
+    assert engine.unpriced_until(MARKET) is None
+    engine.started = ADDED
+    assert engine.unpriced_until(TOTAL) is None
+
+
+def test_added_exchange_price_tariff_completed_from_smard() -> None:
+    """The comparison covers the time since the start again, not only since
+    the tariff was added."""
+    engine = engine_with_added_tariff()
+    del engine.tariffs["total"]
+    engine.start(NOW)
+    # Without past prices: 14 hours left out of the comparison.
+    assert engine.comparison.energy_left_out == pytest.approx(14.0)
+    assert engine.compared_cost("market") is not None
+
+    until = engine.unpriced_until(MARKET)
+    assert until == ADDED
+    sensor = engine.price_table(MARKET)
+    completed = FallbackPrice(sensor, smard_table(), until)
+    engine.tariffs["market"] = Tariff(ComposedPrice(completed, 0.10, 0.19))
+    engine.recompute(NOW)
+    assert engine.comparison.energy_left_out == 0
+    assert engine.comparison.energy == pytest.approx(16.0)
+    assert engine.totals["market"].energy_without_price == 0
+    smard = smard_table()
+    expected = sum(
+        0.25 * (smard.get(slot) + 0.10) * 1.19 for slot, _ in engine.consumption.items()
+    )
+    assert engine.compared_cost("market") == pytest.approx(expected)
+    assert engine.compared_cost("fixed") == pytest.approx(16.0 * 0.30)
+    # The sensor's own prices are kept as they are.
+    assert sensor.get(utc(2026, 10, 24, 22)) is None
+
+
+def test_added_total_price_tariff_completed_from_recorded_states() -> None:
+    engine = engine_with_added_tariff()
+    del engine.tariffs["market"]
+    engine.archived_until = date(2026, 10, 26)
+    engine.start(NOW)
+    assert engine.comparison.energy_left_out == pytest.approx(14.0)
+
+    # The sensor's recorded states: its price changes on the quarter hours.
+    smard = smard_table()
+    states = [
+        (slot + timedelta(seconds=0.3), (smard.get(slot) + 0.10) * 1.19)
+        for slot, _ in engine.consumption.items()
+    ]
+    until = engine.unpriced_until(TOTAL)
+    assert until == ADDED
+    prices = prices_from_states(states, engine.started, until)
+    assert engine.add_past_prices(TOTAL, prices)
+    # The changed days are archived again.
+    assert engine.archived_until == date(2026, 10, 24)
+    engine.recompute(NOW)
+    assert engine.comparison.energy_left_out == 0
+    assert engine.unpriced_until(TOTAL) is None
+    # Nothing new a second time; a recorded price never replaces a seen one.
+    assert not engine.add_past_prices(TOTAL, prices)
+    assert not engine.add_past_prices(TOTAL, {ADDED: 9.99})
+    assert engine.price_table(TOTAL).get(ADDED) != 9.99
+
+
+def test_added_tariff_without_past_prices_stays_left_out() -> None:
+    """No source for the past (SMARD.de without these weeks, recorder purged):
+    as before, the comparison leaves the time out for all tariffs."""
+    engine = engine_with_added_tariff()
+    completed = FallbackPrice(engine.price_table(MARKET), PriceTable(), ADDED)
+    engine.tariffs["market"] = Tariff(ComposedPrice(completed, 0.10, 0.19))
+    assert not engine.add_past_prices(TOTAL, prices_from_states([], ADDED, ADDED))
+    engine.start(NOW)
+    assert engine.comparison.energy_left_out == pytest.approx(14.0)
+    assert engine.comparison.energy == pytest.approx(2.0)
+    assert engine.totals["market"].energy_without_price == pytest.approx(14.0)
+    assert engine.totals["total"].energy_without_price == pytest.approx(14.0)
