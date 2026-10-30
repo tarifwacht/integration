@@ -189,8 +189,9 @@ async def test_meter_renamed_keeps_its_reading(
     await hass.async_block_till_done()
     assert entry.data[CONF_METER] == NEW_METER
     assert entry.unique_id == NEW_METER
-    # 100 Wh more before the reload: booked against the stored reading.
-    freezer.move_to(datetime(2026, 10, 25, 16, 29, 31, tzinfo=UTC))
+    # 100 Wh more before the reload (90 s later, plausible): booked against
+    # the stored reading, not taken as the first reading of a new meter.
+    freezer.move_to(datetime(2026, 10, 25, 16, 31, tzinfo=UTC))
     hass.states.async_set(NEW_METER, "1002100", METER_ATTRIBUTES)
     await wait(hass, freezer, 5)
     assert entry.state is ConfigEntryState.LOADED
