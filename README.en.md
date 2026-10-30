@@ -318,6 +318,18 @@ Please open an [issue](https://github.com/tarifwacht/integration/issues) – ide
 
 The idea of pricing your own consumption directly against both tariffs in Home Assistant comes from [tariff_compare](https://github.com/fischit87/tariff_compare) by fischit87.
 
+## Sister integrations
+
+By the same author and built the same way: set up in the UI, in German and English, gentle on SD cards.
+
+- **Energy**
+  - [Einspeisewacht](https://github.com/einspeisewacht/integration) – what negative electricity prices cost your PV feed-in (German EEG § 51)
+  - [Speicherwacht](https://github.com/speicherwacht/integration) – efficiency, cycles and capacity of your home battery
+  - [Wärmewacht](https://github.com/waermewacht/integration) – performance factors and health check for your heat pump
+- **Everyday**
+  - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau breaking news and regional news as automation triggers (German)
+  - [Streckenwacht](https://github.com/streckenwacht/integration) – roadworks, closures and traffic jams on your own routes (Germany, Luxembourg)
+
 ## License
 
 MIT. Historical exchange prices (only for comparisons before the setup): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The images in this README show a demo entry with invented consumption and invented prices.

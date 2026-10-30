@@ -316,6 +316,18 @@ Bitte als [Issue](https://github.com/tarifwacht/integration/issues) – am beste
 
 Die Idee, den eigenen Verbrauch in Home Assistant direkt gegen beide Tarife zu rechnen, stammt aus [tariff_compare](https://github.com/fischit87/tariff_compare) von fischit87.
 
+## Weitere Wachten
+
+Vom selben Autor und nach demselben Muster gebaut: Einrichtung über die Oberfläche, deutsch und englisch, schonend für SD-Karten.
+
+- **Energie**
+  - [Einspeisewacht](https://github.com/einspeisewacht/integration) – was negative Strompreise bei der PV-Einspeisung kosten (§ 51 EEG)
+  - [Speicherwacht](https://github.com/speicherwacht/integration) – Wirkungsgrad, Zyklen und Kapazität des Batteriespeichers
+  - [Wärmewacht](https://github.com/waermewacht/integration) – Arbeitszahlen und Gesundheits-Check der Wärmepumpe
+- **Alltag**
+  - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau-Eilmeldungen und Regionalnachrichten als Auslöser für Automationen
+  - [Streckenwacht](https://github.com/streckenwacht/integration) – Baustellen, Sperrungen und Staus auf den eigenen Strecken
+
 ## Lizenz
 
 MIT. Historische Börsenpreise (nur auf deine Aktion: Vergleiche vor der Einrichtung, Statistik nachtragen, Haken bei einem später hinzugefügten Börsenpreis-Tarif): Bundesnetzagentur | [SMARD.de](https://www.smard.de), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Die Bilder in diesem README zeigen einen Demo-Eintrag mit erfundenem Verbrauch und erfundenen Preisen.
