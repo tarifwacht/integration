@@ -49,12 +49,15 @@ class MeterTracker:
     """Track the last reading and split each increase into quarter hours.
 
     `max_power_kw` bounds plausible increases (for grid purchase: the rated
-    power of the house connection).
+    power of the house connection). `source` names the meter (its entity);
+    a stored reading of another meter is not restored, so a swapped meter
+    starts with a new baseline.
     """
 
     max_power_kw: float
     last_value: float | None = None
     last_time: datetime | None = None
+    source: str | None = None
 
     def update(self, value: float, at: datetime) -> MeterUpdate:
         """Process a reading in kWh taken at `at` (timezone-aware)."""
@@ -79,9 +82,15 @@ class MeterTracker:
         return {
             "last_value": self.last_value,
             "last_time": self.last_time.isoformat() if self.last_time else None,
+            "source": self.source,
         }
 
     def restore(self, data: dict[str, Any]) -> None:
+        stored = data.get("source")
+        if stored is not None and self.source is not None and stored != self.source:
+            # Another meter (swapped in the reconfiguration): its last reading
+            # is no baseline for this one; the first reading starts afresh.
+            return
         self.last_value = data.get("last_value")
         last_time = data.get("last_time")
         self.last_time = datetime.fromisoformat(last_time) if last_time else None

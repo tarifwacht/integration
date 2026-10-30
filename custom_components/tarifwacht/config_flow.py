@@ -48,6 +48,7 @@ from .const import (
     CONF_NAME,
     CONF_PRICE,
     CONF_PRICE_ENTITY,
+    CONF_SMARD_FILL,
     CONF_VAT,
     DEFAULT_VAT,
     DOMAIN,
@@ -271,7 +272,8 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 )
 
-        hidden = (CONF_NAME, CONF_BASE_PERIOD, CONF_CURRENT)
+        # At the setup there is no earlier time to fill from SMARD.de.
+        hidden = (CONF_NAME, CONF_BASE_PERIOD, CONF_CURRENT, CONF_SMARD_FILL)
         schema = vol.Schema(
             {
                 key: value
@@ -324,6 +326,9 @@ def _tariff_schema(kind: str) -> vol.Schema:
     fields[vol.Optional(CONF_BASE_PRICE)] = BASE_NUMBER
     fields[vol.Required(CONF_BASE_PERIOD)] = BASE_PERIOD
     fields[vol.Required(CONF_CURRENT)] = selector.BooleanSelector()
+    if kind == KIND_DYNAMIC_MARKET:
+        # Missing means no consent.
+        fields[vol.Optional(CONF_SMARD_FILL)] = selector.BooleanSelector()
     return vol.Schema(fields)
 
 
@@ -341,6 +346,8 @@ def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_BASE_PRICE] = float(user_input.get(CONF_BASE_PRICE) or 0)
     data[CONF_BASE_PERIOD] = user_input[CONF_BASE_PERIOD]
     data[CONF_CURRENT] = bool(user_input[CONF_CURRENT])
+    if kind == KIND_DYNAMIC_MARKET and CONF_SMARD_FILL in user_input:
+        data[CONF_SMARD_FILL] = bool(user_input[CONF_SMARD_FILL])
     return data
 
 
@@ -631,12 +638,18 @@ class TariffSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             suggested = user_input
         elif subentry is not None:
-            suggested = {CONF_NAME: subentry.title, **subentry.data}
+            # SMARD.de only with consent: unticked unless agreed before.
+            suggested = {
+                CONF_NAME: subentry.title,
+                CONF_SMARD_FILL: False,
+                **subentry.data,
+            }
         else:
             suggested = {
                 CONF_VAT: DEFAULT_VAT,
                 CONF_BASE_PERIOD: BasePeriod.MONTH.value,
                 CONF_CURRENT: False,
+                CONF_SMARD_FILL: True,
             }
         return self.async_show_form(
             step_id=kind,

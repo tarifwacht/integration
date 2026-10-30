@@ -153,7 +153,8 @@
             "vat": "Mehrwertsteuer",
             "base_price": "Grundpreis",
             "base_period": "Grundpreis pro",
-            "current": "Mein aktueller Tarif"
+            "current": "Mein aktueller Tarif",
+            "smard_fill": "Zeit seit der Einrichtung mit Börsenpreisen von SMARD.de nachtragen"
           },
           "data_description": {
             "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
@@ -162,7 +163,8 @@
             "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
             "margin": "Was der Anbieter je kWh aufschlägt, netto. Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
-            "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+            "current": "Die anderen Tarife zeigen ihre Differenz zu diesem.",
+            "smard_fill": "Lädt einmalig öffentliche Börsenpreise von SMARD.de (Bundesnetzagentur) für die Zeit seit der Einrichtung, die der Sensor nicht kennt – so rechnet der Tarif wie die anderen ab der Einrichtung. Über dich wird nichts übertragen. Ohne Haken lässt der Vergleich diese Zeit aus."
           }
         },
         "reconfigure": {

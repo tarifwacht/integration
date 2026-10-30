@@ -480,3 +480,29 @@ async def test_difference_leaves_out_quarter_hours_without_price(
         + 0.30 * left_out
     )
     assert float(difference.state) == pytest.approx(expected, abs=1e-4)
+
+
+@pytest.mark.freeze_time(START)
+async def test_swapped_meter_books_no_phantom_energy(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Meter swapped in the reconfiguration: its first reading is a new
+    baseline, not a delta against the old meter's last reading."""
+    entry = await setup(hass)
+    await two_kwh(hass, freezer)
+    other = "sensor.other_grid_import"
+    # 500 Wh above the old meter's last reading: plausible, would be booked.
+    freezer.move_to(datetime(2026, 10, 25, 16, 35, tzinfo=UTC))
+    hass.states.async_set(other, "1002500", METER_ATTRIBUTES)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"name": "Haus", "meter_entity": other}
+    )
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(2.0)
+    # From now on the new meter books.
+    freezer.move_to(datetime(2026, 10, 25, 16, 40, tzinfo=UTC))
+    hass.states.async_set(other, "1002600", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(2.1)

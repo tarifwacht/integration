@@ -38,6 +38,9 @@ CONF_CURRENT: Final = "current"  # the tariff the others are compared with
 CONF_CHANGES: Final = "changes"  # later price states: [{"from": date, ...}]
 CONF_FROM: Final = "from"  # ISO date, valid from local midnight
 CONF_MODUL3: Final = "modul3"  # time-variable grid fee (§ 14a EnWG Modul 3)
+# Exchange price tariff added later: the user agreed to fill the time since
+# the setup that its sensor does not know with prices from SMARD.de.
+CONF_SMARD_FILL: Final = "smard_fill"
 
 KIND_FIXED: Final = "fixed"
 KIND_DYNAMIC_TOTAL: Final = "dynamic_total"

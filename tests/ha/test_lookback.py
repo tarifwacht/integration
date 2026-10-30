@@ -238,6 +238,14 @@ async def test_smard_failure_is_reported(
 NEW_MARKET = "sensor.new_market_price"
 NEW_TOTAL = "sensor.new_total_price"
 PRICE_UNIT = {"unit_of_measurement": "€/kWh"}
+# The new exchange price tariff (+10 ct, 19 %) over the two quarter hours of
+# `two_kwh`: 16:00 UTC from SMARD.de, 16:15 from the sensor (0.05 €/kWh).
+SMARD_FILLED = (1 + 1 / 30) * (
+    parse_week(load_fixture("smard_week_2026-10-19.json"))[
+        datetime(2026, 10, 25, 16, tzinfo=UTC)
+    ]
+    + 0.10
+) * 1.19 + 29 / 30 * (0.05 + 0.10) * 1.19
 
 
 async def add_tariff(
@@ -279,20 +287,77 @@ async def test_added_exchange_price_tariff_gets_smard_prices(
         hass,
         entry,
         "dynamic_market",
-        {"name": "Börse", "price_entity": NEW_MARKET, **fees},
+        {"name": "Börse", "price_entity": NEW_MARKET, "smard_fill": True, **fees},
     )
+    assert entry.subentries[key].data["smard_fill"] is True
 
-    smard = parse_week(load_fixture("smard_week_2026-10-19.json"))
-    expected = (1 + 1 / 30) * (smard[utc(2026, 10, 25, 16)] + 0.10) * 1.19
-    expected += 29 / 30 * (0.05 + 0.10) * 1.19
-    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(expected)
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
     assert "tarifwacht.smard.2026" in hass_storage
     # Restart: the stored SMARD.de prices are used, no download.
     calls = aioclient_mock.call_count
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert aioclient_mock.call_count == calls
-    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(expected)
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
+
+
+def suggested(result: dict[str, Any], field: str) -> Any:
+    key = next(k for k in result["data_schema"].schema if str(k) == field)
+    return (key.description or {}).get("suggested_value")
+
+
+@pytest.mark.freeze_time(START)
+async def test_added_exchange_price_tariff_without_consent(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """SMARD.de only when ticked: otherwise the time stays without a price;
+    ticking it later in the tariff's form fills it."""
+    aioclient_mock.get(INDEX_URL, json=load_fixture("smard_index_quarterhour.json"))
+    aioclient_mock.get(
+        week_url(WEEK_MS), json=load_fixture("smard_week_2026-10-19.json")
+    )
+    entry = await setup_entry(hass, market=False)
+    await two_kwh(hass, freezer)
+    hass.states.async_set(NEW_MARKET, "0.05", PRICE_UNIT)
+    flows = hass.config_entries.subentries
+    result = await flows.async_init(
+        (entry.entry_id, "tariff"), context={"source": SOURCE_USER}
+    )
+    result = await flows.async_configure(
+        result["flow_id"], {"next_step_id": "dynamic_market"}
+    )
+    # Offered ticked when adding.
+    assert suggested(result, "smard_fill") is True
+    form = {
+        "name": "Börse",
+        "price_entity": NEW_MARKET,
+        "grid_fee": 6.0,
+        "levies": 3.0,
+        "margin": 1.0,
+        "vat": 19.0,
+        "base_period": "month",
+        "current": False,
+    }
+    await flows.async_configure(result["flow_id"], {**form, "smard_fill": False})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    added = next(s for s in entry.subentries.values() if s.title == "Börse")
+    key = added.subentry_id
+    assert aioclient_mock.call_count == 0
+    # Only the quarter hour with the sensor's price; 16:00 has none (waits,
+    # then counts without a price, as before).
+    only_sensor = 29 / 30 * (0.05 + 0.10) * 1.19
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(only_sensor)
+
+    # Editing the tariff: unticked unless agreed before; ticking fills.
+    result = await entry.start_subentry_reconfigure_flow(hass, key)
+    result = await flows.async_configure(result["flow_id"], {"next_step_id": "edit"})
+    assert suggested(result, "smard_fill") is False
+    await flows.async_configure(result["flow_id"], {**form, "smard_fill": True})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert aioclient_mock.call_count == 2
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
 
 
 @pytest.mark.freeze_time(START)

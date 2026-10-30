@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -41,6 +41,7 @@ from .const import (
     CONF_METER,
     CONF_NAME,
     CONF_PRICE_ENTITY,
+    CONF_SMARD_FILL,
     DOMAIN,
     KIND_DYNAMIC_MARKET,
     KIND_DYNAMIC_TOTAL,
@@ -185,7 +186,11 @@ class MeterRuntime:
         self.name: str = entry.data[CONF_NAME]
         self.meter_entity: str = entry.data[CONF_METER]
         self.engine = Engine(
-            meter=MeterTracker(max_power_kw=MAX_GRID_POWER_KW), tariffs={}, tz=BERLIN
+            meter=MeterTracker(
+                max_power_kw=MAX_GRID_POWER_KW, source=self.meter_entity
+            ),
+            tariffs={},
+            tz=BERLIN,
         )
         self.tariffs: dict[str, TariffInfo] = {}
         self.price_entities: set[str] = set()
@@ -228,9 +233,9 @@ class MeterRuntime:
             return None
         hourly = await self._async_hourly_energy(hour_start(start), until)
         smard: PriceTable = PriceTable()
-        market = self._price_entities(KIND_DYNAMIC_MARKET)
+        market = self._market_tariffs()
         if market:
-            end = max(until, *(self._smard_until(entity) for entity in market))
+            end = max(until, *(self._smard_until(data) for data in market))
             smard = await smard_cache(self.hass).async_prices(start, end)
         return Lookback(
             consumption=spread_hours(hourly, start, until),
@@ -240,63 +245,76 @@ class MeterRuntime:
             uses_smard=bool(market),
         )
 
-    def _price_entities(self, kind: str) -> set[str]:
-        """Price sensors of the tariffs of one kind."""
+    def _total_price_entities(self) -> set[str]:
+        """Price sensors of the total-price tariffs."""
         return {
             s.data[CONF_PRICE_ENTITY]
             for s in tariff_subentries(self.entry)
-            if s.data.get(CONF_KIND) == kind
+            if s.data.get(CONF_KIND) == KIND_DYNAMIC_TOTAL
         }
 
-    def _smard_until(self, entity: str) -> datetime:
+    def _market_tariffs(self) -> list[Mapping[str, Any]]:
+        """Data of the exchange price tariffs."""
+        return [
+            s.data
+            for s in tariff_subentries(self.entry)
+            if s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET
+        ]
+
+    def _smard_until(self, data: Mapping[str, Any]) -> datetime:
         """Exchange prices before this come from SMARD.de where the sensor has none.
 
-        The setup, or the first price of a sensor Tarifwacht read later (an
-        exchange price tariff added later or given another sensor).
+        The setup; for a tariff whose sensor Tarifwacht read only later (added
+        later or given another sensor), its first price, but only if the user
+        agreed to fill that time from SMARD.de (`smard_fill`).
         """
         started = self.engine.started
         assert started is not None
-        return self.engine.unpriced_until(entity) or started
+        if not data.get(CONF_SMARD_FILL):
+            return started
+        return self.engine.unpriced_until(data[CONF_PRICE_ENTITY]) or started
+
+    def _smard_gaps(self) -> list[Mapping[str, Any]]:
+        """Exchange price tariffs with time to fill from SMARD.de (agreed to)."""
+        started = self.engine.started
+        return [d for d in self._market_tariffs() if self._smard_until(d) != started]
 
     def _build_tariffs(self, smard: PriceSource | None = None) -> dict[str, Tariff]:
         """The engine's tariffs; with `smard`, exchange prices completed from it."""
+        tariffs: dict[str, Tariff] = {}
+        for subentry in tariff_subentries(self.entry):
+            data = subentry.data
 
-        def market(entity: str) -> PriceSource:
-            table = self.engine.price_table(entity)
-            if smard is None:
-                return table
-            return FallbackPrice(table, smard, self._smard_until(entity))
+            def market(entity: str, data: Mapping[str, Any] = data) -> PriceSource:
+                table = self.engine.price_table(entity)
+                if smard is None:
+                    return table
+                return FallbackPrice(table, smard, self._smard_until(data))
 
-        return {
-            tariff_key(s.subentry_id, s.data): tariff_from_data(
-                s.data, self.engine.price_table, market
-            )
-            for s in tariff_subentries(self.entry)
-        }
+            key = tariff_key(subentry.subentry_id, data)
+            tariffs[key] = tariff_from_data(data, self.engine.price_table, market)
+        return tariffs
 
     async def _async_fill_past_prices(self) -> None:
         """Prices for the time before Tarifwacht read a tariff's price sensor.
 
         A tariff added later, or given another price sensor, would otherwise
         leave that time out of every comparison. Exchange prices come from
-        SMARD.de (stored for all entries); a total price only from the
-        sensor's own recorded states, never from SMARD.de. Runs in the
-        background; what fails or cannot be found stays without a price, and
-        the next start tries again.
+        SMARD.de (stored for all entries), only for tariffs whose user agreed
+        to it in the tariff's form; a total price only from the sensor's own
+        recorded states (local), never from SMARD.de. Runs in the background;
+        what fails or cannot be found stays without a price, and the next
+        start tries again.
         """
         engine = self.engine
         added = False
-        for entity in sorted(self._price_entities(KIND_DYNAMIC_TOTAL)):
+        for entity in sorted(self._total_price_entities()):
             if (until := engine.unpriced_until(entity)) is not None:
                 added |= await self._async_recorded_prices(entity, until)
         smard: PriceTable | None = None
-        market = [
-            entity
-            for entity in sorted(self._price_entities(KIND_DYNAMIC_MARKET))
-            if engine.unpriced_until(entity) is not None
-        ]
+        market = self._smard_gaps()
         if market and engine.started is not None:
-            end = max(self._smard_until(entity) for entity in market)
+            end = max(self._smard_until(data) for data in market)
             try:
                 smard = await smard_cache(self.hass).async_prices(engine.started, end)
             except SmardError as err:
@@ -417,7 +435,10 @@ class MeterRuntime:
         # Issues of an earlier run are dropped unless still valid.
         self._issues = {issue_id: ("", {}) for issue_id in self._stored_issue_ids()}
         self._update_issues(now)
-        if any(self.engine.unpriced_until(e) is not None for e in self.price_entities):
+        if self._smard_gaps() or any(
+            self.engine.unpriced_until(e) is not None
+            for e in self._total_price_entities()
+        ):
             self.entry.async_create_background_task(
                 self.hass, self._async_fill_past_prices(), f"{DOMAIN} past prices"
             )

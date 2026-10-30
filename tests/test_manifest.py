@@ -6,7 +6,11 @@ import json
 import tomllib
 from pathlib import Path
 
-from custom_components.tarifwacht.config_flow import _modul3_fields, _tariff_schema
+from custom_components.tarifwacht.config_flow import (
+    _modul3_fields,
+    _tariff_data,
+    _tariff_schema,
+)
 from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
 from custom_components.tarifwacht.sensor import DIFFERENCE, ENERGY, TARIFF_SENSORS
 from custom_components.tarifwacht.tariff_config import change_fields
@@ -111,3 +115,20 @@ def test_every_sensor_and_action_has_an_icon() -> None:
     strings = load(INTEGRATION / "strings.json")
     assert set(icons["entity"]["sensor"]) == set(strings["entity"]["sensor"])
     assert set(icons["services"]) == set(strings["services"])
+
+
+def test_smard_consent_only_for_exchange_price_tariffs() -> None:
+    """The SMARD.de checkbox exists and is stored only for exchange prices;
+    without it in the input (setup form, old tariffs) nothing is stored."""
+    base = {"base_period": "month", "current": False, "price_entity": "sensor.p"}
+    market = {**base, "vat": 19.0}
+    assert "smard_fill" in {str(k) for k in _tariff_schema("dynamic_market").schema}
+    for kind in ("fixed", "dynamic_total"):
+        assert "smard_fill" not in {str(k) for k in _tariff_schema(kind).schema}
+    assert _tariff_data("dynamic_market", {**market, "smard_fill": True})["smard_fill"]
+    assert not _tariff_data("dynamic_market", {**market, "smard_fill": False})[
+        "smard_fill"
+    ]
+    assert "smard_fill" not in _tariff_data("dynamic_market", market)
+    total = _tariff_data("dynamic_total", {**base, "smard_fill": True})
+    assert "smard_fill" not in total

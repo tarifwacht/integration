@@ -153,7 +153,8 @@
             "vat": "VAT",
             "base_price": "Base price",
             "base_period": "Base price per",
-            "current": "My current tariff"
+            "current": "My current tariff",
+            "smard_fill": "Fill the time since the setup with exchange prices from SMARD.de"
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
@@ -162,7 +163,8 @@
             "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
             "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
-            "current": "The other tariffs show their difference to this one."
+            "current": "The other tariffs show their difference to this one.",
+            "smard_fill": "Fetches public exchange prices from SMARD.de (Bundesnetzagentur) once for the time since the setup that the sensor does not know, so the tariff counts from the setup like the others. Nothing about you is transmitted. Without it, the comparison leaves that time out."
           }
         },
         "reconfigure": {

@@ -122,6 +122,28 @@ def test_meter_round_trip() -> None:
     restored = MeterTracker(max_power_kw=GRID_KW)
     restored.restore(meter.as_dict())
     assert restored == meter
+    named = MeterTracker(max_power_kw=GRID_KW, source="sensor.grid_import")
+    named.update(1.0, utc(2026, 1, 1, 9, 5))
+    restored = MeterTracker(max_power_kw=GRID_KW, source="sensor.grid_import")
+    restored.restore(named.as_dict())
+    assert restored == named
+
+
+def test_swapped_meter_starts_with_a_new_baseline() -> None:
+    """Meter swapped in the reconfiguration: the old reading is no baseline."""
+    old = MeterTracker(max_power_kw=GRID_KW, source="sensor.old")
+    old.update(5000.0, utc(2026, 1, 1, 9))
+    new = MeterTracker(max_power_kw=GRID_KW, source="sensor.new")
+    new.restore(old.as_dict())
+    assert new.last_value is None
+    first = new.update(12.0, utc(2026, 1, 1, 9, 10))
+    assert first.event is MeterEvent.FIRST
+    assert first.pieces == []
+    assert new.as_dict()["source"] == "sensor.new"
+    # Stored before the meter was named: taken over as before.
+    legacy = MeterTracker(max_power_kw=GRID_KW, source="sensor.new")
+    legacy.restore({"last_value": 11.0, "last_time": "2026-01-01T09:00:00+00:00"})
+    assert legacy.update(12.0, utc(2026, 1, 1, 9, 10)).delta == pytest.approx(1.0)
 
 
 # --- prices -------------------------------------------------------------------
