@@ -10,10 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
-from homeassistant.components.recorder.db_schema import RecorderRuns
-from homeassistant.components.recorder.models import process_timestamp
 from homeassistant.components.recorder.statistics import statistics_during_period
-from homeassistant.components.recorder.util import session_scope
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
@@ -132,6 +129,12 @@ def recorder_run_starts(
 
     Runs in the recorder's thread (executor job of the recorder).
     """
+    # Recorder internals, imported here: if a Home Assistant update moves them,
+    # only the recorder fill fails (caught by the caller), not the setup.
+    from homeassistant.components.recorder.db_schema import RecorderRuns
+    from homeassistant.components.recorder.models import process_timestamp
+    from homeassistant.components.recorder.util import session_scope
+
     with session_scope(hass=hass, read_only=True) as session:
         rows = session.query(RecorderRuns.start).all()
     starts = (process_timestamp(row[0]) for row in rows)
