@@ -413,7 +413,7 @@ async def test_modul3(hass: HomeAssistant) -> None:
     assert result["errors"] == {"ht_windows": "window_grid"}
     result = await configure_tariff(hass, result, {**form, "ht_windows": "17:00-22:00"})
     assert result["type"] is FlowResultType.ABORT
-    assert entry.subentries[subentry.subentry_id].data["modul3"] == {
+    modul3 = {
         "active": True,
         "nt": 3.03,
         "ht": 11.06,
@@ -421,3 +421,28 @@ async def test_modul3(hass: HomeAssistant) -> None:
         "nt_windows": "10:00-14:00",
         "ht_windows": "17:00-22:00",
     }
+    assert entry.subentries[subentry.subentry_id].data["modul3"] == modul3
+
+    # Editing the tariff keeps Modul 3 (the edit form does not show it).
+    result = await entry.start_subentry_reconfigure_flow(hass, subentry.subentry_id)
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "edit"}
+    )
+    result = await configure_tariff(
+        hass,
+        result,
+        {
+            "name": "Börse",
+            "price_entity": MARKET,
+            "grid_fee": 8.0,
+            "levies": 4.0,
+            "margin": 2.0,
+            "vat": 19.0,
+            "base_period": "month",
+            "current": False,
+        },
+    )
+    assert result["type"] is FlowResultType.ABORT
+    data = entry.subentries[subentry.subentry_id].data
+    assert data["grid_fee"] == 8.0
+    assert data["modul3"] == modul3

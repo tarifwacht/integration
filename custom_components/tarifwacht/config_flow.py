@@ -623,8 +623,9 @@ class TariffSubentryFlow(ConfigSubentryFlow):
             if not errors:
                 data = _tariff_data(kind, user_input)
                 if subentry is not None:
-                    # Keep the stable key and the price changes.
-                    for keep in (CONF_KEY, CONF_CHANGES):
+                    # Keep the stable key, the price changes and Modul 3:
+                    # the edit form does not show them.
+                    for keep in (CONF_KEY, CONF_CHANGES, CONF_MODUL3):
                         if subentry.data.get(keep):
                             data[keep] = subentry.data[keep]
                 if data[CONF_CURRENT]:
