@@ -405,6 +405,28 @@ def test_prices_from_states_not_across_a_restart() -> None:
     }
 
 
+def test_prices_from_states_not_across_a_recorder_run() -> None:
+    """Home Assistant back right after a boundary looks like an ordinary
+    price change; the start of the recorder's run tells it apart (review
+    0.1.2: otherwise 80 quarter hours at the price from before the outage)."""
+    a = utc(2026, 10, 20, 10)
+    back = a + timedelta(hours=20, seconds=6)
+    states: list[tuple[datetime, float | None]] = [
+        (a + timedelta(seconds=0.3), 0.30),
+        # Last state before Home Assistant stops at 10:08.
+        (a + timedelta(minutes=7), 0.31),
+        (back, 0.25),
+    ]
+    end = a + timedelta(days=2)
+    without = prices_from_states(states, a, end)
+    assert list(without.values()).count(0.31) == 80
+    prices = prices_from_states(states, a, end, restarts=[back - timedelta(seconds=2)])
+    assert prices == {a: 0.31, slot_start(back): 0.25}
+    # A run start before the state or after the next one does not matter.
+    runs = [a - timedelta(days=1), back + timedelta(minutes=1)]
+    assert prices_from_states(states, a, end, restarts=runs) == without
+
+
 def test_prices_from_states_unavailable_and_period() -> None:
     a = utc(2026, 10, 25, 10)
     states: list[tuple[datetime, float | None]] = [

@@ -6,12 +6,13 @@ from collections.abc import Iterator
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.tarifwacht.const import CONF_CURRENT, DOMAIN
+from custom_components.tarifwacht.const import CONF_CURRENT, CONF_RENAMED, DOMAIN
 
 from .conftest import (
     DYNAMIC_SUBENTRY,
@@ -446,3 +447,73 @@ async def test_modul3(hass: HomeAssistant) -> None:
     data = entry.subentries[subentry.subentry_id].data
     assert data["grid_fee"] == 8.0
     assert data["modul3"] == modul3
+
+
+async def test_reconfigure_meter_renamed_while_open(hass: HomeAssistant) -> None:
+    """The meter is renamed while the form is open: submitting the shown (old)
+    id keeps the new one and the pending rename note (review 0.1.2)."""
+    entry = added_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    new = "sensor.smart_meter_import"
+    hass.states.async_set(new, "1234567.0", METER_ATTRIBUTES)
+    hass.states.async_remove(METER)
+    # As the rename listener does it.
+    hass.config_entries.async_update_entry(
+        entry,
+        unique_id=new,
+        data={**entry.data, "meter_entity": new, CONF_RENAMED: {METER: new}},
+    )
+    result = await configure(hass, result, {**METER_STEP, "name": "Wohnung"})
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data == {
+        **entry_data(name="Wohnung", meter_entity=new),
+        CONF_RENAMED: {METER: new},
+    }
+    assert entry.unique_id == new
+
+
+async def test_reconfigure_tariff_renamed_while_open(hass: HomeAssistant) -> None:
+    """The price sensor is renamed while the edit form is open: submitting the
+    shown (old) id keeps the new one."""
+    entry = added_entry(hass)
+    result = await entry.start_subentry_reconfigure_flow(hass, DYNAMIC_SUBENTRY)
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "edit"}
+    )
+    new = "sensor.dynamic_price"
+    hass.states.async_set(new, "0.10574", price_attributes())
+    hass.states.async_remove(PRICE)
+    hass.config_entries.async_update_subentry(
+        entry,
+        entry.subentries[DYNAMIC_SUBENTRY],
+        data=dynamic_tariff(price_entity=new),
+    )
+    result = await configure_tariff(
+        hass,
+        result,
+        {
+            "name": "Dynamic",
+            "price_entity": PRICE,
+            "base_price": 0.0,
+            "base_period": "month",
+            "current": False,
+        },
+    )
+    assert result["reason"] == "reconfigure_successful"
+    assert dict(entry.subentries[DYNAMIC_SUBENTRY].data) == dynamic_tariff(
+        price_entity=new
+    )
+
+
+async def test_price_field_starts_empty(hass: HomeAssistant) -> None:
+    """A required number field would show 0; the price field is optional and
+    the step asks for the price itself."""
+    entry = added_entry(hass)
+    result = await start_tariff(hass, entry, "fixed")
+    key = next(k for k in result["data_schema"].schema if str(k) == "price")
+    assert isinstance(key, vol.Optional)
+    assert (key.description or {}).get("suggested_value") is None
+    result = await configure_tariff(
+        hass, result, {"name": "Neu", "base_period": "month", "current": False}
+    )
+    assert result["errors"] == {"price": "price_required"}

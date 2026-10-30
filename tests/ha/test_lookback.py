@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
@@ -39,6 +41,7 @@ from custom_components.tarifwacht.const import (
 from custom_components.tarifwacht.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from custom_components.tarifwacht.runtime import MeterRuntime
 from custom_components.tarifwacht.smard import INDEX_URL, parse_week, week_url
 from custom_components.tarifwacht.timeslots import QUARTER
 from tests.conftest import load_fixture
@@ -299,6 +302,30 @@ async def test_added_exchange_price_tariff_gets_smard_prices(
     await hass.async_block_till_done(wait_background_tasks=True)
     assert aioclient_mock.call_count == calls
     assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
+
+    # The stored prices count from the start, not only once the background
+    # work is done (review 0.1.2: "cheapest tariff" jumped after each start).
+    with patch.object(MeterRuntime, "_async_fill_past_prices", AsyncMock()):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
+
+    # Background work still running when the runtime stops is cancelled
+    # first, so it cannot write over the files of the next runtime.
+    cancelled: list[bool] = []
+
+    async def hang(self: MeterRuntime) -> None:
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.append(True)
+            raise
+
+    with patch.object(MeterRuntime, "_async_fill_past_prices", hang):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+    await entry.runtime_data.async_stop()
+    assert cancelled == [True]
 
 
 def suggested(result: dict[str, Any], field: str) -> Any:

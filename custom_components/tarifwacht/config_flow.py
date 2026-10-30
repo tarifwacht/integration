@@ -150,6 +150,12 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             name = user_input[CONF_NAME].strip()
             meter = user_input[CONF_METER]
+            if self.source == SOURCE_RECONFIGURE:
+                current = self._get_reconfigure_entry().data[CONF_METER]
+                if meter == self._data[CONF_METER] != current:
+                    # Renamed while the form was open: it still showed the
+                    # old id, which no longer exists.
+                    meter = current
             if not name:
                 errors[CONF_NAME] = "name_required"
             else:
@@ -159,8 +165,10 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._data[CONF_METER] = meter
                 if self.source == SOURCE_RECONFIGURE:
                     data = entry_data(self._data)
-                    if renamed := self._data.get(CONF_RENAMED):
-                        # Stored state still to move to renamed sources.
+                    entry = self._get_reconfigure_entry()
+                    if renamed := entry.data.get(CONF_RENAMED):
+                        # Stored state still to move to renamed sources (as
+                        # of now, not of opening the form).
                         data[CONF_RENAMED] = renamed
                     # The update listener reloads the entry.
                     return self.async_update_and_abort(
@@ -227,7 +235,7 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_FIXED_PRICE): PRICE_NUMBER,
+                vol.Optional(CONF_FIXED_PRICE): PRICE_NUMBER,
                 vol.Optional(CONF_FIXED_BASE): BASE_NUMBER,
             }
         )
@@ -321,7 +329,9 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
 def _tariff_schema(kind: str) -> vol.Schema:
     fields: dict[Any, Any] = {vol.Required(CONF_NAME): selector.TextSelector()}
     if kind == KIND_FIXED:
-        fields[vol.Required(CONF_PRICE)] = PRICE_NUMBER
+        # Optional: a required number field shows its minimum (0) instead of
+        # staying empty; the step reports a missing price itself.
+        fields[vol.Optional(CONF_PRICE)] = PRICE_NUMBER
     else:
         fields[vol.Required(CONF_PRICE_ENTITY)] = PRICE_SENSOR
     if kind == KIND_DYNAMIC_MARKET:
@@ -434,6 +444,9 @@ def _modul3_from_input(
 class TariffSubentryFlow(ConfigSubentryFlow):
     """Add or change one tariff."""
 
+    # The price sensor the edit form showed (to follow a rename meanwhile).
+    _shown_price: str | None = None
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -544,7 +557,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
             elif key == CONF_BASE_PRICE:
                 fields[vol.Optional(key)] = BASE_NUMBER
             elif key == CONF_PRICE:
-                fields[vol.Required(key)] = PRICE_NUMBER
+                fields[vol.Optional(key)] = PRICE_NUMBER
             else:
                 fields[vol.Optional(key)] = PRICE_NUMBER
         # Prefilled with the values valid today; changes start at midnight German time.
@@ -621,6 +634,15 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 errors[CONF_NAME] = "name_in_use"
             if kind == KIND_FIXED and not user_input.get(CONF_PRICE):
                 errors[CONF_PRICE] = "price_required"
+            if (
+                subentry is not None
+                and kind != KIND_FIXED
+                and user_input[CONF_PRICE_ENTITY] == self._shown_price
+                and (current := subentry.data.get(CONF_PRICE_ENTITY))
+                != self._shown_price
+            ):
+                # Renamed while the form was open: it still showed the old id.
+                user_input = {**user_input, CONF_PRICE_ENTITY: current}
             if kind != KIND_FIXED and (
                 error := validate_price_entity(self.hass, user_input[CONF_PRICE_ENTITY])
             ):
@@ -650,6 +672,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 CONF_SMARD_FILL: False,
                 **subentry.data,
             }
+            self._shown_price = subentry.data.get(CONF_PRICE_ENTITY)
         else:
             suggested = {
                 CONF_VAT: DEFAULT_VAT,

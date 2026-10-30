@@ -308,6 +308,8 @@ class Engine:
 
     def _compare(self, slot: datetime, energy: float) -> None:
         """Add a quarter hour's energy to the comparison once every tariff is done."""
+        if not energy:
+            return
         comparison = self.comparison
         if any(slot in totals.pending for totals in self.totals.values()):
             comparison.pending[slot] = comparison.pending.get(slot, 0.0) + energy
@@ -437,7 +439,13 @@ def _book(
     energy: float,
     now: datetime,
 ) -> None:
-    """Book a quarter hour's energy, or let it wait for its price."""
+    """Book a quarter hour's energy, or let it wait for its price.
+
+    No energy has nothing to wait for: it would only keep the quarter hour
+    pending and could raise "prices missing" (review of Einspeisewacht 0.1.4).
+    """
+    if not energy:
+        return
     price = tariff.price(slot)
     if price is not None:
         totals.energy += energy

@@ -503,3 +503,16 @@ def test_costs_between_includes_the_running_quarter_hour() -> None:
     result = engine.costs_between(DAY_START, now, DAY_END)
     assert result.quarter_hours == 11
     assert result.end == DAY_START + 11 * QUARTER
+
+
+def test_quarter_hour_without_energy_does_not_wait() -> None:
+    """A quarter hour with 0 kWh and no price yet is nothing to wait for."""
+    engine = make_engine()
+    slot = utc(2026, 10, 25, 2)
+    engine.started = slot
+    engine.consumption.set(slot, 0.0)
+    now = slot + 3 * QUARTER
+    engine.recompute(now)
+    assert engine.totals["dynamic"].pending == {}
+    assert engine.comparison.pending == {}
+    assert engine.late_prices(now + PRICE_WAIT, timedelta(hours=1)) == set()

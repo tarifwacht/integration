@@ -61,15 +61,20 @@ class SmardCache:
     def _store(self, year: int) -> Store[dict[str, Any]]:
         return Store(self.hass, STORAGE_VERSION, f"{DOMAIN}.smard.{year}")
 
-    async def async_prices(self, start: datetime, end: datetime) -> PriceTable:
-        """The table, complete for [start, end) as far as SMARD.de has prices."""
+    async def async_prices(
+        self, start: datetime, end: datetime, *, fetch: bool = True
+    ) -> PriceTable:
+        """The table, complete for [start, end) as far as SMARD.de has prices.
+
+        Without `fetch` only what is stored already (no network).
+        """
         async with self._lock:
             for year in range(start.astimezone(UTC).year, end.astimezone(UTC).year + 1):
                 if year not in self._loaded:
                     if data := await self._store(year).async_load():
                         self.table.restore(data, merge=True)
                     self._loaded.add(year)
-            if missing := self._missing(start, end):
+            if fetch and (missing := self._missing(start, end)):
                 await self._async_fetch(missing)
         return self.table
 

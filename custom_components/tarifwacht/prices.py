@@ -174,7 +174,10 @@ def parse_price_attributes(attributes: Mapping[str, Any]) -> ParsedPrices | None
 
 
 def prices_from_states(
-    states: Iterable[tuple[datetime, float | None]], start: datetime, end: datetime
+    states: Iterable[tuple[datetime, float | None]],
+    start: datetime,
+    end: datetime,
+    restarts: Iterable[datetime] = (),
 ) -> dict[datetime, float]:
     """Prices of the quarter hours in [start, end) from a sensor's recorded states.
 
@@ -186,9 +189,12 @@ def prices_from_states(
     state is an ordinary price change (right after a quarter-hour boundary).
     A next state at any other time may follow a restart of Home Assistant:
     the quarter hours in between stay without a price rather than get one
-    that may have changed while it was off.
+    that may have changed while it was off. `restarts` are the starts of the
+    recorder's runs: a state never holds across one, also when the first
+    state after the restart happens to come right after a boundary.
     """
     ordered = sorted(states, key=lambda state: state[0])
+    starts = sorted(restarts)
     first = slot_start(start)
     prices: dict[datetime, float] = {}
     for i, (at, price) in enumerate(ordered):
@@ -199,7 +205,8 @@ def prices_from_states(
         if i + 1 < len(ordered):
             next_at = ordered[i + 1][0]
             next_slot = slot_start(next_at)
-            if next_at - next_slot <= PRICE_CHANGE_DELAY:
+            restarted = any(at < run <= next_at for run in starts)
+            if next_at - next_slot <= PRICE_CHANGE_DELAY and not restarted:
                 last = max(own, next_slot - QUARTER)
         slot = max(own, first)
         while slot <= last and slot < end:

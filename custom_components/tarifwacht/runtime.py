@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
+from homeassistant.components.recorder.db_schema import RecorderRuns
+from homeassistant.components.recorder.models import process_timestamp
 from homeassistant.components.recorder.statistics import statistics_during_period
+from homeassistant.components.recorder.util import session_scope
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
@@ -100,6 +104,10 @@ LATE_PRICE_GRACE = timedelta(hours=1)
 # starting before that.
 MISSING_GRACE = timedelta(minutes=10)
 
+# Recorded states of a total-price sensor are read up to this long after the
+# gap to fill: the state after it tells whether the last one before it held.
+RECORDED_AFTER_GAP = timedelta(days=1)
+
 
 def parse_price_state(state: State, now: datetime | None = None) -> ParsedPrices | None:
     """Prices from a price sensor: known forecast attributes, else the state.
@@ -115,6 +123,19 @@ def parse_price_state(state: State, now: datetime | None = None) -> ParsedPrices
         return None
     slot = slot_start(now or state.last_updated)
     return ParsedPrices(prices={slot: price}, format="state")
+
+
+def recorder_run_starts(
+    hass: HomeAssistant, start: datetime, end: datetime
+) -> list[datetime]:
+    """Starts of the recorder's runs in (start, end]: restarts of Home Assistant.
+
+    Runs in the recorder's thread (executor job of the recorder).
+    """
+    with session_scope(hass=hass, read_only=True) as session:
+        rows = session.query(RecorderRuns.start).all()
+    starts = (process_timestamp(row[0]) for row in rows)
+    return sorted(s for s in starts if start < s <= end)
 
 
 def price_unit_ok(state: State) -> bool:
@@ -226,6 +247,10 @@ class MeterRuntime:
         self._last_notify: datetime | None = None
         self._notify_later: CALLBACK_TYPE | None = None
         self._started_at: datetime | None = None
+        # Background work (past prices, archives); cancelled on stop, so it
+        # never writes after the next runtime has taken over the files.
+        self._tasks: set[asyncio.Task[None]] = set()
+        self._stopped = False
         # Repair issues currently shown: issue id -> (translation key, placeholders)
         self._issues: dict[str, tuple[str, dict[str, str]]] = {}
 
@@ -332,7 +357,7 @@ class MeterRuntime:
                 )
             else:
                 engine.tariffs = self._build_tariffs(smard)
-        if not added and smard is None:
+        if self._stopped or (not added and smard is None):
             return
         now = dt_util.utcnow()
         engine.recompute(now)
@@ -346,20 +371,26 @@ class MeterRuntime:
         """Fill a total-price sensor's prices before `until` from the recorder.
 
         The recorder keeps states for some days (10 by default); older time
-        stays without a price. True if prices were added.
+        stays without a price. True if prices were added. A state never holds
+        across a restart of Home Assistant (start of a recorder run).
         """
         started = self.engine.started
         if started is None or "recorder" not in self.hass.config.components:
             return False
+        # A day past `until`: the state after it tells whether the last one
+        # before it held (see `prices_from_states`). Bounded, so a gap that
+        # cannot be filled (recorder already purged) costs little at each start.
+        end = min(dt_util.utcnow(), until + RECORDED_AFTER_GAP)
+
+        def read() -> tuple[dict[str, list[State]], list[datetime]]:
+            states = history.state_changes_during_period(
+                self.hass, started, end, entity
+            )
+            return states, recorder_run_starts(self.hass, started, end)
+
         try:
-            states = await get_instance(self.hass).async_add_executor_job(
-                history.state_changes_during_period,
-                self.hass,
-                started,
-                # Up to now: the state after `until` tells whether the last
-                # one before it held (see `prices_from_states`).
-                dt_util.utcnow(),
-                entity,
+            states, restarts = await get_instance(self.hass).async_add_executor_job(
+                read
             )
         except Exception as err:  # never block the setup
             self.past_prices_error = f"{entity}: {type(err).__name__}: {err}"
@@ -369,7 +400,7 @@ class MeterRuntime:
             (state.last_updated, recorded_price(state))
             for state in states.get(entity.lower(), [])
         ]
-        prices = prices_from_states(recorded, started, until)
+        prices = prices_from_states(recorded, started, until, restarts)
         _LOGGER.debug(
             "%s: %s prices of %s from the recorder", self.name, len(prices), entity
         )
@@ -429,6 +460,14 @@ class MeterRuntime:
             self.engine.archived_until = None
         if self.engine.backfill_until is not None:
             await self._async_backfill()
+        if self.engine.started is not None and (gaps := self._smard_gaps()):
+            # Exchange prices stored from SMARD.de before: the totals are
+            # right from the start; only missing weeks follow in the background.
+            end = max(self._smard_until(data) for data in gaps)
+            stored = await smard_cache(self.hass).async_prices(
+                self.engine.started, end, fetch=False
+            )
+            self.engine.tariffs = self._build_tariffs(stored)
         self.engine.start(now)
         for entity in sorted(self.price_entities):
             if state := self.hass.states.get(entity):
@@ -457,9 +496,15 @@ class MeterRuntime:
             self.engine.unpriced_until(e) is not None
             for e in self._total_price_entities()
         ):
-            self.entry.async_create_background_task(
-                self.hass, self._async_fill_past_prices(), f"{DOMAIN} past prices"
-            )
+            self._background(self._async_fill_past_prices(), "past prices")
+
+    def _background(self, work: Coroutine[Any, Any, None], name: str) -> None:
+        """Run `work` in the background until it is done or the runtime stops."""
+        task = self.entry.async_create_background_task(
+            self.hass, work, f"{DOMAIN} {name}"
+        )
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def _forget_renames(self, done: Mapping[str, str]) -> None:
         """Drop the renames whose stored state has moved.
@@ -602,9 +647,14 @@ class MeterRuntime:
 
     async def async_stop(self) -> None:
         """Stop listening and write the state."""
+        self._stopped = True
         for unsubscribe in self._unsubscribe:
             unsubscribe()
         self._unsubscribe = []
+        if tasks := [task for task in self._tasks if not task.done()]:
+            for task in tasks:
+                task.cancel()
+            await asyncio.wait(tasks)
         if self._notify_later is not None:
             self._notify_later()
             self._notify_later = None
@@ -654,9 +704,7 @@ class MeterRuntime:
         self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
         cutoff = now.astimezone(UTC).date() - timedelta(days=1)
         if self.engine.archived_until is None or self.engine.archived_until < cutoff:
-            self.entry.async_create_background_task(
-                self.hass, self._async_archive(now), f"{DOMAIN} archive"
-            )
+            self._background(self._async_archive(now), "archive")
 
     def _handle_meter(self, state: State, now: datetime) -> None:
         if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
