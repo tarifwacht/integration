@@ -344,6 +344,10 @@
       "title": "Meter with an unsupported unit ({name})",
       "description": "The meter {entity} reports {unit}. Tarifwacht needs Wh, kWh or MWh and books nothing until then. Choose another meter (Tarifwacht → ⋮ → Reconfigure). This message disappears once the meter reports a supported unit."
     },
+    "missing_entity": {
+      "title": "Entity missing ({name})",
+      "description": "{entities} no longer exists. Tarifwacht books nothing without the meter, and a tariff without its price sensor waits for its prices. Renamed entities are followed automatically; if one was deleted or replaced, choose another one: the meter under Tarifwacht → ⋮ → Reconfigure, a price sensor in the tariff (Tarifwacht → tariff → Reconfigure). This message disappears once the entity is back."
+    },
     "late_prices": {
       "title": "Prices missing ({name})",
       "description": "For {tariffs}, the price of a past quarter hour is still missing. Day-ahead prices are normally known the day before, so the price sensor may have failed. Consumption waits for its price for 24 hours; after that it is counted without a price (never as free). This message disappears once the prices arrive."

@@ -6,7 +6,7 @@ from typing import Final
 from zoneinfo import ZoneInfo
 
 DOMAIN: Final = "tarifwacht"
-VERSION: Final = "0.1.1"
+VERSION: Final = "0.1.2"
 USER_AGENT: Final = f"Tarifwacht/{VERSION} (+https://github.com/tarifwacht/integration)"
 
 # Days (pro-rata base prices) and months follow German local time.
@@ -15,6 +15,9 @@ BERLIN: Final = ZoneInfo("Europe/Berlin")
 # Config entry (one per meter).
 CONF_NAME: Final = "name"
 CONF_METER: Final = "meter_entity"
+# Source entities renamed since the last start, {stored id: current id}: the
+# next start moves the stored state to the current ids (rename.py).
+CONF_RENAMED: Final = "renamed"
 
 # Initial setup form; stored as two tariff subentries.
 CONF_FIXED_PRICE: Final = "fixed_price"  # ct/kWh incl. VAT

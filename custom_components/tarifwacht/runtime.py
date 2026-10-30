@@ -41,6 +41,7 @@ from .const import (
     CONF_METER,
     CONF_NAME,
     CONF_PRICE_ENTITY,
+    CONF_RENAMED,
     CONF_SMARD_FILL,
     DOMAIN,
     KIND_DYNAMIC_MARKET,
@@ -64,6 +65,7 @@ from .prices import (
     parse_price_attributes,
     prices_from_states,
 )
+from .rename import renamed_storage
 from .smard_cache import SmardError, smard_cache
 from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .tariffs import PriceSource, Tariff
@@ -92,6 +94,11 @@ BACKFILL_MARGIN = timedelta(hours=1)
 # A price still missing this long after its quarter hour is reported as a
 # repair issue (day-ahead prices are known the day before).
 LATE_PRICE_GRACE = timedelta(hours=1)
+
+# A source entity (meter, price sensor) that does not exist this long after
+# the start is reported as a repair issue; other integrations may still be
+# starting before that.
+MISSING_GRACE = timedelta(minutes=10)
 
 
 def parse_price_state(state: State, now: datetime | None = None) -> ParsedPrices | None:
@@ -218,6 +225,7 @@ class MeterRuntime:
         self._unsubscribe: list[CALLBACK_TYPE] = []
         self._last_notify: datetime | None = None
         self._notify_later: CALLBACK_TYPE | None = None
+        self._started_at: datetime | None = None
         # Repair issues currently shown: issue id -> (translation key, placeholders)
         self._issues: dict[str, tuple[str, dict[str, str]]] = {}
 
@@ -407,11 +415,18 @@ class MeterRuntime:
     async def async_start(self) -> None:
         """Restore the stored state, read current values, start listening."""
         now = dt_util.utcnow()
+        self._started_at = now
+        # Sources renamed since the last start: their stored prices and the
+        # meter's last reading move to the new ids (rename.py).
+        renames: dict[str, str] = dict(self.entry.data.get(CONF_RENAMED) or {})
         if data := await self._store.async_load():
-            self.engine.restore(data)
+            self.engine.restore(dict(renamed_storage(data, renames)))
         for year in self._archive_years(now):
             if archived := await self._archive_store(year).async_load():
-                self.engine.restore_archive(archived)
+                self.engine.restore_archive(dict(renamed_storage(archived, renames)))
+        if renames:
+            # The archives are written again under the new ids (below).
+            self.engine.archived_until = None
         if self.engine.backfill_until is not None:
             await self._async_backfill()
         self.engine.start(now)
@@ -432,6 +447,9 @@ class MeterRuntime:
             ),
         ]
         await self._async_archive(now)
+        if renames:
+            await self._store.async_save(self.engine.as_dict())
+            self._forget_renames(renames)
         # Issues of an earlier run are dropped unless still valid.
         self._issues = {issue_id: ("", {}) for issue_id in self._stored_issue_ids()}
         self._update_issues(now)
@@ -442,6 +460,19 @@ class MeterRuntime:
             self.entry.async_create_background_task(
                 self.hass, self._async_fill_past_prices(), f"{DOMAIN} past prices"
             )
+
+    def _forget_renames(self, done: Mapping[str, str]) -> None:
+        """Drop the renames whose stored state has moved.
+
+        Called during the setup, before the update listener is added: no
+        reload. A rename noted meanwhile stays (its own reload follows).
+        """
+        renames = self.entry.data.get(CONF_RENAMED) or {}
+        left = {s: c for s, c in renames.items() if done.get(s) != c}
+        data = {k: v for k, v in self.entry.data.items() if k != CONF_RENAMED}
+        if left:
+            data[CONF_RENAMED] = left
+        self.hass.config_entries.async_update_entry(self.entry, data=data)
 
     def _stored_issue_ids(self) -> list[str]:
         prefix = f"{self.entry.entry_id}_"
@@ -471,6 +502,17 @@ class MeterRuntime:
                     "entity": self.meter_entity,
                     "unit": str(self.unknown_unit),
                 },
+            )
+        missing = [
+            entity
+            for entity in (self.meter_entity, *sorted(self.price_entities))
+            if self.hass.states.get(entity) is None
+        ]
+        started = self._started_at
+        if missing and started is not None and now - started >= MISSING_GRACE:
+            wanted[f"{prefix}missing_entity"] = (
+                "missing_entity",
+                {"name": self.name, "entities": ", ".join(missing)},
             )
         if late := self.engine.late_prices(now, LATE_PRICE_GRACE):
             titles = sorted(self.tariffs[key].title for key in late)

@@ -344,6 +344,10 @@
       "title": "Zähler mit nicht unterstützter Einheit ({name})",
       "description": "Der Zähler {entity} liefert {unit}. Tarifwacht braucht Wh, kWh oder MWh und bucht bis dahin nichts. Wähle einen anderen Zähler (Tarifwacht → ⋮ → Neu konfigurieren). Dieser Hinweis verschwindet, sobald der Zähler eine unterstützte Einheit liefert."
     },
+    "missing_entity": {
+      "title": "Entität fehlt ({name})",
+      "description": "{entities} gibt es nicht mehr. Ohne den Zähler bucht Tarifwacht nichts, ein Tarif ohne seinen Preissensor wartet auf seine Preise. Umbenannte Entitäten zieht Tarifwacht selbst nach; wurde eine gelöscht oder ersetzt, wähle eine andere: den Zähler unter Tarifwacht → ⋮ → Neu konfigurieren, einen Preissensor im Tarif (Tarifwacht → Tarif → Neu konfigurieren). Dieser Hinweis verschwindet, sobald die Entität wieder da ist."
+    },
     "late_prices": {
       "title": "Preise fehlen ({name})",
       "description": "Für {tariffs} fehlt der Preis einer vergangenen Viertelstunde. Day-Ahead-Preise sind normalerweise am Vortag bekannt – vermutlich ist der Preissensor ausgefallen. Der Verbrauch wartet 24 Stunden auf seinen Preis; danach wird er ohne Preis gezählt (nie als kostenlos). Dieser Hinweis verschwindet, sobald die Preise da sind."

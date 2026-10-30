@@ -111,6 +111,8 @@ Click the cog (*Configure*) on the tariff:
 
 Several meters: add one entry each. To change the name or meter: *Tarifwacht → ⋮ → Reconfigure*.
 
+**Meter or price sensor renamed** (entity ID changed, also via *Recreate entity IDs* on the device): since 0.1.2 Tarifwacht follows the new ID itself and reloads the entry shortly after; no need to *Reconfigure*. The stored prices and the last meter reading move along, so the comparison still reaches back to the setup.
+
 ### Modul 3 (§ 14a EnWG)
 
 With a controllable consumer (heat pump, wallbox) you can choose Modul 3 with your grid operator: a grid fee that depends on the time of day. Whether it pays off is shown by a second tariff with the same prices and Modul 3 switched on.
@@ -290,6 +292,7 @@ Tarifwacht reports problems under *Settings → Repairs*:
 
 - **Price sensor with an unsupported unit:** the sensor delivers e.g. ct/kWh or €/MWh. Tarifwacht needs €/kWh and ignores its prices until then.
 - **Meter with an unsupported unit:** Tarifwacht books nothing until the meter delivers Wh, kWh or MWh.
+- **Entity missing:** the meter or a price sensor has not existed for at least ten minutes, e.g. because it was deleted or replaced by a new device. Without the meter Tarifwacht books nothing. Choose the meter again under *Tarifwacht → ⋮ → Reconfigure*, a price sensor in the tariff. Tarifwacht follows a renamed entity itself (since 0.1.2).
 - **Prices missing:** the price of a past quarter hour is missing; the price integration has probably failed. After 24 hours the consumption is counted without a price – never as free. So that the affected tariff does not look cheaper, "Difference to current tariff" and "Cheapest tariff" leave such quarter hours out for all tariffs; how much energy that was is in the attribute `energy_left_out_kwh`.
 
 Further:

@@ -48,6 +48,7 @@ from .const import (
     CONF_NAME,
     CONF_PRICE,
     CONF_PRICE_ENTITY,
+    CONF_RENAMED,
     CONF_SMARD_FILL,
     CONF_VAT,
     DEFAULT_VAT,
@@ -157,12 +158,16 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._data[CONF_NAME] = name
                 self._data[CONF_METER] = meter
                 if self.source == SOURCE_RECONFIGURE:
+                    data = entry_data(self._data)
+                    if renamed := self._data.get(CONF_RENAMED):
+                        # Stored state still to move to renamed sources.
+                        data[CONF_RENAMED] = renamed
                     # The update listener reloads the entry.
                     return self.async_update_and_abort(
                         self._get_reconfigure_entry(),
                         unique_id=meter,
                         title=name,
-                        data=entry_data(self._data),
+                        data=data,
                     )
                 return await self.async_step_tariffs()
 

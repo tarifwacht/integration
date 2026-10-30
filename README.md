@@ -109,6 +109,8 @@ Beim Tarif auf das Zahnrad (*Konfigurieren*):
 
 Mehrere Zähler: je einen Eintrag anlegen. Name oder Zähler ändern: *Tarifwacht → ⋮ → Neu konfigurieren*.
 
+**Zähler oder Preissensor umbenannt** (Entity-ID geändert, auch über „Entity-IDs neu erstellen“ am Gerät): Tarifwacht zieht die neue ID seit 0.1.2 selbst nach und lädt den Eintrag kurz danach neu; *Neu konfigurieren* ist nicht nötig. Die gespeicherten Preise und der letzte Zählerstand gehen mit, der Vergleich reicht also weiter bis zur Einrichtung zurück.
+
 ### Modul 3 (§ 14a EnWG)
 
 Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) kannst du beim Netzbetreiber Modul 3 wählen: ein Netzentgelt, das von der Uhrzeit abhängt. Ob sich das lohnt, zeigt ein zweiter Tarif mit denselben Preisen und eingeschaltetem Modul 3.
@@ -288,6 +290,7 @@ Tarifwacht meldet Probleme unter *Einstellungen → Reparaturen*:
 
 - **Preissensor mit nicht unterstützter Einheit:** Der Sensor liefert z. B. ct/kWh oder €/MWh. Tarifwacht braucht €/kWh und ignoriert seine Preise bis dahin.
 - **Zähler mit nicht unterstützter Einheit:** Tarifwacht bucht nichts, bis der Zähler Wh, kWh oder MWh liefert.
+- **Entität fehlt:** Den Zähler oder einen Preissensor gibt es seit mindestens zehn Minuten nicht mehr, z. B. weil er gelöscht oder durch ein neues Gerät ersetzt wurde. Ohne Zähler bucht Tarifwacht nichts. Zähler unter *Tarifwacht → ⋮ → Neu konfigurieren*, Preissensor im Tarif neu wählen. Eine umbenannte Entität zieht Tarifwacht selbst nach (seit 0.1.2).
 - **Preise fehlen:** Für eine vergangene Viertelstunde fehlt der Preis, vermutlich ist die Preis-Integration ausgefallen. Nach 24 Stunden wird der Verbrauch ohne Preis gezählt – nie als kostenlos. Damit der betroffene Tarif nicht günstiger aussieht, lassen „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ solche Viertelstunden für alle Tarife aus; wie viel Strom das war, steht im Attribut `energy_left_out_kwh`. Das gilt auch für einen später hinzugefügten Sensor mit Gesamtpreis, soweit sein Verlauf im Recorder nicht mehr bis zur Einrichtung zurückreicht, und für einen später hinzugefügten Börsenpreis-Tarif ohne den Haken für SMARD.de.
 
 Weiteres:

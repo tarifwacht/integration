@@ -1,6 +1,6 @@
 # Tarifwacht – Projektkontext für Claude
 
-Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und rückwirkend, was der eigene Strombezug mit verschiedenen Tarifen gekostet hätte (Festpreis, dynamisch, Modul 3). Schwesterprojekt von Einspeisewacht (`../einspeisewacht`), Streckenwacht (`../streckenwacht`) und Eilwacht (`../eilwacht`) – deren Muster übernehmen, wo es passt.
+Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und rückwirkend, was der eigene Strombezug mit verschiedenen Tarifen gekostet hätte (Festpreis, dynamisch, Modul 3). Schwesterprojekt von Einspeisewacht (`../einspeisewacht`), Streckenwacht (`../streckenwacht`), Eilwacht (`../eilwacht`), Wärmewacht (`../waermewacht`) und Speicherwacht (`../speicherwacht`) – deren Muster übernehmen, wo es passt.
 
 ## Dokumentation
 
@@ -34,7 +34,7 @@ Home-Assistant-Custom-Integration (HACS), Domain `tarifwacht`. Zeigt laufend und
 
 ## Release
 
-Gleicher Ablauf in allen Schwesterprojekten (Eilwacht, Einspeisewacht, Streckenwacht, Tarifwacht). Neue Erkenntnisse zum Ablauf hier eintragen und für die Schwestern melden.
+Gleicher Ablauf in allen Schwesterprojekten (Eilwacht, Einspeisewacht, Speicherwacht, Streckenwacht, Tarifwacht, Wärmewacht). Neue Erkenntnisse zum Ablauf hier eintragen und für die Schwestern melden.
 
 1. Version in `manifest.json`, `const.py` und `pyproject.toml` anheben, `uv lock`; `tests/test_manifest.py` prüft die Gleichheit. „Unveröffentlicht“ in `CHANGELOG.md` zur Version machen.
 2. `dev` pushen und auf den CI-Lauf **genau dieses Commits** warten (`gh run list --commit <sha>`): Push-CI startet manchmal Minuten verspätet, ein älterer grüner Lauf täuscht.
