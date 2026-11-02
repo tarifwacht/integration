@@ -325,6 +325,8 @@ Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten
 
 Bitte als [Issue](https://github.com/tarifwacht/integration/issues) – am besten mit Diagnose-Datei und den Versionen von Home Assistant und Tarifwacht. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
 
+Pull Requests sind willkommen. Wie, steht in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Danke
 
 Die Idee, den eigenen Verbrauch in Home Assistant direkt gegen beide Tarife zu rechnen, stammt aus [tariff_compare](https://github.com/fischit87/tariff_compare) von fischit87.

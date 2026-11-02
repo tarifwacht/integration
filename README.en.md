@@ -327,6 +327,8 @@ The long-term statistics of the deleted sensors stay in Home Assistant until you
 
 Please open an [issue](https://github.com/tarifwacht/integration/issues) – ideally with the diagnostics file and the versions of Home Assistant and Tarifwacht. Please report security issues privately, see [SECURITY.md](SECURITY.md).
 
+Pull requests are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) (with an English summary at the end).
+
 ## Thanks
 
 The idea of pricing your own consumption directly against both tariffs in Home Assistant comes from [tariff_compare](https://github.com/fischit87/tariff_compare) by fischit87.
