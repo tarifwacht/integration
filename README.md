@@ -3,6 +3,7 @@
   <img alt="Tarifwacht – Jeder Tarif. Jede Viertelstunde." src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/github/readme-header-light@2x.png" width="640">
 </picture>
 
+[![HACS Default](https://img.shields.io/badge/HACS-Default-005B8C.svg)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/tarifwacht/integration?color=96497D)](https://github.com/tarifwacht/integration/releases)
 [![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
@@ -65,9 +66,14 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 
 ## Installation
 
-1. HACS → ⋮ → *Benutzerdefinierte Repositories* → `https://github.com/tarifwacht/integration`, Typ *Integration*.
-2. Tarifwacht suchen und herunterladen. Home Assistant neu starten.
-3. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Tarifwacht*.
+**Mit einem Klick:** [![In HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tarifwacht&repository=integration&category=integration) → herunterladen, Home Assistant neu starten → [![Integration hinzufügen](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tarifwacht)
+
+Oder von Hand – Tarifwacht ist seit November 2026 in der Standardliste von HACS, ein benutzerdefiniertes Repository ist nicht mehr nötig:
+
+1. In HACS nach Tarifwacht suchen und herunterladen. Home Assistant neu starten.
+2. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Tarifwacht*.
+
+Hinweis: Im HACS-Dashboard fehlt das Icon derzeit ([HACS-Issue #5171](https://github.com/hacs/integration/issues/5171)); in den Home-Assistant-Einstellungen wird es angezeigt.
 
 ## Einrichtung
 
