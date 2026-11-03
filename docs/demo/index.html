@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tarifwacht – Live-Demo</title>
+    <meta
+      name="description"
+      content="Tarifwacht zum Ausprobieren: Festpreis, dynamischer Tarif und Modul 3 im Vergleich – mit erfundenen Preisen, gerechnet vom Code der Integration."
+    />
+    <link rel="icon" href="../../custom_components/tarifwacht/brand/icon.png" />
+    <style>
+      /* Page chrome in the Tarifwacht colours (docs/BRAND.md), the dashboard
+         with Home Assistant's default theme variables. */
+      :root {
+        color-scheme: light;
+        --page-bg: #faf7f2;
+        --page-text: #1f1c18;
+        --page-muted: #6b6357;
+        --page-line: #e4ddd1;
+        --brand: #96497d;
+        --accent: #f5a623;
+        --control-bg: #ffffff;
+        --primary-color: #03a9f4;
+        --card-background-color: #ffffff;
+        --primary-text-color: #212121;
+        --secondary-text-color: #727272;
+        --secondary-background-color: #f2f2f2;
+        --divider-color: rgba(0, 0, 0, 0.12);
+        --state-icon-color: #44739e;
+        --series-fixed: #44739e;
+        --series-dynamic: #ff9800;
+        --series-modul3: #43a047;
+        --usage: rgba(150, 73, 125, 0.28);
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --page-bg: #14181d;
+        --page-text: #ece8e1;
+        --page-muted: #b9b2a6;
+        --page-line: #2a3038;
+        --brand: #c983b1;
+        --control-bg: #1d232a;
+        --card-background-color: #1c1c1c;
+        --primary-text-color: #e1e1e1;
+        --secondary-text-color: #9b9b9b;
+        --secondary-background-color: #282828;
+        --divider-color: rgba(225, 225, 225, 0.12);
+        --state-icon-color: #6aa7d8;
+        --series-fixed: #6aa7d8;
+        --usage: rgba(201, 131, 177, 0.3);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--page-bg); color: var(--page-text);
+        font: 15px/1.5 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; }
+      .page { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+      header { display: flex; gap: 14px; align-items: center; margin-bottom: 20px; }
+      header img { width: 52px; height: 52px; border-radius: 12px; }
+      h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+      h1 span { color: var(--page-muted); font-weight: 400; }
+      .tagline { margin: 2px 0 0; color: var(--page-muted); }
+      header a.repo { margin-left: auto; color: var(--brand); text-decoration: none; font-weight: 600;
+        white-space: nowrap; }
+      .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin-bottom: 20px; }
+      .group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+      .group > span { font-size: 12px; color: var(--page-muted); text-transform: uppercase; letter-spacing: .04em; }
+      .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; overflow: hidden;
+        border: 1px solid var(--page-line); border-radius: 8px; background: var(--control-bg); }
+      .seg button { border: 0; border-right: 1px solid var(--page-line); background: none; color: inherit;
+        font: inherit; padding: 6px 12px; cursor: pointer; }
+      .seg button:last-child { border-right: 0; }
+      .seg button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+      .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      svg.mdi { width: 1em; height: 1em; fill: currentColor; flex: none; vertical-align: -0.125em; }
+      .banner { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; padding: 10px 14px;
+        border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+        background: color-mix(in srgb, var(--accent) 14%, var(--page-bg)); font-size: 14px; }
+      .banner svg.mdi { font-size: 22px; color: var(--accent); }
+
+      /* Dashboard: Home Assistant's sections view. */
+      .sections { display: grid; gap: 24px 16px;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+      .section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+      .section.double { grid-column: span 2; }
+      .section.wide { grid-column: 1 / -1; }
+      @media (max-width: 720px) { .section.double { grid-column: auto; } header a.repo { display: none; } }
+      .heading { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 16px;
+        font-weight: 500; color: var(--primary-text-color); }
+      .heading svg.mdi { font-size: 20px; color: var(--secondary-text-color); }
+      .subtitle { font-size: 13px; color: var(--secondary-text-color); padding: 2px 4px; }
+      .card { background: var(--card-background-color); color: var(--primary-text-color);
+        border: 1px solid var(--divider-color); border-radius: 12px; overflow: hidden; }
+      .card-title { padding: 12px 16px 0; font-size: 16px; font-weight: 500; }
+      .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+      .c12 { grid-column: span 12; } .c6 { grid-column: span 6; } .c4 { grid-column: span 4; }
+
+      /* Tile card */
+      .tile { display: flex; gap: 12px; align-items: center; padding: 10px 12px; min-height: 56px; }
+      .tile .shape { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+        font-size: 20px; color: var(--brand); background: color-mix(in srgb, var(--brand) 18%, transparent); }
+      .tile b { display: block; font-size: 14px; font-weight: 500; }
+      .tile small { display: block; font-size: 13px; color: var(--secondary-text-color); }
+      /* Statistic card */
+      .stat { padding: 12px 14px; }
+      .stat .name { font-size: 13px; color: var(--secondary-text-color); }
+      .stat .value { font-size: 26px; line-height: 1.25; }
+      .stat .value span { font-size: 14px; color: var(--secondary-text-color); margin-left: 2px; }
+      .stat .value.more { color: #d32f2f; } .stat .value.less { color: #2e7d32; }
+      :root[data-theme="dark"] .stat .value.more { color: #ef6c6c; }
+      :root[data-theme="dark"] .stat .value.less { color: #66bb6a; }
+
+      /* Entities card */
+      .rows { padding: 4px 0; }
+      .row { display: flex; align-items: center; gap: 16px; padding: 7px 16px; font-size: 14px; }
+      .row svg.mdi { font-size: 24px; color: var(--state-icon-color); }
+      .row .value { margin-left: auto; text-align: right; }
+      .row small { display: block; color: var(--secondary-text-color); font-size: 12px; }
+      .device { padding: 10px 16px 0; font-size: 13px; color: var(--secondary-text-color); }
+
+      /* Charts */
+      svg.chart { display: block; width: 100%; height: auto; }
+      svg.chart text { fill: var(--secondary-text-color); font-size: 11px; }
+      svg.chart .grid { stroke: var(--divider-color); }
+      svg.chart .now { stroke: var(--secondary-text-color); stroke-dasharray: 3 3; }
+      .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0 12px 10px;
+        font-size: 12px; }
+      .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+      .footnote { padding: 0 16px 10px; font-size: 12px; color: var(--secondary-text-color); }
+
+      /* Push notification (phone lock screen) */
+      .phone { padding: 14px 12px; background: linear-gradient(160deg, #3b2140, #6b3d61 55%, #9a6a8c); }
+      .push { background: rgba(255, 255, 255, 0.88); color: #1b1b1b; border-radius: 16px; padding: 9px 12px;
+        font-size: 13px; line-height: 1.4; white-space: pre-line; }
+      :root[data-theme="dark"] .push { background: rgba(30, 30, 30, 0.88); color: #eee; }
+      .push .app { display: flex; gap: 6px; align-items: center; font-size: 11px; opacity: 0.75; white-space: normal; }
+      .push .app span:last-child { margin-left: auto; }
+      .push b { display: block; }
+      .blueprint { padding: 10px 16px 12px; font-size: 13px; color: var(--secondary-text-color); }
+
+      /* Action response */
+      details { padding: 0 16px 12px; }
+      summary { cursor: pointer; font-size: 14px; color: var(--brand); padding: 4px 0; }
+      pre { margin: 6px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--secondary-background-color);
+        font: 12px/1.5 ui-monospace, Consolas, monospace; overflow: auto; max-height: 420px; }
+      table.year { width: 100%; border-collapse: collapse; font-size: 13px; }
+      table.year th, table.year td { padding: 6px 16px; text-align: right; border-bottom: 1px solid var(--divider-color); }
+      table.year th:first-child, table.year td:first-child { text-align: left; }
+      table.year th { font-weight: 500; color: var(--secondary-text-color); }
+
+      .below { margin-top: 28px; display: grid; gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+      .box { border: 1px solid var(--page-line); border-radius: 10px; padding: 12px 14px; background: var(--control-bg); }
+      .box h2 { margin: 0 0 6px; font-size: 14px; }
+      .box p, .box li { margin: 0 0 6px; color: var(--page-muted); font-size: 14px; }
+      .box ul { margin: 0; padding-left: 18px; }
+      a { color: var(--brand); }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <img src="../../custom_components/tarifwacht/brand/icon.png" alt="" />
+        <div>
+          <h1>Tarifwacht <span data-t="demo"></span></h1>
+          <p class="tagline" data-t="tagline"></p>
+        </div>
+        <a class="repo" href="https://github.com/tarifwacht/integration">GitHub →</a>
+      </header>
+
+      <div class="controls">
+        <div class="group"><span data-t="household"></span><div class="seg" id="household"></div></div>
+        <div class="group"><span data-t="time"></span><div class="seg" id="time"></div></div>
+        <div class="group"><span data-t="lang"></span><div class="seg" id="lang"></div></div>
+        <div class="group"><span data-t="theme"></span><div class="seg" id="dark"></div></div>
+      </div>
+
+      <div class="banner" id="banner"></div>
+      <main class="sections" id="dashboard"></main>
+
+      <div class="below">
+        <div class="box">
+          <h2 data-t="about"></h2>
+          <p data-t="data"></p>
+          <p data-t="credits"></p>
+        </div>
+        <div class="box">
+          <h2 data-t="tariffsTitle"></h2>
+          <ul id="tariff-list"></ul>
+        </div>
+        <div class="box">
+          <h2 data-t="build"></h2>
+          <p data-t="cards"></p>
+          <p><a href="https://github.com/tarifwacht/integration#dashboard-tarifvergleich" data-t="readme"></a></p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { PATHS } from "./icons.js";
+
+      const HOUSEHOLDS = ["wohnung", "haus"];
+      const MOMENTS = ["winter", "summer"];
+      const SERIES = { fixed: "var(--series-fixed)", dynamic: "var(--series-dynamic)", modul3: "var(--series-modul3)" };
+      const BLUEPRINT_URL =
+        "https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=" +
+        "https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F" +
+        "tarifwacht%2Fmonatsuebersicht.yaml";
+
+      const TEXT = {
+        de: {
+          demo: "Live-Demo",
+          tagline: "Was hätte dein Strom mit einem anderen Tarif gekostet? So zeigt es Tarifwacht in Home Assistant.",
+          household: "Haushalt",
+          time: "Zeitpunkt",
+          lang: "Sprache",
+          theme: "Darstellung",
+          households: { wohnung: "Wohnung", haus: "Haus mit E-Auto und Wärmepumpe" },
+          moments: { winter: "Winterabend", summer: "Sommerabend" },
+          auto: "Auto", light: "Hell", dark: "Dunkel",
+          banner: (time) =>
+            `Alle Preise, Verbräuche und Tarife sind erfunden – nur zur Vorführung. Demo-Zeit: ${time} Uhr.`,
+          compare: "Tarifvergleich",
+          cheapest: "Günstigster Tarif",
+          average: (t) => `Ø ${t}`,
+          todayOf: (t) => `${t} heute`,
+          monthOf: (t) => `${t} Monat`,
+          diffToday: (t) => `Differenz heute (${t})`,
+          diffMonth: (t) => `Differenz Monat (${t})`,
+          diffNote: "Differenz positiv: der Tarif wäre teurer gewesen als der aktuelle",
+          costsPerDay: "Kosten je Tag",
+          today: "Heute",
+          todayTitle: "Preis je Viertelstunde und Verbrauch",
+          usage: "Verbrauch (kWh je Viertelstunde)",
+          now: "jetzt",
+          curveNote: "Dynamische Preise inklusive Aufschlägen und MwSt.",
+          curveModul3: " Mit Modul 3 ist das Netzentgelt nachts niedriger und abends höher.",
+          devices: "Geräte",
+          meter: (d) => `Zähler „${d}“`,
+          energy: "Strombezug",
+          consumptionCost: "Verbrauchskosten",
+          cost: "Kosten gesamt",
+          averagePrice: "Durchschnittspreis",
+          difference: "Differenz zum aktuellen Tarif",
+          current: "aktueller Tarif",
+          since: (d) => `seit der Einrichtung am ${d}`,
+          notification: "Benachrichtigung",
+          notificationNote:
+            "Am Monatsersten schickt der Blueprint „Monatsübersicht“ den Vergleich des Vormonats – Text wie in seiner Vorlage.",
+          importBlueprint: "Blueprint importieren →",
+          year: "Jahresrückblick",
+          yearTitle: "Kosten je Monat (Aktion „Tarife vergleichen“)",
+          total: "Jahr",
+          response: "Antwort der Aktion anzeigen",
+          about: "Erfunden, aber echt gerechnet",
+          data:
+            "Börsenpreise, Verbräuche und Tarife sind erfunden; es gibt keinen echten Anbieter oder Netzbetreiber dahinter. " +
+            "Gebucht werden sie vom Code der Integration, Viertelstunde für Viertelstunde über ein Jahr – genau wie in deinem Home Assistant.",
+          credits: "Symbole: Material Design Icons (Pictogrammers Free License).",
+          tariffsTitle: "Die erfundenen Tarife",
+          fixedDesc: (d) => `${ct(d.price)} ct/kWh, ${eur(d.base_price)} im Monat`,
+          dynamicDesc: (d) =>
+            `Börsenpreis + ${ct(d.grid_fee)} ct Netzentgelt + ${ct(d.levies)} ct Steuern/Abgaben + ${ct(d.margin)} ct Anbieter, ` +
+            `${d.vat} % MwSt., ${eur(d.base_price)} im Monat`,
+          modul3Desc: (m) => `Modul 3: Netzentgelt ${ct(m.nt)} ct ${m.nt_windows} Uhr, ${ct(m.ht)} ct ${m.ht_windows} Uhr`,
+          build: "Selbst bauen",
+          cards:
+            "Der Abschnitt „Tarifvergleich“ besteht aus normalen Dashboard-Karten (Kachel, Statistik, Statistik-Diagramm); " +
+            "die README hat ihn fertig zum Einfügen.",
+          readme: "Dashboard in der README →",
+          stillToday: "bis jetzt",
+        },
+        en: {
+          demo: "live demo",
+          tagline: "What would your electricity have cost with a different tariff? This is how Tarifwacht shows it in Home Assistant.",
+          household: "Household",
+          time: "Moment",
+          lang: "Language",
+          theme: "Theme",
+          households: { wohnung: "Flat", haus: "House with EV and heat pump" },
+          moments: { winter: "Winter evening", summer: "Summer evening" },
+          auto: "Auto", light: "Light", dark: "Dark",
+          banner: (time) => `All prices, consumption and tariffs are made up – for demonstration only. Demo time: ${time}.`,
+          compare: "Tariff comparison",
+          cheapest: "Cheapest tariff",
+          average: (t) => `Ø ${t}`,
+          todayOf: (t) => `${t} today`,
+          monthOf: (t) => `${t} month`,
+          diffToday: (t) => `Difference today (${t})`,
+          diffMonth: (t) => `Difference month (${t})`,
+          diffNote: "Positive difference: the tariff would have cost more than the current one",
+          costsPerDay: "Costs per day",
+          today: "Today",
+          todayTitle: "Price per quarter hour and consumption",
+          usage: "Consumption (kWh per quarter hour)",
+          now: "now",
+          curveNote: "Dynamic prices including surcharges and VAT.",
+          curveModul3: " With Modul 3 the grid fee is lower at night and higher in the evening.",
+          devices: "Devices",
+          meter: (d) => `Meter “${d}”`,
+          energy: "Grid purchase",
+          consumptionCost: "Consumption cost",
+          cost: "Total cost",
+          averagePrice: "Average price",
+          difference: "Difference to current tariff",
+          current: "current tariff",
+          since: (d) => `since setup on ${d}`,
+          notification: "Notification",
+          notificationNote:
+            "On the first of the month the blueprint “Monatsübersicht” sends last month's comparison – text as in its template (German).",
+          importBlueprint: "Import blueprint →",
+          year: "Year in review",
+          yearTitle: "Costs per month (action “Compare tariffs”)",
+          total: "Year",
+          response: "Show the action's response",
+          about: "Made up, but computed for real",
+          data:
+            "Exchange prices, consumption and tariffs are made up; there is no real supplier or grid operator behind them. " +
+            "They are booked by the integration's own code, quarter hour by quarter hour over a year – just as in your Home Assistant.",
+          credits: "Icons: Material Design Icons (Pictogrammers Free License).",
+          tariffsTitle: "The made-up tariffs",
+          fixedDesc: (d) => `${ct(d.price)} ct/kWh, ${eur(d.base_price)} per month`,
+          dynamicDesc: (d) =>
+            `exchange price + ${ct(d.grid_fee)} ct grid fee + ${ct(d.levies)} ct taxes/levies + ${ct(d.margin)} ct supplier, ` +
+            `${d.vat} % VAT, ${eur(d.base_price)} per month`,
+          modul3Desc: (m) => `Modul 3: grid fee ${ct(m.nt)} ct ${m.nt_windows}, ${ct(m.ht)} ct ${m.ht_windows}`,
+          build: "Build it yourself",
+          cards:
+            "The “Tariff comparison” section is made of standard dashboard cards (tile, statistic, statistics graph); " +
+            "the README has it ready to paste.",
+          readme: "Dashboard in the README →",
+          stillToday: "so far",
+        },
+      };
+
+      // State, kept in the URL so a view can be linked.
+      const params = new URLSearchParams(location.search);
+      const pick = (value, allowed, fallback) => (allowed.includes(value) ? value : fallback);
+      const state = {
+        household: pick(params.get("household"), HOUSEHOLDS, "haus"),
+        time: pick(params.get("time"), MOMENTS, "winter"),
+        lang: pick(params.get("lang"), ["de", "en"], navigator.language?.startsWith("de") ? "de" : "en"),
+        dark: pick(params.get("dark"), ["auto", "0", "1"], "auto"),
+      };
+      const t = () => TEXT[state.lang];
+      const saveState = () => history.replaceState(null, "", `?${new URLSearchParams(state)}`);
+      const systemDark = matchMedia("(prefers-color-scheme: dark)");
+      const isDark = () => (state.dark === "auto" ? systemDark.matches : state.dark === "1");
+
+      const escapeHtml = (value) =>
+        String(value ?? "").replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
+      const icon = (name) =>
+        `<svg class="mdi" viewBox="0 0 24 24" aria-hidden="true"><path d="${PATHS[name]}" /></svg>`;
+      const num = (value, digits) =>
+        new Intl.NumberFormat(state.lang, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+      const ct = (value) => num(value, 1);
+      const eur = (value) =>
+        new Intl.NumberFormat(state.lang, { style: "currency", currency: "EUR" }).format(value);
+      const signedEur = (value) =>
+        new Intl.NumberFormat(state.lang, { style: "currency", currency: "EUR", signDisplay: "exceptZero" }).format(value);
+      const dateFmt = (iso, opts) => new Date(iso).toLocaleDateString(state.lang, { timeZone: "Europe/Berlin", ...opts });
+      const timeFmt = (iso) =>
+        new Date(iso).toLocaleTimeString(state.lang, { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
+
+      const cache = {};
+      async function load(key) {
+        cache[key] ??= await (await fetch(`data/${key}.json`)).json();
+        return cache[key];
+      }
+
+      // ---- Cards -------------------------------------------------------------------
+
+      const tile = (mdi, name, value, cls = "c12") =>
+        `<div class="card tile ${cls}"><div class="shape">${icon(mdi)}</div><div><b>${escapeHtml(name)}</b><small>${value}</small></div></div>`;
+
+      function stat(name, value, cls, tone = "") {
+        return `<div class="card stat ${cls}"><div class="name">${escapeHtml(name)}</div>
+          <div class="value ${tone}">${num(value, 2)}<span>€</span></div></div>`;
+      }
+
+      function barChart(groups, keys, labels, height = 200, W = 640) {
+        // groups: [{label, values: {key: number}}]; W is the drawing width, so
+        // the text keeps about its size in a wide or narrow card.
+        const H = height, L = 40, R = 8, T = 10, B = 24;
+        const max = Math.max(1, ...groups.flatMap((g) => keys.map((k) => g.values[k])));
+        const step = niceStep(max);
+        const top = Math.ceil(max / step) * step;
+        const y = (v) => T + (1 - v / top) * (H - T - B);
+        const slot = (W - L - R) / groups.length;
+        const bar = Math.max(1, (slot * 0.8) / keys.length);
+        let svg = "";
+        for (let v = 0; v <= top + 1e-9; v += step) {
+          svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" />
+            <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${num(v, step < 1 ? 1 : 0)}</text>`;
+        }
+        groups.forEach((g, i) => {
+          const x0 = L + i * slot + slot * 0.1;
+          keys.forEach((k, j) => {
+            const v = g.values[k];
+            svg += `<rect x="${x0 + j * bar}" y="${y(v)}" width="${bar * 0.92}" height="${y(0) - y(v)}" fill="${SERIES[k]}" rx="1"><title>${escapeHtml(g.title)}: ${escapeHtml(labels[k])} ${eur(v)}</title></rect>`;
+          });
+          if (g.label) svg += `<text x="${x0 + (bar * keys.length) / 2}" y="${H - 6}" text-anchor="middle">${g.label}</text>`;
+        });
+        return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">${svg}</svg>`;
+      }
+
+      function niceStep(max) {
+        const raw = max / 4;
+        const p = 10 ** Math.floor(Math.log10(raw));
+        return [1, 2, 2.5, 5, 10].map((m) => m * p).find((s) => s >= raw);
+      }
+
+      function legend(keys, labels) {
+        return `<div class="legend">${keys.map((k) => `<span><i style="background:${SERIES[k]}"></i>${escapeHtml(labels[k])}</span>`).join("")}</div>`;
+      }
+
+      function compareSection(data, view, keys, labels) {
+        const tx = t();
+        const tiles = [
+          tile("trophy-outline", tx.cheapest, escapeHtml(view.cheapest)),
+          ...keys.map((k) =>
+            tile("tag-outline", tx.average(labels[k]), `${ct(view.tariffs[k].average_ct)} ct/kWh`, keys.length === 3 ? "c4" : "c6"),
+          ),
+        ];
+        const width = keys.length === 3 ? "c4" : "c6";
+        const stats = [
+          ...keys.map((k) => stat(tx.todayOf(labels[k]), view.today[k], width)),
+          ...keys.map((k) => stat(tx.monthOf(labels[k]), view.month[k], width)),
+        ];
+        const diffs = keys
+          .filter((k) => k !== "fixed")
+          .flatMap((k) => {
+            const today = view.today[k] - view.today.fixed;
+            const month = view.month[k] - view.month.fixed;
+            const tone = (v) => (v > 0 ? "more" : v < 0 ? "less" : "");
+            return [
+              stat(tx.diffToday(labels[k]), today, "c6", tone(today)),
+              stat(tx.diffMonth(labels[k]), month, "c6", tone(month)),
+            ];
+          });
+        const days = view.days.map((d, i) => ({
+          title: dateFmt(d.date, { day: "numeric", month: "short" }),
+          label: i % 5 === 4 ? dateFmt(d.date, { day: "numeric", month: "numeric" }) : "",
+          values: d.costs,
+        }));
+        return `
+          <section class="section double">
+            <div class="heading">${icon("scale-balance")}<span>${tx.compare}</span></div>
+            <div class="grid">${tiles.join("")}${stats.join("")}${diffs.join("")}</div>
+            <div class="subtitle">${tx.diffNote}</div>
+            <div class="card"><div class="card-title">${tx.costsPerDay}</div>${barChart(days, keys, labels)}${legend(keys, labels)}</div>
+          </section>`;
+      }
+
+      function curveSection(view, keys, labels) {
+        const tx = t();
+        const rows = view.curve;
+        const W = 400, H = 240, L = 30, R = 8, T = 14, B = 22;
+        const prices = rows.flatMap((r) => keys.map((k) => r.ct[k]));
+        const lo = Math.min(0, Math.floor(Math.min(...prices) / 5) * 5);
+        const hi = Math.ceil(Math.max(...prices) / 5) * 5;
+        const kwhMax = Math.max(0.2, ...rows.map((r) => r.kwh ?? 0));
+        const x = (i) => L + (i / rows.length) * (W - L - R);
+        const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+        const yk = (v) => H - B - (v / kwhMax) * (H - T - B) * 0.9;
+        let svg = "";
+        for (let v = lo; v <= hi; v += 10) {
+          svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" />
+            <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+        }
+        svg += `<text x="${L - 6}" y="${T - 2}" text-anchor="end">ct</text>`;
+        rows.forEach((r, i) => {
+          if (r.kwh) svg += `<rect x="${x(i)}" y="${yk(r.kwh)}" width="${(W - L - R) / rows.length - 0.5}" height="${H - B - yk(r.kwh)}" fill="var(--usage)" />`;
+        });
+        for (const k of keys) {
+          let d = `M${x(0)},${y(rows[0].ct[k])}`;
+          rows.forEach((r, i) => (d += `H${x(i)}V${y(r.ct[k])}`));
+          d += `H${x(rows.length)}`;
+          svg += `<path d="${d}" fill="none" stroke="${SERIES[k]}" stroke-width="2" />`;
+        }
+        for (let h = 0; h <= 24; h += 4) {
+          svg += `<text x="${x(h * 4)}" y="${H - 6}" text-anchor="middle">${String(h).padStart(2, "0")}:00</text>`;
+        }
+        const nowIndex = rows.findIndex((r) => r.kwh === null);
+        if (nowIndex > 0) {
+          svg += `<line class="now" x1="${x(nowIndex)}" x2="${x(nowIndex)}" y1="${T}" y2="${H - B}" />
+            <text x="${x(nowIndex) + 4}" y="${T + 10}">${tx.now}</text>`;
+        }
+        return `
+          <section class="section">
+            <div class="heading">${icon("chart-line")}<span>${tx.today}</span></div>
+            <div class="card">
+              <div class="card-title">${tx.todayTitle}</div>
+              <svg class="chart" viewBox="0 0 ${W} ${H}" role="img">${svg}</svg>
+              <div class="legend">${keys.map((k) => `<span><i style="background:${SERIES[k]}"></i>${escapeHtml(labels[k])}</span>`).join("")}<span><i style="background:var(--usage)"></i>${tx.usage}</span></div>
+              <div class="footnote">${tx.curveNote}${keys.includes("modul3") ? tx.curveModul3 : ""}</div>
+            </div>
+          </section>`;
+      }
+
+      function devicesSection(data, view, keys, labels) {
+        const tx = t();
+        const since = tx.since(dateFmt(data.setup, { day: "numeric", month: "long", year: "numeric" }));
+        const row = (mdi, name, value, note = "") =>
+          `<div class="row">${icon(mdi)}<span>${escapeHtml(name)}${note ? `<small>${note}</small>` : ""}</span><span class="value">${value}</span></div>`;
+        const ranking = view.ranking.map((r) => `${escapeHtml(r.tariff)}: ${eur(r.cost)}`).join(" · ");
+        const meter = `
+          <div class="card"><div class="device">${escapeHtml(tx.meter(data.device))}</div><div class="rows">
+            ${row("transmission-tower-import", tx.energy, `${num(view.energy_kwh, 2)} kWh`, since)}
+            ${row("trophy-outline", tx.cheapest, escapeHtml(view.cheapest), ranking)}
+          </div></div>`;
+        const tariffs = keys
+          .map((k) => {
+            const v = view.tariffs[k];
+            return `
+              <div class="card"><div class="device">${escapeHtml(data.device)} ${escapeHtml(labels[k])}${k === "fixed" ? ` · ${tx.current}` : ""}</div><div class="rows">
+                ${row("cash", tx.consumptionCost, eur(v.consumption_cost))}
+                ${row("cash-multiple", tx.cost, eur(v.cost))}
+                ${row("tag-outline", tx.averagePrice, `${ct(v.average_ct)} ct/kWh`)}
+                ${v.difference === null ? "" : row("plus-minus-variant", tx.difference, signedEur(v.difference))}
+              </div></div>`;
+          })
+          .join("");
+        return `
+          <section class="section">
+            <div class="heading">${icon("lightning-bolt")}<span>${tx.devices}</span></div>
+            ${meter}${tariffs}
+          </section>`;
+      }
+
+      function notificationSection(view) {
+        const tx = t();
+        const n = view.notification;
+        const when = dateFmt(n.at, { day: "numeric", month: "short" }) + ", " + timeFmt(n.at);
+        return `
+          <section class="section">
+            <div class="heading">${icon("bell-ring-outline")}<span>${tx.notification}</span></div>
+            <div class="card">
+              <div class="phone"><div class="push"><div class="app">${icon("bell-ring-outline")}<span>Home Assistant</span><span>${when}</span></div><b>${escapeHtml(n.title)}</b>${escapeHtml(n.message)}</div></div>
+              <div class="blueprint">${tx.notificationNote}<br /><a href="${BLUEPRINT_URL}" target="_blank" rel="noopener">${tx.importBlueprint}</a></div>
+            </div>
+          </section>`;
+      }
+
+      function yaml(value, indent = "") {
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => {
+              const body = yaml(item, indent + "  ");
+              return typeof item === "object" && item ? `\n${indent}- ${body.trimStart()}` : `\n${indent}- ${body}`;
+            })
+            .join("");
+        }
+        if (value && typeof value === "object") {
+          return Object.entries(value)
+            .map(([k, v]) => {
+              const inner = yaml(v, indent + "  ");
+              return typeof v === "object" && v !== null ? `\n${indent}${k}:${inner}` : `\n${indent}${k}: ${inner}`;
+            })
+            .join("");
+        }
+        if (value === null) return "null";
+        return typeof value === "string" ? value : String(value);
+      }
+
+      function yearSection(data, keys, labels) {
+        const tx = t();
+        const year = data.year;
+        const groups = year.months.map((m) => {
+          const values = {};
+          for (const row of m.tariffs) values[keys.find((k) => labels[k] === row.tariff)] = row.cost;
+          return { title: m.month, label: dateFmt(`${m.month}-15`, { month: "short" }), values };
+        });
+        const head = `<tr><th></th>${keys.map((k) => `<th>${escapeHtml(labels[k])}</th>`).join("")}</tr>`;
+        const totals = Object.fromEntries(year.tariffs.map((r) => [r.tariff, r]));
+        const line = (name, fn) => `<tr><td>${name}</td>${keys.map((k) => `<td>${fn(totals[labels[k]])}</td>`).join("")}</tr>`;
+        const table = `<table class="year">${head}
+          ${line(tx.total, (r) => eur(r.cost))}
+          ${line(tx.averagePrice, (r) => `${ct(r.average_price_ct)} ct/kWh`)}
+          ${line(tx.difference, (r) => (r.current ? "–" : signedEur(r.difference_to_current)))}</table>`;
+        return `
+          <section class="section wide">
+            <div class="heading">${icon("calendar-month-outline")}<span>${tx.year}</span></div>
+            <div class="card">
+              <div class="card-title">${tx.yearTitle}</div>
+              ${barChart(groups, keys, labels, 280, 1240)}${legend(keys, labels)}
+              ${table}
+              <details><summary>${tx.response}</summary><pre>${escapeHtml(yaml(year).trimStart())}</pre></details>
+            </div>
+          </section>`;
+      }
+
+      // ---- Page ----------------------------------------------------------------------
+
+      async function render() {
+        const tx = t();
+        const data = await load(state.household);
+        const view = data.moments[state.time];
+        const keys = data.tariffs.map((x) => x.key);
+        const labels = Object.fromEntries(data.tariffs.map((x) => [x.key, x.title]));
+        const clock = new Date(view.now).toLocaleString(state.lang, {
+          timeZone: "Europe/Berlin",
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        document.getElementById("banner").innerHTML = `${icon("information-outline")}<span>${tx.banner(clock)}</span>`;
+        document.getElementById("dashboard").innerHTML =
+          compareSection(data, view, keys, labels) +
+          curveSection(view, keys, labels) +
+          devicesSection(data, view, keys, labels) +
+          notificationSection(view) +
+          yearSection(data, keys, labels);
+        document.getElementById("tariff-list").innerHTML = data.tariffs
+          .map((d) => {
+            const text = d.kind === "fixed" ? tx.fixedDesc(d) : tx.dynamicDesc(d) + (d.modul3 ? `; ${tx.modul3Desc(d.modul3)}` : "");
+            return `<li><b>${escapeHtml(d.title)}${d.current ? ` (${tx.current})` : ""}:</b> ${escapeHtml(text)}</li>`;
+          })
+          .join("");
+      }
+
+      function applyTheme() {
+        document.documentElement.dataset.theme = isDark() ? "dark" : "light";
+      }
+
+      function applyText() {
+        const tx = t();
+        document.documentElement.lang = state.lang;
+        for (const el of document.querySelectorAll("[data-t]")) el.textContent = tx[el.dataset.t];
+        segment("household", HOUSEHOLDS, (v) => tx.households[v], render);
+        segment("time", MOMENTS, (v) => tx.moments[v], render);
+        segment("lang", ["de", "en"], (v) => v.toUpperCase(), () => (applyText(), render()));
+        segment("dark", ["auto", "0", "1"], (v) => tx[{ auto: "auto", 0: "light", 1: "dark" }[v]], applyTheme);
+      }
+
+      function segment(id, values, label, onChange) {
+        const box = document.getElementById(id);
+        box.replaceChildren(
+          ...values.map((value) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label(value);
+            button.setAttribute("aria-pressed", String(state[id] === value));
+            button.addEventListener("click", () => {
+              if (state[id] === value) return;
+              state[id] = value;
+              for (const b of box.children) b.setAttribute("aria-pressed", String(b === button));
+              saveState();
+              onChange();
+            });
+            return button;
+          }),
+        );
+      }
+
+      systemDark.addEventListener("change", () => state.dark === "auto" && applyTheme());
+      applyText();
+      applyTheme();
+      saveState();
+      await render();
+    </script>
+  </body>
+</html>

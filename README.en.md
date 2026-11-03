@@ -7,10 +7,13 @@
 [![Release](https://img.shields.io/github/v/release/tarifwacht/integration?color=96497D)](https://github.com/tarifwacht/integration/releases)
 [![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/Live_demo-try_it-F5A623.svg)](https://tarifwacht.github.io/integration/?lang=en)
 
 🇩🇪 [Deutsch](https://github.com/tarifwacht/integration/blob/main/README.md) · 🇬🇧 **English**
 
 **What would your electricity have cost with a different tariff?** Tarifwacht ("tariff watch") prices your actual grid consumption in Home Assistant quarter hour by quarter hour against any number of tariffs – fixed price, dynamic, with or without Modul 3 – and shows which one would have been cheaper. Each dynamic tariff gets the price of **exactly that quarter hour**, not the price of whatever moment the meter happens to report.
+
+**Try it without installing:** the [live demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with an EV and a heat pump – with made-up prices and tariffs, but computed by the integration's own code.
 
 Tarifwacht is built for Germany: quarter-hour day-ahead prices, German price components and the time-variable grid fee under § 14a EnWG. Days and months (base prices) follow German local time.
 

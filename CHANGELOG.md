@@ -1,5 +1,10 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Live-Demo zum Ausprobieren ohne Installation:** [tarifwacht.github.io/integration](https://tarifwacht.github.io/integration/) zeigt den Tarifvergleich im Dashboard, die Geräte, die Monatsübersicht des Blueprints und einen Jahresrückblick – für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe, an einem Winter- und einem Sommerabend. Preise, Verbräuche und Tarife sind erfunden und so gekennzeichnet; gebucht werden sie vom Code der Integration.
+- Intern: `tools/make_demo.py` erzeugt die Daten der Demo, der Workflow „Live-Demo“ veröffentlicht sie über GitHub Pages.
+
 ## 0.1.2 – 2026-10-30
 
 - **Umbenannte Entitäten:** Wer den Bezugszähler oder einen Preissensor umbenennt (Entity-ID geändert, auch über „Entity-IDs neu erstellen“ am Gerät), muss nichts mehr tun. Tarifwacht zieht die neue ID selbst nach und lädt den Eintrag kurz danach neu. Bisher buchte Tarifwacht nach dem Umbenennen des Zählers still nichts mehr; nach dem Umbenennen eines Preissensors kam „Preise fehlen“, und wählte man den neuen Sensor unter *Neu konfigurieren*, gingen die gespeicherten Preise verloren – „Differenz zum aktuellen Tarif“ und „Günstigster Tarif“ verglichen dann nur noch die letzten Tage. Jetzt gehen die gespeicherten Preise und der letzte Zählerstand mit, auch wenn der Eintrag beim Umbenennen gerade nicht geladen war (dann beim nächsten Start). War gerade „Neu konfigurieren“ offen, bleibt beim Speichern die neue ID.

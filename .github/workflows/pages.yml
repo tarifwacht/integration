@@ -1,0 +1,46 @@
+name: Live-Demo
+
+# Publishes docs/demo/ to GitHub Pages (https://tarifwacht.github.io/integration/).
+# Runs for main. The page references the brand icon as
+# ../../custom_components/…; on Pages everything sits at the root.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/demo/**
+      - custom_components/tarifwacht/brand/icon.png
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Seite zusammenstellen
+        run: |
+          mkdir -p _site/brand
+          cp -r docs/demo/. _site/
+          cp custom_components/tarifwacht/brand/icon.png _site/brand/
+          # "./", not "": a path without it would be read as a package name by import()
+          sed -i 's#\.\./\.\./custom_components/tarifwacht/#./#g' _site/index.html
+          if grep -n '\.\./' _site/index.html; then
+            echo "::error::index.html verweist noch auf Pfade außerhalb der Seite"
+            exit 1
+          fi
+      - uses: actions/upload-pages-artifact@v5
+      - id: deployment
+        uses: actions/deploy-pages@v5

@@ -7,10 +7,13 @@
 [![Release](https://img.shields.io/github/v/release/tarifwacht/integration?color=96497D)](https://github.com/tarifwacht/integration/releases)
 [![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
+[![Live-Demo](https://img.shields.io/badge/Live--Demo-ausprobieren-F5A623.svg)](https://tarifwacht.github.io/integration/?lang=de)
 
 🇩🇪 **Deutsch** · 🇬🇧 [English](https://github.com/tarifwacht/integration/blob/main/README.en.md)
 
 **Was hätte dein Strom mit einem anderen Tarif gekostet?** Tarifwacht rechnet deinen tatsächlichen Strombezug in Home Assistant Viertelstunde für Viertelstunde gegen beliebig viele Tarife – Festpreis, dynamisch, mit oder ohne Modul 3 – und zeigt, welcher günstiger gewesen wäre. Jeder dynamische Tarif bekommt dabei den Preis **genau dieser Viertelstunde**, nicht den Preis des Augenblicks, in dem der Zähler zufällig meldet.
+
+**Ausprobieren ohne Installation:** Die [Live-Demo](https://tarifwacht.github.io/integration/?lang=de) zeigt Dashboard, Geräte, Monatsübersicht und Jahresrückblick für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe – mit erfundenen Preisen und Tarifen, aber gerechnet vom Code der Integration.
 
 > **Keine Abrechnungs- oder Tarifberatung.** Die Werte sind eine Orientierung. Maßgeblich ist die Abrechnung deines Stromanbieters.
 
