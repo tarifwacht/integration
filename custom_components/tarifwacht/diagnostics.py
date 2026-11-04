@@ -84,4 +84,6 @@ async def async_get_config_entry_diagnostics(
             if (until := engine.unpriced_until(source)) is not None
         },
         "past_prices_error": runtime.past_prices_error,
+        # Tarifwacht's own sensors chosen as sources: not read (repair issue).
+        "own_entities": runtime.own_entities,
     }

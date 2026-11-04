@@ -307,6 +307,7 @@ Tarifwacht reports problems under *Settings → Repairs*:
 - **Price sensor with an unsupported unit:** the sensor delivers e.g. ct/kWh or €/MWh. Tarifwacht needs €/kWh and ignores its prices until then.
 - **Meter with an unsupported unit:** Tarifwacht books nothing until the meter delivers Wh, kWh or MWh.
 - **Entity missing:** the meter or a price sensor has not existed for at least ten minutes, e.g. because it was deleted or replaced by a new device. Without the meter Tarifwacht books nothing. Choose the meter again under *Tarifwacht → ⋮ → Reconfigure*, a price sensor in the tariff. Tarifwacht follows a renamed entity itself (since 0.1.2).
+- **Tarifwacht sensor chosen as a source:** the meter or a price sensor is a sensor of Tarifwacht itself, e.g. "Grid purchase" as the meter. Tarifwacht does not read it, otherwise the entry would read its own results: without the meter it books no consumption. Figures already booked stay. Choose the real meter under *Tarifwacht → ⋮ → Reconfigure*, a price sensor in the tariff. New entries and tariffs do not allow it in the first place.
 - **Prices missing:** the price of a past quarter hour is missing; the price integration has probably failed. After 24 hours the consumption is counted without a price – never as free. So that the affected tariff does not look cheaper, "Difference to current tariff" and "Cheapest tariff" leave such quarter hours out for all tariffs; how much energy that was is in the attribute `energy_left_out_kwh`.
 
 Further:

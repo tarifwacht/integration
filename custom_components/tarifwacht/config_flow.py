@@ -26,7 +26,6 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
@@ -63,7 +62,12 @@ from .const import (
 )
 from .meter import UNIT_FACTORS
 from .modul3 import WindowError, overlaps, parse_windows
-from .runtime import parse_price_state, price_unit_ok, tariff_subentries
+from .runtime import (
+    own_entity,
+    parse_price_state,
+    price_unit_ok,
+    tariff_subentries,
+)
 from .tariff_config import (
     change_fields,
     default_titles,
@@ -98,15 +102,6 @@ BASE_PERIOD = selector.SelectSelector(
         mode=selector.SelectSelectorMode.DROPDOWN,
     )
 )
-
-
-def own_entity(hass: HomeAssistant, entity_id: str) -> bool:
-    """Whether the entity belongs to Tarifwacht itself: an entry would read
-    its own results (seen 2026-11 in the sister project Wärmewacht). Its
-    energy sensor passes every meter check; its average price is in ct/kWh,
-    which no price sensor may report today, so that check is a safeguard."""
-    entry = er.async_get(hass).async_get(entity_id)
-    return entry is not None and entry.platform == DOMAIN
 
 
 def validate_price_entity(hass: HomeAssistant, entity_id: str) -> str | None:

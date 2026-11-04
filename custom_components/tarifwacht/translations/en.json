@@ -350,6 +350,10 @@
       "title": "Entity missing ({name})",
       "description": "{entities} no longer exists. Tarifwacht books nothing without the meter, and a tariff without its price sensor waits for its prices. Renamed entities are followed automatically; if one was deleted or replaced, choose another one: the meter under Tarifwacht → ⋮ → Reconfigure, a price sensor in the tariff (Tarifwacht → tariff → Reconfigure). This message disappears once the entity is back."
     },
+    "own_entity": {
+      "title": "Tarifwacht sensor chosen as a source ({name})",
+      "description": "{entities} belongs to Tarifwacht itself: the entry would read its own results. So Tarifwacht does not read it – without the meter the entry books no consumption, a tariff without its price sensor gets no prices. Figures already booked stay. Choose the real source: the meter under Tarifwacht → ⋮ → Reconfigure, a price sensor in the tariff (Tarifwacht → tariff → Reconfigure). This message disappears once no Tarifwacht sensor is chosen as a source."
+    },
     "late_prices": {
       "title": "Prices missing ({name})",
       "description": "For {tariffs}, the price of a past quarter hour is still missing. Day-ahead prices are normally known the day before, so the price sensor may have failed. Consumption waits for its price for 24 hours; after that it is counted without a price (never as free). This message disappears once the prices arrive."

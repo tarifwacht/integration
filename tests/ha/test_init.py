@@ -28,8 +28,11 @@ from .conftest import (
     METER,
     METER_ATTRIBUTES,
     PRICE,
+    dynamic_tariff,
+    entry_data,
     mock_entry,
     price_attributes,
+    subentries_data,
 )
 
 # 25.10.2026 17:00:30 CET. Fixture prices: 0.04577 €/kWh (17:00-17:15),
@@ -506,3 +509,114 @@ async def test_swapped_meter_books_no_phantom_energy(
     hass.states.async_set(other, "1002600", METER_ATTRIBUTES)
     await hass.async_block_till_done()
     assert value(hass, entry, "energy") == pytest.approx(2.1)
+
+
+# --- Tarifwacht's own sensors as sources ---------------------------------------------
+
+
+def own_sensor(
+    hass: HomeAssistant, unique_id: str, value: str, attributes: dict[str, Any]
+) -> str:
+    """A sensor of Tarifwacht itself (of another entry)."""
+    own = er.async_get(hass).async_get_or_create(
+        "sensor", DOMAIN, unique_id, suggested_object_id=unique_id
+    )
+    hass.states.async_set(own.entity_id, value, attributes)
+    return own.entity_id
+
+
+ENERGY = {
+    "unit_of_measurement": "kWh",
+    "state_class": "total_increasing",
+    "device_class": "energy",
+}
+
+
+@pytest.mark.freeze_time(START)
+async def test_own_meter_is_ignored_with_an_issue(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A meter chosen before the forms refused Tarifwacht's own sensors: not
+    read, a repair issue until the meter is changed."""
+    own = own_sensor(hass, "wohnung_energy", "12.5", ENERGY)
+    hass.states.async_set(PRICE, "0.04577", price_attributes())
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=own,
+        title="Haus",
+        data=entry_data(meter_entity=own),
+        version=2,
+        subentries_data=subentries_data(),
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    issue_id = f"{entry.entry_id}_own_entity"
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_key == "own_entity"
+    assert issue.translation_placeholders == {"name": "Haus", "entities": own}
+
+    # Not read: its growth is not booked.
+    freezer.move_to(datetime(2026, 10, 25, 16, 10, tzinfo=UTC))
+    hass.states.async_set(own, "13.5", ENERGY)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == 0
+
+    # The real meter chosen: reloaded, the issue is gone, the meter books.
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"name": "Haus", "meter_entity": METER}
+    )
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    freezer.move_to(datetime(2026, 10, 25, 16, 20, tzinfo=UTC))
+    hass.states.async_set(METER, "1000500", METER_ATTRIBUTES)
+    await hass.async_block_till_done()
+    assert value(hass, entry, "energy") == pytest.approx(0.5)
+
+
+@pytest.mark.freeze_time(START)
+async def test_own_price_sensor_is_ignored_with_an_issue(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Its own average price as a price sensor (as if it reported €/kWh; it
+    reports ct/kWh, which the forms never accepted)."""
+    own = own_sensor(
+        hass, "wohnung_dynamic_average_price", "0.31", {"unit_of_measurement": "€/kWh"}
+    )
+    hass.states.async_set(PRICE, "0.04577", price_attributes())
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    subentries = subentries_data()
+    subentries[1]["data"] = dynamic_tariff(price_entity=own)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=METER,
+        title="Haus",
+        data=entry_data(),
+        version=2,
+        subentries_data=subentries,
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    issue_id = f"{entry.entry_id}_own_entity"
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_placeholders["entities"] == own
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    assert diagnostics["own_entities"] == [own]
+    # Not read: no price from it.
+    assert diagnostics["prices"].get(own, {}).get("quarter_hours", 0) == 0
+
+    # The real price sensor chosen in the tariff: reloaded, the issue is gone.
+    hass.config_entries.async_update_subentry(
+        entry, entry.subentries[DYNAMIC_SUBENTRY], data=dynamic_tariff()
+    )
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert issues.async_get_issue(DOMAIN, issue_id) is None

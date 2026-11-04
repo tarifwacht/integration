@@ -26,6 +26,7 @@ from homeassistant.core import (
     State,
     callback,
 )
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import (
     async_call_later,
@@ -141,6 +142,15 @@ def recorder_run_starts(
     return sorted(s for s in starts if start < s <= end)
 
 
+def own_entity(hass: HomeAssistant, entity_id: str) -> bool:
+    """Whether the entity belongs to Tarifwacht itself: an entry would read
+    its own results (seen 2026-11 in the sister project Wärmewacht). Its
+    energy sensor passes every meter check; its average price is in ct/kWh,
+    which no price sensor may report today, so that case is a safeguard."""
+    entry = er.async_get(hass).async_get(entity_id)
+    return entry is not None and entry.platform == DOMAIN
+
+
 def price_unit_ok(state: State) -> bool:
     return state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) in PRICE_UNITS
 
@@ -224,6 +234,10 @@ class MeterRuntime:
             tz=BERLIN,
         )
         self.tariffs: dict[str, TariffInfo] = {}
+        # Sources that are Tarifwacht's own sensors (chosen before the forms
+        # refused them) are never read; a repair issue names them.
+        self.meter_own = own_entity(hass, self.meter_entity)
+        own_prices: set[str] = set()
         self.price_entities: set[str] = set()
         for subentry in tariff_subentries(entry):
             key = tariff_key(subentry.subentry_id, subentry.data)
@@ -237,7 +251,14 @@ class MeterRuntime:
                 current=bool(subentry.data.get(CONF_CURRENT)),
             )
             if entity := price_entity(subentry.data):
-                self.price_entities.add(entity)
+                if own_entity(hass, entity):
+                    own_prices.add(entity)
+                else:
+                    self.price_entities.add(entity)
+        self.own_entities: list[str] = [
+            *([self.meter_entity] if self.meter_own else []),
+            *sorted(own_prices),
+        ]
         self.unknown_unit: str | None = None
         self.meter_unit_ok = True
         self.wrong_price_unit: dict[str, str | None] = {}
@@ -281,13 +302,18 @@ class MeterRuntime:
             uses_smard=bool(market),
         )
 
+    def _sources(self) -> list[str]:
+        """The entities this entry reads: meter and price sensors, not its own."""
+        meter = [] if self.meter_own else [self.meter_entity]
+        return [*meter, *sorted(self.price_entities)]
+
     def _total_price_entities(self) -> set[str]:
-        """Price sensors of the total-price tariffs."""
+        """Price sensors of the total-price tariffs (not Tarifwacht's own)."""
         return {
             s.data[CONF_PRICE_ENTITY]
             for s in tariff_subentries(self.entry)
             if s.data.get(CONF_KIND) == KIND_DYNAMIC_TOTAL
-        }
+        } & self.price_entities
 
     def _market_tariffs(self) -> list[Mapping[str, Any]]:
         """Data of the exchange price tariffs."""
@@ -413,6 +439,8 @@ class MeterRuntime:
         self, start: datetime, end: datetime
     ) -> list[tuple[datetime, float]]:
         """The meter's energy per hour (kWh) from the long-term statistics."""
+        if self.meter_own:
+            return []  # never read: every hour counts as without energy
         rows = await get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
@@ -475,14 +503,12 @@ class MeterRuntime:
         for entity in sorted(self.price_entities):
             if state := self.hass.states.get(entity):
                 self._handle_price(state, now)
-        if state := self.hass.states.get(self.meter_entity):
+        if not self.meter_own and (state := self.hass.states.get(self.meter_entity)):
             self._handle_meter(state, now)
         self.engine.tick(now)
         self._unsubscribe = [
             async_track_state_change_event(
-                self.hass,
-                [self.meter_entity, *sorted(self.price_entities)],
-                self._on_state_change,
+                self.hass, self._sources(), self._on_state_change
             ),
             async_track_utc_time_change(
                 self.hass, self._on_tick, minute=[0, 15, 30, 45], second=1
@@ -551,10 +577,13 @@ class MeterRuntime:
                     "unit": str(self.unknown_unit),
                 },
             )
+        if self.own_entities:
+            wanted[f"{prefix}own_entity"] = (
+                "own_entity",
+                {"name": self.name, "entities": ", ".join(self.own_entities)},
+            )
         missing = [
-            entity
-            for entity in (self.meter_entity, *sorted(self.price_entities))
-            if self.hass.states.get(entity) is None
+            entity for entity in self._sources() if self.hass.states.get(entity) is None
         ]
         started = self._started_at
         if missing and started is not None and now - started >= MISSING_GRACE:
@@ -616,7 +645,7 @@ class MeterRuntime:
         booking is not affected.
         """
         until = self.engine.backfill_until
-        if until is None:
+        if until is None or self.meter_own:
             return
         if "recorder" not in self.hass.config.components:
             self.backfill_error = "recorder not available"
