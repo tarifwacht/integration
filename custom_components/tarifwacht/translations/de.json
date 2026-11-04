@@ -85,7 +85,8 @@
       "meter_state_class": "Der Zähler muss fortlaufend zählen (Zustandsklasse total oder total_increasing).",
       "price_required": "Bitte den Arbeitspreis eingeben.",
       "price_unit": "Der Preissensor muss €/kWh liefern.",
-      "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert."
+      "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
+      "own_entity": "Als Quelle ist ein Sensor von Tarifwacht selbst gewählt: Der Eintrag würde seine eigenen Ergebnisse lesen. Bitte den Bezugszähler bzw. den Preissensor der Preis-Integration wählen."
     },
     "abort": {
       "already_configured": "Dieser Zähler ist bereits eingerichtet.",
@@ -234,6 +235,7 @@
         "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
         "price_unit": "Der Preissensor muss €/kWh liefern.",
         "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
+        "own_entity": "Als Preissensor ist ein Sensor von Tarifwacht selbst gewählt: Der Tarif würde seine eigenen Ergebnisse lesen. Bitte den Preissensor der Preis-Integration wählen (z. B. EPEX Spot).",
         "change_exists": "Zu diesem Datum gibt es schon eine Preisänderung.",
         "window_format": "Bitte Zeitfenster wie 10:00-14:00 eingeben, mehrere mit Komma getrennt.",
         "window_grid": "Zeitfenster müssen auf einer Viertelstunde beginnen und enden (:00, :15, :30, :45).",

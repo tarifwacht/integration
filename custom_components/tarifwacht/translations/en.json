@@ -85,7 +85,8 @@
       "meter_state_class": "The meter must be cumulative (state class total or total_increasing).",
       "price_required": "Please enter the energy price.",
       "price_unit": "The price sensor must report €/kWh.",
-      "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state."
+      "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state.",
+      "own_entity": "A sensor of Tarifwacht itself is chosen as a source: the entry would read its own results. Choose the grid purchase meter or the price sensor of the price integration."
     },
     "abort": {
       "already_configured": "This meter is already set up.",
@@ -234,6 +235,7 @@
         "entity_missing": "The entity does not exist or has no state yet.",
         "price_unit": "The price sensor must report €/kWh.",
         "price_invalid": "No price found: the sensor has neither a forecast attribute `data` nor a numeric state.",
+        "own_entity": "A sensor of Tarifwacht itself is chosen as the price sensor: the tariff would read its own results. Choose the price sensor of the price integration (e.g. EPEX Spot).",
         "change_exists": "There is already a price change on this date.",
         "window_format": "Please enter windows like 10:00-14:00, several separated by commas.",
         "window_grid": "Windows must start and end on a quarter hour (:00, :15, :30, :45).",

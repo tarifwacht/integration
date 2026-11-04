@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Eigene Sensoren als Quelle abgewiesen:** Einrichtung, *Neu konfigurieren* und die Tarif-Formulare nehmen keine Sensoren von Tarifwacht selbst mehr als Bezugszähler oder Preissensor an. Der eigene Sensor „Strombezug“ ging bisher als Zähler durch – der Eintrag hätte dann seine eigenen Ergebnisse gelesen und still nichts gebucht. Jetzt meldet das Formular den Fehler und bittet um den echten Bezugszähler bzw. den Preissensor der Preis-Integration. Anlass war eine Rückmeldung aus der Schwester Wärmewacht, wo jemand den eigenen Standby-Sensor als Quelle gewählt hatte. Bestehende Einträge bleiben unverändert.
 - **Demo zum Ausprobieren ohne Installation:** [tarifwacht.github.io/integration](https://tarifwacht.github.io/integration/) zeigt den Tarifvergleich im Dashboard, die Geräte, die Monatsübersicht des Blueprints und einen Jahresrückblick – für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe, an einem Winter- und einem Sommerabend. Preise, Verbräuche und Tarife sind erfunden und so gekennzeichnet; gebucht werden sie vom Code der Integration.
 - Intern: `tools/make_demo.py` erzeugt die Daten der Demo, der Workflow „Demo“ veröffentlicht sie über GitHub Pages.
 

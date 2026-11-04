@@ -10,6 +10,7 @@ import voluptuous as vol
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.tarifwacht.const import CONF_CURRENT, CONF_RENAMED, DOMAIN
@@ -517,3 +518,84 @@ async def test_price_field_starts_empty(hass: HomeAssistant) -> None:
         hass, result, {"name": "Neu", "base_period": "month", "current": False}
     )
     assert result["errors"] == {"price": "price_required"}
+
+
+# --- own entities as sources -------------------------------------------------------
+
+
+def own_sensor(
+    hass: HomeAssistant, unique_id: str, state: str, attributes: dict
+) -> str:
+    """A sensor of Tarifwacht itself (another entry's result) with a state that
+    passes every other check."""
+    own = er.async_get(hass).async_get_or_create(
+        "sensor", DOMAIN, unique_id, suggested_object_id=unique_id
+    )
+    hass.states.async_set(own.entity_id, state, attributes)
+    return own.entity_id
+
+
+async def test_own_sensor_as_meter_is_refused(hass: HomeAssistant) -> None:
+    """Its own "grid purchase" sensor as the meter (seen 2026-11 in the sister
+    project Wärmewacht): the entry would read its own results."""
+    own = own_sensor(
+        hass,
+        "wohnung_energy",
+        "12.5",
+        {
+            "unit_of_measurement": "kWh",
+            "state_class": "total_increasing",
+            "device_class": "energy",
+        },
+    )
+    result = await configure(
+        hass, await start(hass), {**METER_STEP, "meter_entity": own}
+    )
+    assert result["errors"] == {"meter_entity": "own_entity"}
+    result = await configure(hass, result, METER_STEP)
+    assert result["step_id"] == "tariffs"
+
+    entry = added_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await configure(hass, result, {**METER_STEP, "meter_entity": own})
+    assert result["errors"] == {"meter_entity": "own_entity"}
+    assert entry.data == entry_data()
+
+
+def own_price(hass: HomeAssistant) -> str:
+    """Its own average price, as if it reported €/kWh (it reports ct/kWh,
+    which the unit check refuses as well)."""
+    return own_sensor(
+        hass, "haus_dynamic_average_price", "0.31", {"unit_of_measurement": "€/kWh"}
+    )
+
+
+async def test_own_sensor_as_price_is_refused_at_setup(hass: HomeAssistant) -> None:
+    own = own_price(hass)
+    result = await dynamic_step(hass, "dynamic_total")
+    result = await configure(hass, result, {"price_entity": own})
+    assert result["errors"] == {"price_entity": "own_entity"}
+    result = await configure(hass, result, {"price_entity": PRICE})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_own_sensor_as_price_is_refused_in_tariff(hass: HomeAssistant) -> None:
+    """When adding and when editing a tariff."""
+    own = own_price(hass)
+    entry = added_entry(hass)
+    tariff = {"name": "Neu", "base_period": "month", "current": False}
+    result = await start_tariff(hass, entry, "dynamic_total")
+    result = await configure_tariff(hass, result, {**tariff, "price_entity": own})
+    assert result["errors"] == {"price_entity": "own_entity"}
+    result = await configure_tariff(hass, result, {**tariff, "price_entity": PRICE})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    result = await entry.start_subentry_reconfigure_flow(hass, DYNAMIC_SUBENTRY)
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"next_step_id": "edit"}
+    )
+    result = await configure_tariff(
+        hass, result, {**tariff, "name": "Dynamic", "price_entity": own}
+    )
+    assert result["errors"] == {"price_entity": "own_entity"}
+    assert dict(entry.subentries[DYNAMIC_SUBENTRY].data) == dynamic_tariff()

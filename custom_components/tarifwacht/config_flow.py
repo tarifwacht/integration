@@ -26,6 +26,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
@@ -99,8 +100,19 @@ BASE_PERIOD = selector.SelectSelector(
 )
 
 
+def own_entity(hass: HomeAssistant, entity_id: str) -> bool:
+    """Whether the entity belongs to Tarifwacht itself: an entry would read
+    its own results (seen 2026-11 in the sister project Wärmewacht). Its
+    energy sensor passes every meter check; its average price is in ct/kWh,
+    which no price sensor may report today, so that check is a safeguard."""
+    entry = er.async_get(hass).async_get(entity_id)
+    return entry is not None and entry.platform == DOMAIN
+
+
 def validate_price_entity(hass: HomeAssistant, entity_id: str) -> str | None:
     """Error code for an unusable price sensor, None if it is fine."""
+    if own_entity(hass, entity_id):
+        return "own_entity"
     state = hass.states.get(entity_id)
     if state is None:
         return "entity_missing"
@@ -203,6 +215,8 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
             if self.source == SOURCE_RECONFIGURE
             else None
         )
+        if own_entity(self.hass, meter):
+            return {CONF_METER: "own_entity"}
         state = self.hass.states.get(meter)
         if any(
             e.unique_id == meter and e.entry_id != current
