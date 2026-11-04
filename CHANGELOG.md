@@ -2,8 +2,8 @@
 
 ## Unveröffentlicht
 
-- **Live-Demo zum Ausprobieren ohne Installation:** [tarifwacht.github.io/integration](https://tarifwacht.github.io/integration/) zeigt den Tarifvergleich im Dashboard, die Geräte, die Monatsübersicht des Blueprints und einen Jahresrückblick – für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe, an einem Winter- und einem Sommerabend. Preise, Verbräuche und Tarife sind erfunden und so gekennzeichnet; gebucht werden sie vom Code der Integration.
-- Intern: `tools/make_demo.py` erzeugt die Daten der Demo, der Workflow „Live-Demo“ veröffentlicht sie über GitHub Pages.
+- **Demo zum Ausprobieren ohne Installation:** [tarifwacht.github.io/integration](https://tarifwacht.github.io/integration/) zeigt den Tarifvergleich im Dashboard, die Geräte, die Monatsübersicht des Blueprints und einen Jahresrückblick – für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe, an einem Winter- und einem Sommerabend. Preise, Verbräuche und Tarife sind erfunden und so gekennzeichnet; gebucht werden sie vom Code der Integration.
+- Intern: `tools/make_demo.py` erzeugt die Daten der Demo, der Workflow „Demo“ veröffentlicht sie über GitHub Pages.
 
 ## 0.1.2 – 2026-10-30
 

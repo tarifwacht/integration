@@ -7,13 +7,13 @@
 [![Release](https://img.shields.io/github/v/release/tarifwacht/integration?color=96497D)](https://github.com/tarifwacht/integration/releases)
 [![CI](https://github.com/tarifwacht/integration/actions/workflows/ci.yml/badge.svg)](https://github.com/tarifwacht/integration/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623.svg)](LICENSE)
-[![Live demo](https://img.shields.io/badge/Live_demo-try_it-F5A623.svg)](https://tarifwacht.github.io/integration/?lang=en)
+[![Demo](https://img.shields.io/badge/Demo-sample_data-F5A623.svg)](https://tarifwacht.github.io/integration/?lang=en)
 
 🇩🇪 [Deutsch](https://github.com/tarifwacht/integration/blob/main/README.md) · 🇬🇧 **English**
 
 **What would your electricity have cost with a different tariff?** Tarifwacht ("tariff watch") prices your actual grid consumption in Home Assistant quarter hour by quarter hour against any number of tariffs – fixed price, dynamic, with or without Modul 3 – and shows which one would have been cheaper. Each dynamic tariff gets the price of **exactly that quarter hour**, not the price of whatever moment the meter happens to report.
 
-**Try it without installing:** the [live demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with an EV and a heat pump – with made-up prices and tariffs, but computed by the integration's own code.
+**Try it without installing:** the [demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with an EV and a heat pump – with made-up prices and tariffs, but computed by the integration's own code.
 
 Tarifwacht is built for Germany: quarter-hour day-ahead prices, German price components and the time-variable grid fee under § 14a EnWG. Days and months (base prices) follow German local time.
 
@@ -339,12 +339,12 @@ The idea of pricing your own consumption directly against both tariffs in Home A
 By the same author and built the same way: set up in the UI, in German and English, gentle on SD cards.
 
 - **Energy**
-  - [Einspeisewacht](https://github.com/einspeisewacht/integration) – what negative electricity prices cost your PV feed-in (German EEG § 51) · [live demo](https://einspeisewacht.github.io/integration/?lang=en)
-  - [Speicherwacht](https://github.com/speicherwacht/integration) – efficiency, cycles and capacity of your home battery · [live demo](https://speicherwacht.github.io/integration/?lang=en)
+  - [Einspeisewacht](https://github.com/einspeisewacht/integration) – what negative electricity prices cost your PV feed-in (German EEG § 51) · [demo](https://einspeisewacht.github.io/integration/?lang=en)
+  - [Speicherwacht](https://github.com/speicherwacht/integration) – efficiency, cycles and capacity of your home battery · [demo](https://speicherwacht.github.io/integration/?lang=en)
   - [Wärmewacht](https://github.com/waermewacht/integration) – performance factors and health check for your heat pump
 - **Everyday**
-  - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau breaking news and regional news as automation triggers (German) · [live demo](https://eilwacht.github.io/integration/?lang=en)
-  - [Streckenwacht](https://github.com/streckenwacht/integration) – roadworks, closures and traffic jams on your own routes (Germany, Luxembourg) · [live demo](https://streckenwacht.github.io/integration/?lang=en)
+  - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau breaking news and regional news as automation triggers (German) · [demo](https://eilwacht.github.io/integration/?lang=en)
+  - [Streckenwacht](https://github.com/streckenwacht/integration) – roadworks, closures and traffic jams on your own routes (Germany, Luxembourg) · [demo](https://streckenwacht.github.io/integration/?lang=en)
 
 ## License
 
