@@ -69,14 +69,14 @@ A sensor without a forecast works too: its current value applies until it change
 
 ## Installation
 
-**One click:** [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tarifwacht&repository=integration&category=integration) → download, restart Home Assistant → [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tarifwacht)
+**One click:** [![Open in the Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tarifwacht&repository=integration&category=integration) → install, restart Home Assistant → [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tarifwacht)
 
-Or by hand – Tarifwacht has been in the HACS default list since November 2026, no custom repository needed:
+Or by hand:
 
-1. Search for Tarifwacht in HACS and download it. Restart Home Assistant.
+1. *Settings → Marketplace → Browse*, search for Tarifwacht and install it (before Home Assistant 2026.11: search for it in HACS and download it). Restart Home Assistant.
 2. *Settings → Devices & services → Add integration → Tarifwacht*.
 
-Note: the icon is currently missing in the HACS dashboard ([HACS issue #5171](https://github.com/hacs/integration/issues/5171)); it is shown in the Home Assistant settings.
+Note: the old HACS dashboard (before Home Assistant 2026.11) does not show the icon ([HACS issue #5171](https://github.com/hacs/integration/issues/5171)); the Marketplace and the settings do.
 
 ## Setup
 
@@ -321,7 +321,7 @@ Further:
 ## Removal
 
 1. *Settings → Devices & services → Tarifwacht* → on every entry ⋮ → *Delete*. The stored quarter hours of this entry are deleted with it.
-2. Optional: HACS → Tarifwacht → ⋮ → *Remove*, then restart Home Assistant.
+2. Optional: *Settings → Marketplace → Installed* → Tarifwacht → ⋮ → *Uninstall* (before Home Assistant 2026.11: HACS → Tarifwacht → ⋮ → *Remove*), then restart Home Assistant.
 
 The long-term statistics of the deleted sensors stay in Home Assistant until you remove them under *Settings → Tools → Statistics* (formerly *Developer tools*).
 
@@ -342,7 +342,7 @@ By the same author and built the same way: set up in the UI, in German and Engli
 - **Energy**
   - [Einspeisewacht](https://github.com/einspeisewacht/integration) – what negative electricity prices cost your PV feed-in (German EEG § 51) · [demo](https://einspeisewacht.github.io/integration/?lang=en)
   - [Speicherwacht](https://github.com/speicherwacht/integration) – efficiency, cycles and capacity of your home battery · [demo](https://speicherwacht.github.io/integration/?lang=en)
-  - [Wärmewacht](https://github.com/waermewacht/integration) – performance factors and health check for your heat pump
+  - [Wärmewacht](https://github.com/waermewacht/integration) – performance factors and health check for your heat pump · [demo](https://waermewacht.github.io/integration/?lang=en)
 - **Everyday**
   - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau breaking news and regional news as automation triggers (German) · [demo](https://eilwacht.github.io/integration/?lang=en)
   - [Streckenwacht](https://github.com/streckenwacht/integration) – roadworks, closures and traffic jams on your own routes (Germany, Luxembourg) · [demo](https://streckenwacht.github.io/integration/?lang=en)

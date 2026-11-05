@@ -67,14 +67,14 @@ Ein Sensor ohne Prognose geht auch: Dann gilt sein aktueller Wert, bis er sich �
 
 ## Installation
 
-**Mit einem Klick:** [![In HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tarifwacht&repository=integration&category=integration) → herunterladen, Home Assistant neu starten → [![Integration hinzufügen](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tarifwacht)
+**Mit einem Klick:** [![Im Marketplace öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tarifwacht&repository=integration&category=integration) → installieren, Home Assistant neu starten → [![Integration hinzufügen](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tarifwacht)
 
-Oder von Hand – Tarifwacht ist seit November 2026 in der Standardliste von HACS, ein benutzerdefiniertes Repository ist nicht mehr nötig:
+Oder von Hand:
 
-1. In HACS nach Tarifwacht suchen und herunterladen. Home Assistant neu starten.
+1. *Einstellungen → Marketplace → Durchstöbern*, nach Tarifwacht suchen und installieren (vor Home Assistant 2026.11: in HACS suchen und herunterladen). Home Assistant neu starten.
 2. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Tarifwacht*.
 
-Hinweis: Im HACS-Dashboard fehlt das Icon derzeit ([HACS-Issue #5171](https://github.com/hacs/integration/issues/5171)); in den Home-Assistant-Einstellungen wird es angezeigt.
+Hinweis: Im alten HACS-Dashboard (vor Home Assistant 2026.11) fehlt das Icon ([HACS-Issue #5171](https://github.com/hacs/integration/issues/5171)); im Marketplace und in den Einstellungen wird es angezeigt.
 
 ## Einrichtung
 
@@ -319,7 +319,7 @@ Weiteres:
 ## Entfernen
 
 1. *Einstellungen → Geräte & Dienste → Tarifwacht* → bei jedem Eintrag ⋮ → *Löschen*. Die gespeicherten Viertelstunden dieses Eintrags werden mit gelöscht.
-2. Optional: HACS → Tarifwacht → ⋮ → *Entfernen*, dann Home Assistant neu starten.
+2. Optional: *Einstellungen → Marketplace → Installiert* → Tarifwacht → ⋮ → *Deinstallieren* (vor Home Assistant 2026.11: HACS → Tarifwacht → ⋮ → *Entfernen*), dann Home Assistant neu starten.
 
 Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten, bis du sie unter *Einstellungen → Werkzeuge → Statistik* (früher *Entwicklerwerkzeuge*) entfernst.
 
@@ -340,7 +340,7 @@ Vom selben Autor und nach demselben Muster gebaut: Einrichtung über die Oberfl�
 - **Energie**
   - [Einspeisewacht](https://github.com/einspeisewacht/integration) – was negative Strompreise bei der PV-Einspeisung kosten (§ 51 EEG) · [Demo](https://einspeisewacht.github.io/integration/?lang=de)
   - [Speicherwacht](https://github.com/speicherwacht/integration) – Wirkungsgrad, Zyklen und Kapazität des Batteriespeichers · [Demo](https://speicherwacht.github.io/integration/?lang=de)
-  - [Wärmewacht](https://github.com/waermewacht/integration) – Arbeitszahlen und Gesundheits-Check der Wärmepumpe
+  - [Wärmewacht](https://github.com/waermewacht/integration) – Arbeitszahlen und Gesundheits-Check der Wärmepumpe · [Demo](https://waermewacht.github.io/integration/?lang=de)
 - **Alltag**
   - [Eilwacht](https://github.com/eilwacht/integration) – Tagesschau-Eilmeldungen und Regionalnachrichten als Auslöser für Automationen · [Demo](https://eilwacht.github.io/integration/?lang=de)
   - [Streckenwacht](https://github.com/streckenwacht/integration) – Baustellen, Sperrungen und Staus auf den eigenen Strecken · [Demo](https://streckenwacht.github.io/integration/?lang=de)
