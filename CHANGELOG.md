@@ -1,10 +1,11 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.3 – 2026-11-05
 
 - **Eigene Sensoren als Quelle abgewiesen:** Einrichtung, *Neu konfigurieren* und die Tarif-Formulare nehmen keine Sensoren von Tarifwacht selbst mehr als Bezugszähler oder Preissensor an. Der eigene Sensor „Strombezug“ ging bisher als Zähler durch – der Eintrag hätte dann seine eigenen Ergebnisse gelesen und still nichts gebucht. Jetzt meldet das Formular den Fehler und bittet um den echten Bezugszähler bzw. den Preissensor der Preis-Integration. Anlass war eine Rückmeldung aus der Schwester Wärmewacht, wo jemand den eigenen Standby-Sensor als Quelle gewählt hatte.
 - **Neuer Reparaturhinweis „Sensor von Tarifwacht als Quelle gewählt“:** Für bestehende Einträge, die einen eigenen Sensor schon als Zähler oder Preissensor haben. Tarifwacht liest diesen Sensor nicht mehr: Mit eigenem Zähler bucht der Eintrag keinen Verbrauch mehr (mit dem „Strombezug“ desselben Eintrags buchte er ohnehin nichts, mit dem eines anderen Eintrags dessen Verbrauch um bis zu eine Minute versetzt), ein Tarif mit eigenem Preissensor bekommt keine Preise, und „Tarife vergleichen“ liest keinen Verbrauch aus seiner Statistik. Was schon gebucht ist, bleibt. Der Hinweis nennt den Sensor und den Ausweg (Zähler unter *Tarifwacht → ⋮ → Neu konfigurieren*, Preissensor im Tarif) und verschwindet nach der Korrektur; der neue Zähler beginnt mit seinem ersten Wert als Ausgangsstand.
 - **Demo zum Ausprobieren ohne Installation:** [tarifwacht.github.io/integration](https://tarifwacht.github.io/integration/) zeigt den Tarifvergleich im Dashboard, die Geräte, die Monatsübersicht des Blueprints und einen Jahresrückblick – für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe, an einem Winter- und einem Sommerabend. Preise, Verbräuche und Tarife sind erfunden und so gekennzeichnet; gebucht werden sie vom Code der Integration.
+- **Kategorien im Manifest** für die neue Integrationsübersicht von Home Assistant 2026.11: Tarifwacht steht dort unter *Energie* bei „Energiepreise“ und „Zähler und Überwachung“.
 - Intern: `tools/make_demo.py` erzeugt die Daten der Demo, der Workflow „Demo“ veröffentlicht sie über GitHub Pages.
 
 ## 0.1.2 – 2026-10-30
