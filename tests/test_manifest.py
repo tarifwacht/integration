@@ -110,10 +110,12 @@ def test_modul3_fields_translated() -> None:
     assert set(strings["selector"]["quarters"]["options"]) == {"1", "2", "3", "4"}
 
 
-def test_every_sensor_and_action_has_an_icon() -> None:
+def test_every_entity_and_action_has_an_icon() -> None:
     icons = load(INTEGRATION / "icons.json")
     strings = load(INTEGRATION / "strings.json")
     assert set(icons["entity"]["sensor"]) == set(strings["entity"]["sensor"])
+    assert set(icons["entity"]["button"]) == set(strings["entity"]["button"])
+    assert set(strings["entity"]["button"]) == {"issue_report"}
     assert set(icons["services"]) == set(strings["services"])
 
 

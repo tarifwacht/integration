@@ -147,6 +147,7 @@ Am Gerät des Zählers (z. B. „Haus“):
 |---|---|---|
 | Strombezug | kWh | erfasste Menge seit der Einrichtung – zum Abgleich mit deinem Zähler |
 | Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen (fehlende Preise siehe unten) |
+| Bericht für Fehlermeldung | Schaltfläche (unter *Diagnose*) | zeigt einen kurzen Bericht zum Kopieren in ein Issue, siehe [Fehler melden](#fehler-melden) |
 
 An jedem Tarif (z. B. „Haus Festpreis“):
 
@@ -288,7 +289,7 @@ data:
 
 ## Datenschutz
 
-Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme, und nur auf deine ausdrückliche Aktion: Vergleichst du eine Zeit vor der Einrichtung, trägst du Statistik nach oder setzt du beim Hinzufügen bzw. Ändern eines Tarifs „Börsenpreis plus Aufschläge“ den Haken „Zeit seit der Einrichtung mit Börsenpreisen von SMARD.de nachtragen“, lädt Tarifwacht öffentliche Börsenpreise von SMARD.de. Ohne den Haken bleibt diese Zeit beim neuen Tarif außen vor (siehe `energy_left_out_kwh`). Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen.
+Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzige Ausnahme, und nur auf deine ausdrückliche Aktion: Vergleichst du eine Zeit vor der Einrichtung, trägst du Statistik nach oder setzt du beim Hinzufügen bzw. Ändern eines Tarifs „Börsenpreis plus Aufschläge“ den Haken „Zeit seit der Einrichtung mit Börsenpreisen von SMARD.de nachtragen“, lädt Tarifwacht öffentliche Börsenpreise von SMARD.de. Ohne den Haken bleibt diese Zeit beim neuen Tarif außen vor (siehe `energy_left_out_kwh`). Dabei wird nichts über dich übertragen – nur der Abruf der Preisdateien mit der Kennung `Tarifwacht/<Version>`. Die Diagnose-Datei enthält deine Tarifeinstellungen (Preise, Sensoren), aber weder Namen noch Zählerstände, Energie- oder Kostensummen. Was genau darin steht und was der kürzere Bericht für Fehlermeldung enthält, steht unter [Fehler melden](#fehler-melden).
 
 ## Was Tarifwacht nicht kann
 
@@ -312,7 +313,7 @@ Weiteres:
 
 - **Werte bleiben bei 0:** Liefert der Bezugszähler Werte? „Strombezug“ sollte mit deinem Zähler mitwachsen.
 - **Dynamische Kosten hinken hinterher:** Eine Viertelstunde wird erst gebucht, wenn ihr Preis bekannt ist. Mit Prognose ist das sofort der Fall; sonst siehe „Preise fehlen“.
-- **Diagnose:** *Tarifwacht → Eintrag → ⋮ → Diagnosedaten herunterladen*. **Debug-Protokoll:** *Tarifwacht → ⋮ → Debug-Protokoll aktivieren*.
+- **Bericht für Fehlermeldung:** Schaltfläche am Gerät des Zählers unter *Diagnose*, siehe [Fehler melden](#fehler-melden). **Diagnose:** *Tarifwacht → Eintrag → ⋮ → Diagnosedaten herunterladen*. **Debug-Protokoll:** *Tarifwacht → ⋮ → Debug-Protokoll aktivieren*.
 
 **Update von 0.1.0b1:** Die beiden Tarife werden zu eigenen Tarif-Einträgen, der Verbrauch seit der Einrichtung wird einmalig aus dem Verlauf (Recorder) nachgelesen. Die Sensoren behalten ihre Entitäts-IDs; „Mehrkosten dynamisch“ heißt jetzt „Differenz zum aktuellen Tarif“.
 
@@ -325,7 +326,16 @@ Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten
 
 ## Fehler melden
 
-Bitte als [Issue](https://github.com/tarifwacht/integration/issues) – am besten mit Diagnose-Datei und den Versionen von Home Assistant und Tarifwacht. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
+Bitte als [Issue](https://github.com/tarifwacht/integration/issues), mit dem **Bericht für Fehlermeldung**: *Tarifwacht → Eintrag → Gerät des Zählers (z. B. „Haus“) → Diagnose → Bericht für Fehlermeldung* drücken. Der Bericht erscheint als Benachrichtigung (Glocke unten links) zum Kopieren. Er enthält die Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand – beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Grundpreis, Modul-3-Zeitfenstern und Preisänderungen, den Stand der Buchung (Beginn, gebuchte Viertelstunden, Preise je Tarif, SMARD.de), Sensoren ohne Wert und offene Reparaturhinweise. Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen stehen nicht darin. Lies ihn trotzdem vor dem Teilen und lösche, was du nicht zeigen willst. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
+
+### Was steht in der Diagnose-Datei?
+
+Reicht der Bericht nicht, kommt im Issue die Bitte um die Diagnose-Datei (*⋮ → Diagnosedaten herunterladen*). Sie ist ausführlicher, und nicht alles darin kommt von Tarifwacht:
+
+- **Von Home Assistant** (jede Integration hat diesen Kopf, Tarifwacht kann ihn nicht ändern): Version und Installationsart, Betriebssystem, Zeitzone und unter `custom_components` die Liste **aller** installierten benutzerdefinierten Integrationen mit Versionen. Diese Blöcke darfst du vor dem Hochladen löschen, sie werden nicht gebraucht. Unter `issues` stehen die IDs der Reparaturhinweise; sie enthalten die ID des Eintrags, beim Hinweis zur Einheit eines Preissensors auch dessen Entity-ID.
+- **Von Tarifwacht** (unter `data`): die Entity-IDs von Zähler und Preissensoren, die Einstellungen jedes Tarifs (Art, Preise, Grundpreis, Modul 3, Preisänderungen, Haken für SMARD.de – ohne den Namen des Tarifs), Beginn und Umfang der Buchung (Zahl der Viertelstunden, erste und letzte), je Preissensor Format, Auflösung und den Aufbau seiner Attribute (nur Schlüssel und Typen, keine Werte), Zählerereignisse, die Zeit der letzten Ablesung und Fehlermeldungen. Der Name des Eintrags, Zählerstände sowie Energie- und Kostensummen fehlen.
+
+Willst du die Datei nicht öffentlich teilen, ist das in Ordnung: Dann reichen meist der Bericht und gezielte Angaben, nach denen im Issue gefragt wird.
 
 Pull Requests sind willkommen. Wie, steht in [CONTRIBUTING.md](CONTRIBUTING.md).
 

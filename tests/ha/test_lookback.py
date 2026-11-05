@@ -54,7 +54,7 @@ from .conftest import (
     price_attributes,
     subentries_data,
 )
-from .test_init import START, two_kwh, value
+from .test_init import START, issue_report, two_kwh, value
 
 # Week file with 25.10.2026 (Monday 19.10. 00:00 CEST).
 WEEK_MS = 1792360800000
@@ -296,6 +296,14 @@ async def test_added_exchange_price_tariff_gets_smard_prices(
 
     assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
     assert "tarifwacht.smard.2026" in hass_storage
+    # The report for a bug report: the third tariff by kind and number, its
+    # SMARD.de consent and the stored prices; not its name or sensor.
+    message = await issue_report(hass, entry)
+    assert "tariff 3: dynamic_market, grid_fee 6, levies 3, margin 1, vat 19" in message
+    assert "SMARD.de fill on" in message
+    assert "SMARD.de: fill agreed for tariff 3; stored " in message
+    assert "years 2026" in message
+    assert "Börse" not in message and NEW_MARKET not in message
     # Restart: the stored SMARD.de prices are used, no download.
     calls = aioclient_mock.call_count
     assert await hass.config_entries.async_reload(entry.entry_id)

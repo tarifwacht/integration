@@ -262,6 +262,11 @@
     }
   },
   "entity": {
+    "button": {
+      "issue_report": {
+        "name": "Bericht für Fehlermeldung"
+      }
+    },
     "sensor": {
       "energy": {
         "name": "Strombezug"

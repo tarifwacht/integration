@@ -1,5 +1,10 @@
 {
   "entity": {
+    "button": {
+      "issue_report": {
+        "default": "mdi:clipboard-text-outline"
+      }
+    },
     "sensor": {
       "energy": {
         "default": "mdi:transmission-tower-import"

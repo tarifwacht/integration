@@ -262,6 +262,11 @@
     }
   },
   "entity": {
+    "button": {
+      "issue_report": {
+        "name": "Report for a bug report"
+      }
+    },
     "sensor": {
       "energy": {
         "name": "Grid purchase"

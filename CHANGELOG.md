@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Neu: Schaltfläche „Bericht für Fehlermeldung“** am Gerät des Zählers (unter *Diagnose*). Sie zeigt einen kurzen Bericht als Benachrichtigung zum Kopieren in ein Issue: Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand; beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Modul 3 und Preisänderungen, den Stand der Buchung, Sensoren ohne Wert und offene Reparaturhinweise – ohne Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen. Viele wollen die Diagnose-Datei nicht öffentlich teilen, weil Home Assistant ihr unter anderem die Liste aller installierten Integrationen voranstellt. Die README erklärt jetzt unter „Fehler melden“, was in der Diagnose-Datei steht und welche Teile man vor dem Teilen löschen darf; die Issue-Vorlage fragt nach dem Bericht.
+
 ## 0.1.3 – 2026-11-05
 
 - **Eigene Sensoren als Quelle abgewiesen:** Einrichtung, *Neu konfigurieren* und die Tarif-Formulare nehmen keine Sensoren von Tarifwacht selbst mehr als Bezugszähler oder Preissensor an. Der eigene Sensor „Strombezug“ ging bisher als Zähler durch – der Eintrag hätte dann seine eigenen Ergebnisse gelesen und still nichts gebucht. Jetzt meldet das Formular den Fehler und bittet um den echten Bezugszähler bzw. den Preissensor der Preis-Integration. Anlass war eine Rückmeldung aus der Schwester Wärmewacht, wo jemand den eigenen Standby-Sensor als Quelle gewählt hatte.

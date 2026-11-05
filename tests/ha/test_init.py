@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
@@ -125,6 +126,45 @@ async def test_booking_and_restart(
     assert diagnostics["prices"][PRICE]["wrong_unit"] is None
     assert diagnostics["consumption"]["quarter_hours"] == 2
     assert set(diagnostics["tariffs"]) == {"fixed", "dynamic"}
+
+    # The report for a bug report: roles, kinds and prices; no entity ids,
+    # names or meter reading.
+    message = await issue_report(hass, entry)
+    assert "tariffs: 2 (dynamic_total 1, fixed 1), current: tariff 1" in message
+    assert "quarter hours booked: 2, 2026-10-25 16:00 UTC" in message
+    assert (
+        "meter: no registry entry, Wh, energy, total_increasing, numeric state"
+        in message
+    )
+    assert "tariff 2 price: no registry entry, €/kWh" in message
+    assert "format epex_spot, 15 min" in message
+    assert (
+        "tariff 1: fixed, current, price 30, base_price 31, base_period month"
+        in message
+    )
+    assert "tariff 2: dynamic_total, base_price 0, base_period month" in message
+    assert "comparison leaves energy out: no" in message
+    assert "open: none" in message
+    for private in (METER, PRICE, "Haus", "Fixed price", "Dynamic", "1002000"):
+        assert private not in message, private
+
+
+async def issue_report(hass: HomeAssistant, entry: MockConfigEntry) -> str:
+    """Press "Report for a bug report"; the text of its notification."""
+    button = er.async_get(hass).async_get_entity_id(
+        "button", DOMAIN, f"{entry.entry_id}_issue_report"
+    )
+    assert button
+    with patch(
+        "custom_components.tarifwacht.issue_report.persistent_notification.async_create"
+    ) as create:
+        await hass.services.async_call(
+            "button", "press", {"entity_id": button}, blocking=True
+        )
+    assert create.call_args.kwargs["notification_id"] == (
+        f"tarifwacht_issue_report_{entry.entry_id}"
+    )
+    return create.call_args.args[1]
 
 
 @pytest.mark.freeze_time(START)
@@ -406,6 +446,11 @@ async def test_repair_issue_for_wrong_price_unit(
     assert issue is not None
     assert issue.translation_key == "price_unit"
     assert issue.translation_placeholders["unit"] == "ct/kWh"
+    # The report names the issue by kind: its id holds the entity id.
+    message = await issue_report(hass, entry)
+    assert "open: price_unit" in message
+    assert "unit not supported (ct/kWh)" in message
+    assert PRICE not in message
     hass.states.async_set(PRICE, "0.04577", price_attributes())
     await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, issue_id) is None
@@ -558,6 +603,11 @@ async def test_own_meter_is_ignored_with_an_issue(
     assert issue is not None
     assert issue.translation_key == "own_entity"
     assert issue.translation_placeholders == {"name": "Haus", "entities": own}
+    message = await issue_report(hass, entry)
+    assert "own sensors as source: meter" in message
+    assert "open: own_entity" in message
+    assert "meter: tarifwacht, kWh" in message
+    assert own not in message
 
     # Not read: its growth is not booked.
     freezer.move_to(datetime(2026, 10, 25, 16, 10, tzinfo=UTC))

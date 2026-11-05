@@ -149,6 +149,7 @@ On the meter's device (e.g. "Home"):
 |---|---|---|
 | Grid purchase | kWh | energy recorded since setup – to check against your meter |
 | Cheapest tariff | text | tariff with the lowest total cost; attribute `ranking` with all tariffs (missing prices: see below) |
+| Report for a bug report | button (under *Diagnostic*) | shows a short report to copy into an issue, see [Reporting issues](#reporting-issues) |
 
 On every tariff (e.g. "Home Fixed price"):
 
@@ -290,7 +291,7 @@ data:
 
 ## Privacy
 
-Tarifwacht calculates locally and only reads the entities you select. Only exception: if you compare a time before the setup, Tarifwacht loads public exchange prices from SMARD.de. Nothing about you is transferred – just the download of the price files with the identifier `Tarifwacht/<version>`. The diagnostics file contains your tariff settings (prices, sensors), but no names, meter readings, energy or cost totals.
+Tarifwacht calculates locally and only reads the entities you select. Only exception: if you compare a time before the setup, Tarifwacht loads public exchange prices from SMARD.de. Nothing about you is transferred – just the download of the price files with the identifier `Tarifwacht/<version>`. The diagnostics file contains your tariff settings (prices, sensors), but no names, meter readings, energy or cost totals. What exactly is in it, and what the shorter report for a bug report holds, is described under [Reporting issues](#reporting-issues).
 
 ## What Tarifwacht does not do
 
@@ -314,7 +315,7 @@ Further:
 
 - **Values stay at 0:** does the grid import meter deliver values? "Grid purchase" should grow along with your meter.
 - **Dynamic costs lag behind:** a quarter hour is booked only once its price is known. With a forecast that is immediately; otherwise see "Prices missing".
-- **Diagnostics:** *Tarifwacht → entry → ⋮ → Download diagnostics*. **Debug log:** *Tarifwacht → ⋮ → Enable debug logging*.
+- **Report for a bug report:** button on the meter's device under *Diagnostic*, see [Reporting issues](#reporting-issues). **Diagnostics:** *Tarifwacht → entry → ⋮ → Download diagnostics*. **Debug log:** *Tarifwacht → ⋮ → Enable debug logging*.
 
 **Update from 0.1.0b1:** the two tariffs become separate tariff entries, the consumption since setup is read once from the history (recorder). The sensors keep their entity IDs; "Extra cost dynamic" is now "Difference to current tariff".
 
@@ -327,7 +328,16 @@ The long-term statistics of the deleted sensors stay in Home Assistant until you
 
 ## Reporting issues
 
-Please open an [issue](https://github.com/tarifwacht/integration/issues) – ideally with the diagnostics file and the versions of Home Assistant and Tarifwacht. Please report security issues privately, see [SECURITY.md](SECURITY.md).
+Please open an [issue](https://github.com/tarifwacht/integration/issues) with the **report for a bug report**: press *Tarifwacht → entry → the meter's device (e.g. "Home") → Diagnostic → Report for a bug report*. The report shows up as a notification (bell at the bottom left) to copy. It holds the versions, the meter and price sensors by role (integration, unit, state class, state – for the meter only whether it delivers a number), the tariffs by kind and number with prices, base price, Modul 3 windows and price changes, the state of the bookings (start, quarter hours booked, prices per tariff, SMARD.de), sensors without a value and open repair issues. Entity ids, the names of the entry and the tariffs, areas, meter readings and energy or cost totals are not in it. Still read it before sharing and delete what you would rather not show. Please report security issues privately, see [SECURITY.md](SECURITY.md).
+
+### What is in the diagnostics file?
+
+If the report is not enough, the issue will ask for the diagnostics file (*⋮ → Download diagnostics*). It is more detailed, and not all of it comes from Tarifwacht:
+
+- **From Home Assistant** (every integration gets this header, Tarifwacht cannot change it): version and installation type, operating system, time zone and under `custom_components` the list of **all** installed custom integrations with versions. You may delete these blocks before uploading; they are not needed. Under `issues` are the ids of the repair issues; they contain the entry id, and for the unit of a price sensor also its entity id.
+- **From Tarifwacht** (under `data`): the entity ids of the meter and the price sensors, the settings of every tariff (kind, prices, base price, Modul 3, price changes, the SMARD.de checkbox – without the tariff's name), start and extent of the bookings (number of quarter hours, first and last), for each price sensor its format, resolution and the structure of its attributes (keys and types only, no values), meter events, the time of the last reading and error messages. The entry name, meter readings and energy or cost totals are left out.
+
+If you would rather not share the file publicly, that is fine: the report and the specific details asked for in the issue are usually enough.
 
 Pull requests are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) (with an English summary at the end).
 
