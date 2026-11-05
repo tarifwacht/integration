@@ -2,28 +2,34 @@
 
 Many users do not want to post the diagnostics download: Home Assistant puts
 its own header in front (every custom integration, OS, time zone), and the
-file lists every entity of the source devices. This report is plain text the
-user reads before sharing it, shown as a notification by a button:
+file holds more than an issue needs. This report is plain text the user reads
+before sharing it, shown as a notification by a button:
 
 - versions;
 - the mapping by role: integration, unit, classes and state of each source,
-  without entity ids, names or areas (`private` roles: only whether the
-  state is a number, not the number, e.g. a meter reading);
-- the settings (the entry's options, or `setting_lines` given instead);
+  without entity ids, names or areas (`private` roles: only whether the state
+  is a number, not the number, e.g. a meter reading); integrations polling a
+  web service add the status of each endpoint (`endpoints`);
+- the settings: the entry's options, or `setting_lines` given instead (a
+  whitelist where the settings hold entity ids, names, places or free text);
 - which own entities have no value, with their `reason`;
-- open repair issues of the entry, by kind (issue ids may hold entity ids);
-- a few lines of the entry's own state (`extra`).
+- open repair issues of the entry: ids with the entry id in front or at the
+  end, every issue of the domain when it has only this entry or the caller
+  says so (`all_domain_issues`, issues shared by all entries); shown without
+  the entry id, by kind (translation key) where the id holds an entity id;
+- a few lines of the entry's own state (`extra`), further sections (`more`).
 
-Same in all sister projects (Wärmewacht first); Tarifwacht added `private`,
-`setting_lines` and repairs by kind.
+`show(intro=...)` replaces the notice above the report.
 
-`render` is pure; the rest reads Home Assistant's registries.
+The same file in all six sister projects (Eilwacht, Einspeisewacht,
+Speicherwacht, Streckenwacht, Tarifwacht, Wärmewacht); change it in all of
+them. `render` and `issue_key` are pure; the rest reads Home Assistant.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -40,6 +46,8 @@ Section = tuple[str, Lines]
 NO_VALUE = (STATE_UNKNOWN, STATE_UNAVAILABLE)
 # Text states longer than this are cut: a source may put anything there.
 MAX_TEXT = 40
+# Never "missing": a button has no value, an event entity none until it fires.
+NO_STATE_DOMAINS = ("button", "event")
 
 INTRO = {
     "de": (
@@ -72,6 +80,17 @@ def render(title: str, sections: Iterable[Section]) -> str:
     return "\n".join(out)
 
 
+def issue_key(issue_id: str, entry_id: str) -> str | None:
+    """The kind of a repair issue of this entry: its id with the entry id
+    taken off the front (`<entry>_<key>`) or the end (`<key>_<entry>`), None
+    for another entry's."""
+    if issue_id.startswith(f"{entry_id}_"):
+        return issue_id.removeprefix(f"{entry_id}_")
+    if issue_id.endswith(f"_{entry_id}"):
+        return issue_id.removesuffix(f"_{entry_id}")
+    return None
+
+
 def _language(hass: HomeAssistant) -> str:
     return "de" if (hass.config.language or "").startswith("de") else "en"
 
@@ -91,7 +110,7 @@ def _is_number(text: str) -> bool:
 def source(hass: HomeAssistant, entity_id: str | None, *, private: bool = False) -> str:
     """One source by its properties, not its id: integration, unit, classes,
     and the state (numbers as they are, text cut short). `private`: a number
-    only as "a number" (e.g. a meter reading)."""
+    only as "numeric state" (e.g. a meter reading)."""
     if not entity_id:
         return "-"
     registry = er.async_get(hass)
@@ -129,12 +148,13 @@ def settings(options: Mapping[str, Any]) -> Lines:
 
 def own_entities(hass: HomeAssistant, entry: ConfigEntry) -> Lines:
     """How many own entities have a value, and every one without, with the
-    `reason` attribute it gives. Buttons and disabled entities are skipped."""
+    `reason` attribute it gives. Buttons, event entities and disabled
+    entities are skipped."""
     registry = er.async_get(hass)
     valued = 0
     missing: Lines = []
     for item in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if item.disabled_by or item.domain == "button":
+        if item.disabled_by or item.domain in NO_STATE_DOMAINS:
             continue
         key = item.translation_key or item.unique_id
         state = hass.states.get(item.entity_id)
@@ -147,18 +167,36 @@ def own_entities(hass: HomeAssistant, entry: ConfigEntry) -> Lines:
     return [("with a value", str(valued)), *sorted(missing)]
 
 
-def repairs(hass: HomeAssistant, domain: str, entry: ConfigEntry) -> Lines:
-    """Open repair issues of the entry (ids start with the entry id), by kind:
-    the translation key, as an issue id may hold an entity id."""
+def repairs(
+    hass: HomeAssistant,
+    domain: str,
+    entry: ConfigEntry,
+    *,
+    all_domain_issues: bool = False,
+) -> Lines:
+    """Open repair issues of the entry, without the entry id; by kind
+    (translation key) where the rest of the id holds an entity id (a dot).
+    Several of one kind with a count. With a single entry of the domain, or
+    `all_domain_issues`, every issue of the domain counts."""
     registry = ir.async_get(hass)
-    found = Counter(
-        issue.translation_key or issue_id.removeprefix(f"{entry.entry_id}_")
-        for (issue_domain, issue_id), issue in registry.issues.items()
-        if issue_domain == domain
-        and issue.active
-        and issue.dismissed_version is None
-        and issue_id.startswith(entry.entry_id)
+    only_entry = (
+        all_domain_issues or len(hass.config_entries.async_entries(domain)) == 1
     )
+    found: Counter[str] = Counter()
+    for (issue_domain, issue_id), issue in registry.issues.items():
+        if (
+            issue_domain != domain
+            or not issue.active
+            or issue.dismissed_version is not None
+        ):
+            continue
+        key = issue_key(issue_id, entry.entry_id)
+        if key is None and not only_entry:
+            continue
+        label = key or issue_id
+        if "." in label:
+            label = issue.translation_key or "issue"
+        found[label] += 1
     kinds = [f"{key} ({n})" if n > 1 else key for key, n in sorted(found.items())]
     return [("open", ", ".join(kinds) if kinds else "none")]
 
@@ -170,37 +208,53 @@ def build(
     version: str,
     entry: ConfigEntry,
     *,
-    mapping: Mapping[str, str],
     extra: Lines,
+    mapping: Mapping[str, str] | None = None,
     private: Collection[str] = (),
+    endpoints: Sequence[tuple[str, str]] = (),
     setting_lines: Lines | None = None,
+    more: Iterable[Section] = (),
+    all_domain_issues: bool = False,
 ) -> str:
-    """The whole report of one entry. `private`: roles in `mapping` whose
-    number is not shown; `setting_lines`: instead of all options."""
+    """The whole report of one entry. `mapping`: role -> source entity;
+    `private`: roles whose number is not shown; `endpoints`: status lines of
+    polled web services; `setting_lines`: instead of all options; `more`:
+    sections after `entry`; `all_domain_issues`: see `repairs`."""
     return render(
         f"{name} {version}, Home Assistant {HA_VERSION}",
         [
             ("entry", extra),
-            ("sources", sources(hass, mapping, private)),
+            *more,
+            ("sources", [*sources(hass, mapping or {}, private), *endpoints]),
             (
                 "settings",
                 settings(entry.options) if setting_lines is None else setting_lines,
             ),
             ("own entities", own_entities(hass, entry)),
-            ("repairs", repairs(hass, domain, entry)),
+            (
+                "repairs",
+                repairs(hass, domain, entry, all_domain_issues=all_domain_issues),
+            ),
         ],
     )
 
 
 def show(
-    hass: HomeAssistant, domain: str, name: str, entry: ConfigEntry, report: str
+    hass: HomeAssistant,
+    domain: str,
+    name: str,
+    entry: ConfigEntry,
+    report: str,
+    *,
+    intro: Mapping[str, str] | None = None,
 ) -> None:
     """The report as a notification, in a code block to copy as is. One per
-    entry: pressing again replaces it."""
+    entry: pressing again replaces it. `intro` replaces the notice above it
+    (keys "de" and "en")."""
     language = _language(hass)
     persistent_notification.async_create(
         hass,
-        f"{INTRO[language]}\n\n```text\n{report}\n```",
+        f"{(intro or INTRO)[language]}\n\n```text\n{report}\n```",
         title=TITLE[language].format(name=name),
         notification_id=f"{domain}_issue_report_{entry.entry_id}",
     )
