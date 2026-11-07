@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.1.4 – 2026-11-07
 
 - **Neu: Schaltfläche „Bericht für Fehlermeldung“** am Gerät des Zählers (unter *Diagnose*). Sie zeigt einen kurzen Bericht als Benachrichtigung zum Kopieren in ein Issue: Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand; beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Modul 3 und Preisänderungen, den Stand der Buchung, Sensoren ohne Wert und offene Reparaturhinweise – ohne Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen. Viele wollen die Diagnose-Datei nicht öffentlich teilen, weil Home Assistant ihr unter anderem die Liste aller installierten Integrationen voranstellt. Die README erklärt jetzt unter „Fehler melden“, was in der Diagnose-Datei steht und welche Teile man vor dem Teilen löschen darf; die Issue-Vorlage fragt nach dem Bericht.
 
