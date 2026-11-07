@@ -57,6 +57,7 @@ from .const import (
     KIND_DYNAMIC_TOTAL,
     KIND_FIXED,
     KINDS,
+    SUBENTRY_SOLAR,
     SUBENTRY_TARIFF,
     TARIFF_DYNAMIC,
 )
@@ -68,6 +69,7 @@ from .runtime import (
     price_unit_ok,
     tariff_subentries,
 )
+from .solar_flow import SolarSubentryFlow
 from .tariff_config import (
     change_fields,
     default_titles,
@@ -134,7 +136,7 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_supported_subentry_types(
         cls, config_entry: ConfigEntry
     ) -> dict[str, type[ConfigSubentryFlow]]:
-        return {SUBENTRY_TARIFF: TariffSubentryFlow}
+        return {SUBENTRY_TARIFF: TariffSubentryFlow, SUBENTRY_SOLAR: SolarSubentryFlow}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

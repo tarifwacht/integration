@@ -23,6 +23,12 @@
       },
       "difference": {
         "default": "mdi:plus-minus-variant"
+      },
+      "saving_pv": {
+        "default": "mdi:solar-power-variant"
+      },
+      "saving_battery": {
+        "default": "mdi:home-battery"
       }
     }
   },

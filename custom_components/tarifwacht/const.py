@@ -45,6 +45,17 @@ CONF_MODUL3: Final = "modul3"  # time-variable grid fee (§ 14a EnWG Modul 3)
 # the setup that its sensor does not know with prices from SMARD.de.
 CONF_SMARD_FILL: Final = "smard_fill"
 
+# PV and battery subentry (at most one): what they saved (solar.py).
+SUBENTRY_SOLAR: Final = "solar"
+CONF_FEED_IN_ENTITY: Final = "feed_in_entity"  # energy fed into the grid
+CONF_PV_ENTITY: Final = "pv_entity"  # PV, or the hybrid inverter's AC output
+CONF_CHARGED_ENTITY: Final = "charged_entity"  # optional battery meters
+CONF_DISCHARGED_ENTITY: Final = "discharged_entity"
+CONF_SAME_INVERTER: Final = "same_inverter"  # battery behind the PV inverter
+CONF_FEED_IN_RATE: Final = "feed_in_rate"  # ct/kWh
+CONF_NEGATIVE_UNPAID: Final = "negative_unpaid"  # § 51 EEG
+CONF_MARKET_ENTITY: Final = "market_entity"  # exchange price for § 51
+
 KIND_FIXED: Final = "fixed"
 KIND_DYNAMIC_TOTAL: Final = "dynamic_total"
 KIND_DYNAMIC_MARKET: Final = "dynamic_market"

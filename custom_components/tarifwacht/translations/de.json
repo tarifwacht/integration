@@ -243,6 +243,101 @@
         "window_required": "Jede Stufe braucht mindestens ein Zeitfenster am Tag.",
         "quarters_required": "Bitte mindestens ein Quartal wählen."
       }
+    },
+    "solar": {
+      "entry_type": "PV und Speicher",
+      "initiate_flow": {
+        "user": "PV und Speicher hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "PV und Speicher",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.",
+          "data": {
+            "feed_in_entity": "Einspeisezähler",
+            "pv_entity": "PV-Zähler",
+            "charged_entity": "Speicher geladen",
+            "discharged_entity": "Speicher entladen",
+            "feed_in_rate": "Einspeisevergütung",
+            "negative_unpaid": "Keine Vergütung bei negativen Preisen",
+            "market_entity": "Börsenpreis-Sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Ins Netz eingespeiste Energie (kWh-Zähler), z. B. vom Smart Meter.",
+            "pv_entity": "PV-Energie (kWh-Zähler). Hängt der Speicher am selben Wechselrichter (Hybrid-Wechselrichter): dessen AC-Erzeugung.",
+            "charged_entity": "Optional, zusammen mit „Speicher entladen“: in den Speicher geladene Energie (kWh-Zähler).",
+            "discharged_entity": "Optional: aus dem Speicher entnommene Energie (kWh-Zähler).",
+            "feed_in_rate": "Was du je eingespeister kWh bekommst.",
+            "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
+            "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          }
+        },
+        "reconfigure": {
+          "title": "PV und Speicher",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.",
+          "data": {
+            "feed_in_entity": "Einspeisezähler",
+            "pv_entity": "PV-Zähler",
+            "charged_entity": "Speicher geladen",
+            "discharged_entity": "Speicher entladen",
+            "feed_in_rate": "Einspeisevergütung",
+            "negative_unpaid": "Keine Vergütung bei negativen Preisen",
+            "market_entity": "Börsenpreis-Sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Ins Netz eingespeiste Energie (kWh-Zähler), z. B. vom Smart Meter.",
+            "pv_entity": "PV-Energie (kWh-Zähler). Hängt der Speicher am selben Wechselrichter (Hybrid-Wechselrichter): dessen AC-Erzeugung.",
+            "charged_entity": "Optional, zusammen mit „Speicher entladen“: in den Speicher geladene Energie (kWh-Zähler).",
+            "discharged_entity": "Optional: aus dem Speicher entnommene Energie (kWh-Zähler).",
+            "feed_in_rate": "Was du je eingespeister kWh bekommst.",
+            "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
+            "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          }
+        },
+        "battery_same": {
+          "title": "Speicher",
+          "description": "Deine Daten sprechen für **Ja**: Der PV-Zähler zählt nachts, während der Speicher entlädt.",
+          "data": {
+            "same_inverter": "Speicher am selben Wechselrichter wie die PV"
+          },
+          "data_description": {
+            "same_inverter": "Ja bei einem Hybrid-Wechselrichter (z. B. Fronius Gen24, Huawei, Kostal Plenticore): PV und Speicher teilen sich einen Wechselrichter. Nein bei einem Speicher mit eigenem Wechselrichter (z. B. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        },
+        "battery_own": {
+          "title": "Speicher",
+          "description": "Deine Daten sprechen für **Nein**: Der PV-Zähler bleibt nachts bei null, während der Speicher entlädt.",
+          "data": {
+            "same_inverter": "Speicher am selben Wechselrichter wie die PV"
+          },
+          "data_description": {
+            "same_inverter": "Ja bei einem Hybrid-Wechselrichter (z. B. Fronius Gen24, Huawei, Kostal Plenticore): PV und Speicher teilen sich einen Wechselrichter. Nein bei einem Speicher mit eigenem Wechselrichter (z. B. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        },
+        "battery_unknown": {
+          "title": "Speicher",
+          "description": "Aus deinen Daten lässt sich das noch nicht ablesen (zu wenige Nächte, in denen der Speicher entlud).",
+          "data": {
+            "same_inverter": "Speicher am selben Wechselrichter wie die PV"
+          },
+          "data_description": {
+            "same_inverter": "Ja bei einem Hybrid-Wechselrichter (z. B. Fronius Gen24, Huawei, Kostal Plenticore): PV und Speicher teilen sich einen Wechselrichter. Nein bei einem Speicher mit eigenem Wechselrichter (z. B. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        }
+      },
+      "error": {
+        "same_as_purchase": "Das ist der Bezugszähler des Eintrags.",
+        "own_entity": "Ein Sensor von Tarifwacht selbst ist gewählt. Bitte den Zähler der PV- oder Speicher-Integration wählen.",
+        "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
+        "meter_unit": "Der Zähler muss Energie in Wh, kWh oder MWh zählen.",
+        "meter_state_class": "Der Zähler braucht die Zustandsklasse total oder total_increasing (Langzeitstatistik).",
+        "battery_both": "Bitte beide Speicherzähler wählen oder keinen.",
+        "market_required": "Für „keine Vergütung bei negativen Preisen“ braucht es einen Börsenpreis: Sensor wählen oder einen Börsenpreis-Tarif anlegen."
+      },
+      "abort": {
+        "single_solar": "PV und Speicher sind für diesen Zähler schon eingerichtet. Bitte dort ändern.",
+        "reconfigure_successful": "Geändert."
+      }
     }
   },
   "selector": {
@@ -285,6 +380,12 @@
       },
       "difference": {
         "name": "Differenz zum aktuellen Tarif"
+      },
+      "saving_pv": {
+        "name": "Ersparnis PV"
+      },
+      "saving_battery": {
+        "name": "Ersparnis Speicher"
       }
     }
   },

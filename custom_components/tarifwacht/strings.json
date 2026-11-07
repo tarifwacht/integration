@@ -243,6 +243,101 @@
         "window_required": "Each level needs at least one window a day.",
         "quarters_required": "Please choose at least one quarter."
       }
+    },
+    "solar": {
+      "entry_type": "PV and battery",
+      "initiate_flow": {
+        "user": "Add PV and battery"
+      },
+      "step": {
+        "user": {
+          "title": "PV and battery",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.",
+          "data": {
+            "feed_in_entity": "Feed-in meter",
+            "pv_entity": "PV meter",
+            "charged_entity": "Battery charged",
+            "discharged_entity": "Battery discharged",
+            "feed_in_rate": "Feed-in tariff",
+            "negative_unpaid": "No payment at negative prices",
+            "market_entity": "Exchange price sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
+            "pv_entity": "PV energy (kWh counter). With a battery on the same inverter (hybrid inverter): its AC output.",
+            "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
+            "discharged_entity": "Optional: energy out of the battery (kWh counter).",
+            "feed_in_rate": "What you get per kWh fed in.",
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
+            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          }
+        },
+        "reconfigure": {
+          "title": "PV and battery",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.",
+          "data": {
+            "feed_in_entity": "Feed-in meter",
+            "pv_entity": "PV meter",
+            "charged_entity": "Battery charged",
+            "discharged_entity": "Battery discharged",
+            "feed_in_rate": "Feed-in tariff",
+            "negative_unpaid": "No payment at negative prices",
+            "market_entity": "Exchange price sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
+            "pv_entity": "PV energy (kWh counter). With a battery on the same inverter (hybrid inverter): its AC output.",
+            "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
+            "discharged_entity": "Optional: energy out of the battery (kWh counter).",
+            "feed_in_rate": "What you get per kWh fed in.",
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
+            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          }
+        },
+        "battery_same": {
+          "title": "Battery",
+          "description": "Your data suggest **yes**: the PV meter counts at night while the battery discharges.",
+          "data": {
+            "same_inverter": "Battery on the same inverter as the PV"
+          },
+          "data_description": {
+            "same_inverter": "Yes for a hybrid inverter (e.g. Fronius Gen24, Huawei, Kostal Plenticore): PV and battery share one inverter. No for a battery with its own inverter (e.g. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        },
+        "battery_own": {
+          "title": "Battery",
+          "description": "Your data suggest **no**: the PV meter stays at zero at night while the battery discharges.",
+          "data": {
+            "same_inverter": "Battery on the same inverter as the PV"
+          },
+          "data_description": {
+            "same_inverter": "Yes for a hybrid inverter (e.g. Fronius Gen24, Huawei, Kostal Plenticore): PV and battery share one inverter. No for a battery with its own inverter (e.g. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        },
+        "battery_unknown": {
+          "title": "Battery",
+          "description": "Your data do not tell yet (too few nights with the battery discharging).",
+          "data": {
+            "same_inverter": "Battery on the same inverter as the PV"
+          },
+          "data_description": {
+            "same_inverter": "Yes for a hybrid inverter (e.g. Fronius Gen24, Huawei, Kostal Plenticore): PV and battery share one inverter. No for a battery with its own inverter (e.g. SMA Sunny Boy Storage, Anker SOLIX, Zendure, Maxxisun)."
+          }
+        }
+      },
+      "error": {
+        "same_as_purchase": "This is the purchase meter of the entry.",
+        "own_entity": "A sensor of Tarifwacht itself is chosen. Please choose the meter of the PV or battery integration.",
+        "entity_missing": "The entity does not exist or has no state yet.",
+        "meter_unit": "The meter must count energy in Wh, kWh or MWh.",
+        "meter_state_class": "The meter needs a state class total or total_increasing (long-term statistics).",
+        "battery_both": "Please choose both battery meters, or neither.",
+        "market_required": "For no payment at negative prices an exchange price is needed: choose a sensor or add an exchange price tariff."
+      },
+      "abort": {
+        "single_solar": "PV and battery are already set up for this meter. Change them there.",
+        "reconfigure_successful": "Changed."
+      }
     }
   },
   "selector": {
@@ -285,6 +380,12 @@
       },
       "difference": {
         "name": "Difference to current tariff"
+      },
+      "saving_pv": {
+        "name": "Saving by PV"
+      },
+      "saving_battery": {
+        "name": "Saving by battery"
       }
     }
   },

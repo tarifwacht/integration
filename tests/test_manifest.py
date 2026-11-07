@@ -12,7 +12,13 @@ from custom_components.tarifwacht.config_flow import (
     _tariff_schema,
 )
 from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
-from custom_components.tarifwacht.sensor import DIFFERENCE, ENERGY, TARIFF_SENSORS
+from custom_components.tarifwacht.sensor import (
+    DIFFERENCE,
+    ENERGY,
+    SAVING_BATTERY,
+    SAVING_PV,
+    TARIFF_SENSORS,
+)
 from custom_components.tarifwacht.tariff_config import change_fields
 from custom_components.tarifwacht.tariffs import BasePeriod
 
@@ -66,7 +72,9 @@ def test_translations_complete() -> None:
 
 def test_every_sensor_translated() -> None:
     strings = load(INTEGRATION / "strings.json")
-    keys = {d.key for d in (*TARIFF_SENSORS, DIFFERENCE, ENERGY)} | {"cheapest"}
+    keys = {
+        d.key for d in (*TARIFF_SENSORS, DIFFERENCE, ENERGY, SAVING_PV, SAVING_BATTERY)
+    } | {"cheapest"}
     assert set(strings["entity"]["sensor"]) == keys
 
 

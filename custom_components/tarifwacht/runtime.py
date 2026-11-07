@@ -38,18 +38,27 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     BERLIN,
+    CONF_CHARGED_ENTITY,
     CONF_CURRENT,
+    CONF_DISCHARGED_ENTITY,
+    CONF_FEED_IN_ENTITY,
+    CONF_FEED_IN_RATE,
     CONF_KIND,
+    CONF_MARKET_ENTITY,
     CONF_METER,
     CONF_NAME,
+    CONF_NEGATIVE_UNPAID,
     CONF_PRICE_ENTITY,
+    CONF_PV_ENTITY,
     CONF_RENAMED,
+    CONF_SAME_INVERTER,
     CONF_SMARD_FILL,
     DOMAIN,
     KIND_DYNAMIC_MARKET,
     KIND_DYNAMIC_TOTAL,
     MAX_GRID_POWER_KW,
     PRICE_UNITS,
+    SUBENTRY_SOLAR,
     SUBENTRY_TARIFF,
 )
 from .engine import Engine, migrate_v1
@@ -69,6 +78,7 @@ from .prices import (
 )
 from .rename import renamed_storage
 from .smard_cache import SmardError, smard_cache
+from .solar import HourFlows, SolarResult, SolarSettings, solar_totals
 from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .tariffs import PriceSource, Tariff
 from .timeslots import slot_start
@@ -101,6 +111,11 @@ LATE_PRICE_GRACE = timedelta(hours=1)
 # the start is reported as a repair issue; other integrations may still be
 # starting before that.
 MISSING_GRACE = timedelta(minutes=10)
+
+# The saving by PV and battery is computed from the long-term statistics,
+# whose hour rows are compiled shortly after the hour (recorder commit
+# interval up to a minute): recomputed this many minutes past each hour.
+SOLAR_MINUTE = 12
 
 # Recorded states of a total-price sensor are read up to this long after the
 # gap to fill: the state after it tells whether the last one before it held.
@@ -187,6 +202,22 @@ class TariffInfo:
     current: bool
 
 
+def solar_subentry(entry: ConfigEntry) -> ConfigSubentry | None:
+    """The PV and battery subentry, if any (at most one)."""
+    return next(
+        (s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_SOLAR),
+        None,
+    )
+
+
+def solar_settings(data: Mapping[str, Any]) -> SolarSettings:
+    return SolarSettings(
+        same_inverter=bool(data.get(CONF_SAME_INVERTER)),
+        feed_in_rate=float(data.get(CONF_FEED_IN_RATE) or 0) / 100,
+        negative_unpaid=bool(data.get(CONF_NEGATIVE_UNPAID)),
+    )
+
+
 def tariff_subentries(entry: ConfigEntry) -> list[ConfigSubentry]:
     return [s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_TARIFF]
 
@@ -255,6 +286,27 @@ class MeterRuntime:
                     own_prices.add(entity)
                 else:
                     self.price_entities.add(entity)
+        # PV and battery: what they saved under each tariff (solar.py).
+        solar = solar_subentry(entry)
+        self.solar_subentry_id: str | None = solar.subentry_id if solar else None
+        self.solar_data: Mapping[str, Any] | None = solar.data if solar else None
+        self.solar_result: SolarResult | None = None
+        self.solar_error: str | None = None
+        self.market_entity: str | None = None
+        if self.solar_data is not None and self.solar_data.get(CONF_NEGATIVE_UNPAID):
+            self.market_entity = self.solar_data.get(CONF_MARKET_ENTITY) or next(
+                (
+                    s.data[CONF_PRICE_ENTITY]
+                    for s in tariff_subentries(entry)
+                    if s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET
+                ),
+                None,
+            )
+            if self.market_entity is not None and not own_entity(
+                hass, self.market_entity
+            ):
+                # Its prices are kept like a tariff's (for section 51).
+                self.price_entities.add(self.market_entity)
         self.own_entities: list[str] = [
             *([self.meter_entity] if self.meter_own else []),
             *sorted(own_prices),
@@ -457,6 +509,99 @@ class MeterRuntime:
             if row.get("change") is not None
         ]
 
+    async def _async_hourly(
+        self, entities: set[str], start: datetime, end: datetime
+    ) -> dict[str, dict[datetime, float]]:
+        """Energy per hour (kWh) of several meters from the long-term statistics."""
+        rows = await get_instance(self.hass).async_add_executor_job(
+            statistics_during_period,
+            self.hass,
+            start,
+            end,
+            entities,
+            "hour",
+            {"energy": UnitOfEnergy.KILO_WATT_HOUR},
+            {"change"},
+        )
+        return {
+            entity: {
+                dt_util.utc_from_timestamp(row["start"]): row["change"]
+                for row in rows.get(entity, [])
+                if row.get("change") is not None
+            }
+            for entity in entities
+        }
+
+    def solar_flows(
+        self, hourly: Mapping[str, Mapping[datetime, float]]
+    ) -> dict[datetime, HourFlows]:
+        """The hours with purchase, feed-in and PV recorded (battery: 0 if
+        missing). A negative change (meter reset) counts as 0."""
+        data = self.solar_data
+        assert data is not None
+        purchase = hourly.get(self.meter_entity, {})
+        feed_in = hourly.get(data[CONF_FEED_IN_ENTITY], {})
+        pv = hourly.get(data[CONF_PV_ENTITY], {})
+        charged = hourly.get(data.get(CONF_CHARGED_ENTITY) or "", {})
+        discharged = hourly.get(data.get(CONF_DISCHARGED_ENTITY) or "", {})
+        return {
+            hour: HourFlows(
+                purchase=max(0.0, purchase[hour]),
+                feed_in=max(0.0, feed_in[hour]),
+                pv=max(0.0, pv[hour]),
+                charged=max(0.0, charged.get(hour, 0.0)),
+                discharged=max(0.0, discharged.get(hour, 0.0)),
+            )
+            for hour in sorted(set(purchase) & set(feed_in) & set(pv))
+        }
+
+    def solar_entities(self) -> set[str]:
+        data = self.solar_data or {}
+        return {
+            e
+            for e in (
+                self.meter_entity,
+                data.get(CONF_FEED_IN_ENTITY),
+                data.get(CONF_PV_ENTITY),
+                data.get(CONF_CHARGED_ENTITY),
+                data.get(CONF_DISCHARGED_ENTITY),
+            )
+            if e
+        }
+
+    async def async_refresh_solar(self, now: datetime) -> None:
+        """What PV and battery saved since the start of the period, under
+        each tariff, from the complete hours of the long-term statistics."""
+        started = self.engine.started
+        if self.solar_data is None or started is None or self.meter_own:
+            return
+        try:
+            hourly = await self._async_hourly(
+                self.solar_entities(), hour_start(started), hour_start(now)
+            )
+        except Exception as err:  # never block the integration
+            _LOGGER.warning("PV and battery: statistics not read: %s", err)
+            self.solar_error = type(err).__name__
+            return
+        if self._stopped:
+            return
+        market = (
+            self.engine.price_table(self.market_entity) if self.market_entity else None
+        )
+        self.solar_result = solar_totals(
+            self.solar_flows(hourly),
+            self.engine.tariffs,
+            solar_settings(self.solar_data),
+            BERLIN,
+            market,
+        )
+        self.solar_error = None
+        self._notify()
+
+    @callback
+    def _on_solar_tick(self, now: datetime) -> None:
+        self._background(self.async_refresh_solar(now), "PV and battery")
+
     @property
     def current(self) -> TariffInfo | None:
         """The tariff the others are compared with (first marked one)."""
@@ -514,6 +659,13 @@ class MeterRuntime:
                 self.hass, self._on_tick, minute=[0, 15, 30, 45], second=1
             ),
         ]
+        if self.solar_data is not None:
+            self._unsubscribe.append(
+                async_track_utc_time_change(
+                    self.hass, self._on_solar_tick, minute=SOLAR_MINUTE, second=0
+                )
+            )
+            self._background(self.async_refresh_solar(now), "PV and battery")
         await self._async_archive(now)
         if renames:
             await self._store.async_save(self.engine.as_dict())
