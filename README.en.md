@@ -26,7 +26,7 @@ The user interface is available in German and English and follows the language o
 ## Contents
 
 - [Features](#features) · [Notes on the comparison](#notes-on-the-comparison) · [What Tarifwacht does not do](#what-tarifwacht-does-not-do)
-- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg)
+- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
 - **Using it:** [Entities](#entities) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics)
 - **More:** [Privacy](#privacy) · [Troubleshooting](#troubleshooting) · [Removal](#removal) · [Reporting issues](#reporting-issues) · [Thanks](#thanks) · [Sister integrations](#sister-integrations)
 
@@ -37,6 +37,7 @@ The user interface is available in German and English and follows the language o
 - **Average price** per tariff (ct/kWh, including base price) and the **cheapest tariff** so far.
 - **Any number of tariffs:** fixed price, dynamic with a total-price sensor, or dynamic from exchange price plus grid fee, taxes/levies, supplier surcharge and VAT.
 - **Modul 3** (§ 14a EnWG): time-variable grid fee with low-load and high-load windows per quarter.
+- **Saving by PV and battery** per tariff (€): what the PV system and battery saved against buying all consumption, with feed-in tariff and § 51 EEG – hybrid inverters and batteries with their own inverter, see [PV and battery](#pv-and-battery).
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
 - **Base prices** optional, per month or per year, booked pro rata per day.
 - **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff? On request also [written into the long-term statistics](#import-statistics).
@@ -141,6 +142,21 @@ With a controllable consumer (heat pump, wallbox) you can choose Modul 3 with yo
 
 Basis: Bundesnetzagentur determination BK8-22/010-A; details and sources (German) in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
+### PV and battery
+
+With a PV system (and a battery), Tarifwacht shows under each tariff **what PV and battery saved**: compared with buying all consumption from the grid. *Tarifwacht → Add → PV and battery*:
+
+- **Feed-in meter** and **PV meter** (kWh counters with long-term statistics); optionally **Battery charged** and **Battery discharged**.
+- **Feed-in tariff** in ct/kWh and **No payment at negative prices** (§ 51 EEG, for plants from 25 February 2025 with a smart meter). This needs an exchange price: the sensor of the exchange price tariff or one of your own (e.g. EPEX Spot market price).
+- If [Einspeisewacht](https://github.com/einspeisewacht/integration) is set up, feed-in meter, rate, § 51 and exchange price are prefilled (copied once, no dependency).
+- **Battery on the same inverter as the PV?** Yes for a hybrid inverter (e.g. Fronius Gen24, Huawei, Kostal Plenticore) – the PV meter is then its AC output, battery included. No for a battery with its own inverter (e.g. SMA Sunny Boy Storage, Anker SOLIX, Zendure). The setup suggests the answer from your data: if the PV meter counts at night while the battery discharges, it is the same inverter.
+
+The calculation runs per hour and tariff in three cases: **without PV and battery** (consumption × price), **PV only** (imagined without battery: what the PV does not cover comes from the grid, the rest is fed in) and **actual** (purchase × price minus feed-in revenue). *Saving by PV* is the difference of the first two, *Saving by battery* that of the last two. Base prices are the same in all cases and left out. The consumption comes from the meters (purchase − feed-in + PV, with a battery inverter of its own also + discharged − charged). For a battery behind a hybrid inverter Tarifwacht assumes 95 % inverter efficiency (90 to 97 % move a year by a few euros only).
+
+- **Every hour from the long-term statistics**, since the setup of the Tarifwacht entry; the [compare action](#comparison-for-a-period) also covers the time before.
+- Within an hour PV and consumption are netted: the PV saving comes out a little high and the battery saving a little low (the battery fills exactly these gaps).
+- With a dynamic tariff the battery is usually worth more than with a fixed price, as it replaces expensive evening electricity.
+
 ## Entities
 
 On the meter's device (e.g. "Home"):
@@ -159,6 +175,8 @@ On every tariff (e.g. "Home Fixed price"):
 | Total cost | € | consumption cost plus base price |
 | Average price | ct/kWh | total cost ÷ grid purchase |
 | Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself; missing prices: see below) |
+| Saving by PV | € | only with [PV and battery](#pv-and-battery): what the PV saved since the setup; attributes `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, energies (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
+| Saving by battery | € | only with battery meters: what the battery saved on top; attributes `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (saving per kWh discharged) |
 
 For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for its price; usually it is known since the day before.
 
@@ -254,7 +272,7 @@ data:
 
 <img alt="Response of the action Compare tariffs" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff; under `months` the same in short per calendar month. Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
+The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff; under `months` the same in short per calendar month. With [PV and battery](#pv-and-battery) there is also `pv_battery`: per tariff the saving by PV and battery, the three cases and the energies, also per month (before the setup with exchange prices from SMARD.de if § 51 applies). Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
 
 ### Looking back before the setup
 

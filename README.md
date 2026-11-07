@@ -24,7 +24,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 ## Inhalt
 
 - [Was Tarifwacht kann](#was-tarifwacht-kann) · [Hinweise zum Vergleich](#hinweise-zum-vergleich) · [Was Tarifwacht nicht kann](#was-tarifwacht-nicht-kann)
-- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg)
+- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
 - **Nutzen:** [Entitäten](#entitäten) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen)
 - **Mehr:** [Datenschutz](#datenschutz) · [Fehlerbehebung](#fehlerbehebung) · [Entfernen](#entfernen) · [Fehler melden](#fehler-melden) · [Danke](#danke) · [Weitere Wachten](#weitere-wachten)
 
@@ -35,6 +35,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Durchschnittspreis** je Tarif (ct/kWh, mit Grundpreis) und **Günstigster Tarif** bisher.
 - **Beliebig viele Tarife:** Festpreis, dynamisch mit einem Gesamtpreis-Sensor oder dynamisch aus Börsenpreis plus Netzentgelt, Steuern/Abgaben, Anbieteraufschlag und Mehrwertsteuer.
 - **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
+- **Ersparnis durch PV und Speicher** je Tarif (€): was PV-Anlage und Speicher gegenüber dem Bezug des ganzen Verbrauchs gespart haben, mit Einspeisevergütung und § 51 EEG – Hybrid-Wechselrichter und eigene Speicher-Wechselrichter, siehe [PV und Speicher](#pv-und-speicher).
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
 - **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet? Auf Wunsch auch [in die Langzeitstatistik nachgetragen](#statistik-nachtragen).
@@ -139,6 +140,21 @@ Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) kannst du bei
 
 Grundlage: Festlegung der Bundesnetzagentur BK8-22/010-A; Einzelheiten und Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
+### PV und Speicher
+
+Mit PV-Anlage (und Speicher) zeigt Tarifwacht in jedem Tarif, **was PV und Speicher gespart haben**: verglichen mit dem Fall, dass der ganze Verbrauch aus dem Netz käme. *Tarifwacht → Hinzufügen → PV und Speicher*:
+
+- **Einspeisezähler** und **PV-Zähler** (kWh-Zähler mit Langzeitstatistik); optional **Speicher geladen** und **Speicher entladen**.
+- **Einspeisevergütung** in ct/kWh und **Keine Vergütung bei negativen Preisen** (§ 51 EEG, für Anlagen ab 25.02.2025 mit Smart Meter). Dafür braucht es einen Börsenpreis: den Sensor des Börsenpreis-Tarifs oder einen eigenen (z. B. EPEX Spot Marktpreis).
+- Ist [Einspeisewacht](https://github.com/einspeisewacht/integration) eingerichtet, sind Einspeisezähler, Vergütung, § 51 und Börsenpreis vorausgefüllt (einmalig übernommen, keine Abhängigkeit).
+- **Speicher am selben Wechselrichter wie die PV?** Ja bei einem Hybrid-Wechselrichter (z. B. Fronius Gen24, Huawei, Kostal Plenticore) – dann ist der PV-Zähler dessen AC-Erzeugung, Speicher inklusive. Nein bei einem Speicher mit eigenem Wechselrichter (z. B. SMA Sunny Boy Storage, Anker SOLIX, Zendure). Die Einrichtung schlägt die Antwort aus deinen Daten vor: Zählt der PV-Zähler nachts, während der Speicher entlädt, hängt er am selben Wechselrichter.
+
+Gerechnet wird je Stunde und Tarif in drei Fällen: **ohne PV und Speicher** (Verbrauch × Preis), **nur PV** (gedacht ohne Speicher: was über die PV hinaus gebraucht wird, kommt aus dem Netz, der Rest wird eingespeist) und **tatsächlich** (Bezug × Preis minus Einspeiseerlös). *Ersparnis PV* ist der Unterschied der ersten beiden, *Ersparnis Speicher* der der letzten beiden. Grundpreise sind in allen Fällen gleich und bleiben außen vor. Der Verbrauch ergibt sich aus den Zählern (Bezug − Einspeisung + PV, beim eigenen Speicher-Wechselrichter zusätzlich + entladen − geladen). Für Speicher hinter einem Hybrid-Wechselrichter rechnet Tarifwacht mit 95 % Wirkungsgrad des Wechselrichters (90 bis 97 % ändern ein Jahr nur um wenige Euro).
+
+- **Stündlich aus der Langzeitstatistik**, seit der Einrichtung des Tarifwacht-Eintrags; die Aktion [Tarife vergleichen](#vergleich-für-einen-zeitraum) rechnet auch davor.
+- Innerhalb einer Stunde werden PV und Verbrauch verrechnet: Die Ersparnis der PV fällt dadurch etwas zu hoch aus, die des Speichers etwas zu niedrig (gerade diese Lücken füllt der Speicher).
+- Mit dynamischem Tarif ist der Speicher meist mehr wert als mit Festpreis, weil er abends teuren Strom ersetzt.
+
 ## Entitäten
 
 Am Gerät des Zählers (z. B. „Haus“):
@@ -157,6 +173,8 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 | Kosten gesamt | € | Verbrauchskosten plus Grundpreis |
 | Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug |
 | Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst; fehlende Preise siehe unten) |
+| Ersparnis PV | € | nur mit [PV und Speicher](#pv-und-speicher): was die PV seit der Einrichtung gespart hat; Attribute `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, Energiemengen (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
+| Ersparnis Speicher | € | nur mit Speicherzählern: was der Speicher zusätzlich gespart hat; Attribute `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (Ersparnis je entladener kWh) |
 
 Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
 
@@ -252,7 +270,7 @@ data:
 
 <img alt="Antwort der Aktion „Tarife vergleichen“" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat. Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
+Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat. Mit [PV und Speicher](#pv-und-speicher) kommt `pv_battery` dazu: je Tarif Ersparnis PV und Speicher, die drei Fälle und die Energiemengen, auch je Monat (vor der Einrichtung mit Börsenpreisen von SMARD.de, falls § 51 gilt). Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
 
 ### Rückblick vor der Einrichtung
 

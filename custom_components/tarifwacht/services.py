@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from . import TarifwachtConfigEntry
     from .engine import PeriodCosts
     from .runtime import MeterRuntime
+    from .solar import SolarResult, SolarTotals
 
 SERVICE_COMPARE = "compare"
 SERVICE_IMPORT_STATISTICS = "import_statistics"
@@ -96,6 +98,55 @@ def _tariff_rows(
     return rows
 
 
+def _solar_rows(
+    runtime: MeterRuntime, totals: Mapping[str, SolarTotals], *, details: bool
+) -> list[dict[str, Any]]:
+    """One row per tariff: what PV and battery saved under it (EUR)."""
+    rows: list[dict[str, Any]] = []
+    for tariff in runtime.tariffs.values():
+        t = totals[tariff.key]
+        row: dict[str, Any] = {
+            "tariff": tariff.title,
+            "saving_pv": round(t.saving_pv, 2),
+            "saving_battery": round(t.saving_battery, 2),
+        }
+        if details:
+            value = t.battery_value
+            row |= {
+                "cost_without_pv_and_battery": round(t.without, 2),
+                "cost_pv_without_battery": round(t.pv_only, 2),
+                "cost_actual": round(t.actual, 2),
+                "battery_value_per_kwh_ct": None
+                if value is None
+                else round(value * 100, 1),
+                "hours_left_out": t.hours_left_out,
+            }
+        rows.append(row)
+    return rows
+
+
+def _solar_response(runtime: MeterRuntime, result: SolarResult) -> dict[str, Any]:
+    any_totals = next(iter(result.totals.values()), None)
+    response: dict[str, Any] = {
+        "tariffs": _solar_rows(runtime, result.totals, details=True)
+    }
+    if any_totals is not None:
+        response |= {
+            "consumption_kwh": round(any_totals.consumption, 3),
+            "pv_kwh": round(any_totals.pv, 3),
+            "purchase_kwh": round(any_totals.purchase, 3),
+            "feed_in_kwh": round(any_totals.feed_in, 3),
+            "feed_in_unpaid_kwh": round(any_totals.feed_in_unpaid, 3),
+            "charged_kwh": round(any_totals.charged, 3),
+            "discharged_kwh": round(any_totals.discharged, 3),
+        }
+    response["months"] = [
+        {"month": month, "tariffs": _solar_rows(runtime, totals, details=False)}
+        for month, totals in result.months.items()
+    ]
+    return response
+
+
 def _cheapest(rows: list[dict[str, Any]]) -> str | None:
     """Only a tariff that priced every kWh can be the cheapest."""
     complete = [r for r in rows if r["energy_without_price_kwh"] == 0]
@@ -158,6 +209,21 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 }
             )
         response["months"] = months
+        try:
+            solar = await runtime.async_solar_between(
+                result.start, result.end, lookback
+            )
+        except SmardError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="smard_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        if solar is not None:
+            solar_result, used_smard = solar
+            response["pv_battery"] = _solar_response(runtime, solar_result)
+            if used_smard:
+                response["pv_battery"]["exchange_prices"] = ATTRIBUTION
         return response
 
     async def import_statistics(call: ServiceCall) -> ServiceResponse:

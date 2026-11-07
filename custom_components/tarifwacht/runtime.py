@@ -598,6 +598,41 @@ class MeterRuntime:
         self.solar_error = None
         self._notify()
 
+    async def async_solar_between(
+        self, start: datetime, end: datetime, lookback: Lookback | None
+    ) -> tuple[SolarResult, bool] | None:
+        """The saving by PV and battery in [start, end) for the compare
+        action, also before the setup (the tariffs of `lookback`). With the
+        negative price rule, exchange prices before the setup come from
+        SMARD.de (raises SmardError). Second value: SMARD.de was used."""
+        if self.solar_data is None or self.meter_own:
+            return None
+        hourly = await self._async_hourly(self.solar_entities(), hour_start(start), end)
+        tariffs = lookback.tariffs if lookback is not None else self.engine.tariffs
+        market: PriceSource | None = (
+            self.engine.price_table(self.market_entity) if self.market_entity else None
+        )
+        used_smard = False
+        started = self.engine.started
+        if (
+            self.market_entity is not None
+            and market is not None
+            and started is not None
+            and start < started
+        ):
+            smard = await smard_cache(self.hass).async_prices(start, started)
+            market = FallbackPrice(market, smard, started)
+            used_smard = True
+        flows = {
+            hour: flow
+            for hour, flow in self.solar_flows(hourly).items()
+            if start <= hour < end
+        }
+        result = solar_totals(
+            flows, tariffs, solar_settings(self.solar_data), BERLIN, market
+        )
+        return result, used_smard
+
     @callback
     def _on_solar_tick(self, now: datetime) -> None:
         self._background(self.async_refresh_solar(now), "PV and battery")

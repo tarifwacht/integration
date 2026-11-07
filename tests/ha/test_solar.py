@@ -23,6 +23,7 @@ from custom_components.tarifwacht.const import (
     DOMAIN,
     SUBENTRY_SOLAR,
 )
+from custom_components.tarifwacht.lookback import Lookback
 from custom_components.tarifwacht.runtime import MeterRuntime
 
 from .conftest import METER, METER_ATTRIBUTES, PRICE, mock_entry, price_attributes
@@ -226,3 +227,49 @@ async def test_saving_sensors(hass: HomeAssistant) -> None:
     assert float(battery.state) == 0.38
     assert pv.attributes["consumption_kwh"] == 3.0
     assert battery.attributes["discharged_kwh"] == 1.8
+
+
+async def test_compare_action_reports_the_saving(hass: HomeAssistant) -> None:
+    """The compare action, here over a June day before the setup."""
+    set_sources(hass)
+    entry = solar_entry()
+    entry.add_to_hass(hass)
+    noon = datetime(2026, 6, 1, 10, tzinfo=UTC)
+    hourly = {
+        METER: {noon: 0.0, noon + 8 * HOUR: 0.2},
+        FEED_IN: {noon: 0.0, noon + 8 * HOUR: 0.0},
+        PV: {noon: 3.0, noon + 8 * HOUR: 0.0},
+        CHARGED: {noon: 2.0},
+        DISCHARGED: {noon + 8 * HOUR: 1.8},
+    }
+
+    async def fake_hourly(self: MeterRuntime, *_: Any) -> dict:
+        return hourly
+
+    async def fake_lookback(self: MeterRuntime, start: datetime) -> Lookback:
+        return Lookback(
+            consumption={}, tariffs=self.engine.tariffs, until=self.engine.started
+        )
+
+    with (
+        patch.object(MeterRuntime, "_async_hourly", fake_hourly),
+        patch.object(MeterRuntime, "async_lookback", fake_lookback),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        response = await hass.services.async_call(
+            DOMAIN,
+            "compare",
+            {
+                "config_entry": entry.entry_id,
+                "start": "2026-06-01 00:00:00",
+                "end": "2026-06-02 00:00:00",
+            },
+            blocking=True,
+            return_response=True,
+        )
+    rows = {row["tariff"]: row for row in response["pv_battery"]["tariffs"]}
+    assert rows["Fixed price"]["saving_pv"] == 0.46
+    assert rows["Fixed price"]["saving_battery"] == 0.38
+    assert response["pv_battery"]["consumption_kwh"] == 3.0
+    assert [m["month"] for m in response["pv_battery"]["months"]] == ["2026-06"]
