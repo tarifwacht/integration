@@ -13,7 +13,7 @@
 
 **Was hätte dein Strom mit einem anderen Tarif gekostet?** Tarifwacht rechnet deinen tatsächlichen Strombezug in Home Assistant Viertelstunde für Viertelstunde gegen beliebig viele Tarife – Festpreis, dynamisch, mit oder ohne Modul 3 – und zeigt, welcher günstiger gewesen wäre. Jeder dynamische Tarif bekommt dabei den Preis **genau dieser Viertelstunde**, nicht den Preis des Augenblicks, in dem der Zähler zufällig meldet.
 
-**Ausprobieren ohne Installation:** Die [Demo](https://tarifwacht.github.io/integration/?lang=de) zeigt Dashboard, Geräte, Monatsübersicht und Jahresrückblick für eine Wohnung und ein Haus mit E-Auto und Wärmepumpe – mit erfundenen Preisen und Tarifen, aber gerechnet vom Code der Integration.
+**Ausprobieren ohne Installation:** Die [Demo](https://tarifwacht.github.io/integration/?lang=de) zeigt Dashboard, Geräte, Monatsübersicht und Jahresrückblick für eine Wohnung und ein Haus mit PV, Speicher, E-Auto und Wärmepumpe, dort auch die Ersparnis durch PV und Speicher – mit erfundenen Preisen und Tarifen, aber gerechnet vom Code der Integration.
 
 > **Keine Abrechnungs- oder Tarifberatung.** Die Werte sind eine Orientierung. Maßgeblich ist die Abrechnung deines Stromanbieters.
 
@@ -153,7 +153,7 @@ Gerechnet wird je Stunde und Tarif in drei Fällen: **ohne PV und Speicher** (Ve
 
 - **Stündlich aus der Langzeitstatistik**, seit der Einrichtung des Tarifwacht-Eintrags; die Aktion [Tarife vergleichen](#vergleich-für-einen-zeitraum) rechnet auch davor.
 - Innerhalb einer Stunde werden PV und Verbrauch verrechnet: Die Ersparnis der PV fällt dadurch etwas zu hoch aus, die des Speichers etwas zu niedrig (gerade diese Lücken füllt der Speicher).
-- Mit dynamischem Tarif ist der Speicher meist mehr wert als mit Festpreis, weil er abends teuren Strom ersetzt.
+- Mit dynamischem Tarif spart die PV meist etwas weniger als mit Festpreis, weil der Strom mittags dort billig ist. Der Speicher kann dagegen mehr wert sein, wenn er abends teuren Strom ersetzt – das hängt vom Festpreis und vom Abend ab, den er abdeckt.
 
 ## Entitäten
 

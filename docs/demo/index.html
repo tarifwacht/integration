@@ -6,7 +6,7 @@
     <title>Tarifwacht – Demo</title>
     <meta
       name="description"
-      content="Tarifwacht zum Ausprobieren: Festpreis, dynamischer Tarif und Modul 3 im Vergleich – mit erfundenen Preisen, gerechnet vom Code der Integration."
+      content="Tarifwacht zum Ausprobieren: Festpreis, dynamischer Tarif und Modul 3 im Vergleich, dazu die Ersparnis durch PV und Speicher – mit erfundenen Preisen, gerechnet vom Code der Integration."
     />
     <link rel="icon" href="../../custom_components/tarifwacht/brand/icon.png" />
     <style>
@@ -31,6 +31,8 @@
         --series-fixed: #44739e;
         --series-dynamic: #ff9800;
         --series-modul3: #43a047;
+        --series-pv: #f5a623;
+        --series-battery: #00897b;
         --usage: rgba(150, 73, 125, 0.28);
       }
       :root[data-theme="dark"] {
@@ -48,6 +50,7 @@
         --divider-color: rgba(225, 225, 225, 0.12);
         --state-icon-color: #6aa7d8;
         --series-fixed: #6aa7d8;
+        --series-battery: #26a69a;
         --usage: rgba(201, 131, 177, 0.3);
       }
       * { box-sizing: border-box; }
@@ -113,7 +116,7 @@
       .rows { padding: 4px 0; }
       .row { display: flex; align-items: center; gap: 16px; padding: 7px 16px; font-size: 14px; }
       .row svg.mdi { font-size: 24px; color: var(--state-icon-color); }
-      .row .value { margin-left: auto; text-align: right; }
+      .row .value { margin-left: auto; text-align: right; white-space: nowrap; }
       .row small { display: block; color: var(--secondary-text-color); font-size: 12px; }
       .device { padding: 10px 16px 0; font-size: 13px; color: var(--secondary-text-color); }
 
@@ -146,6 +149,16 @@
       table.year th, table.year td { padding: 6px 16px; text-align: right; border-bottom: 1px solid var(--divider-color); }
       table.year th:first-child, table.year td:first-child { text-align: left; }
       table.year th { font-weight: 500; color: var(--secondary-text-color); }
+      table.year tr.split td { border-top: 2px solid var(--divider-color); }
+
+      /* The three cases of "PV und Speicher" */
+      .cases { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+        padding: 10px 16px 6px; font-size: 13px; }
+      .cases .bar { height: 14px; border-radius: 3px; background: var(--series-fixed); min-width: 2px; }
+      .cases .value { text-align: right; font-variant-numeric: tabular-nums; }
+      .cases .label { grid-column: 1 / -1; margin-top: 6px; }
+      .cases .saving { grid-column: 1 / -1; font-size: 12px; color: var(--secondary-text-color); }
+      .cases .saving b { font-weight: 500; }
 
       .below { margin-top: 28px; display: grid; gap: 16px;
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
@@ -200,7 +213,13 @@
 
       const HOUSEHOLDS = ["wohnung", "haus"];
       const MOMENTS = ["winter", "summer"];
-      const SERIES = { fixed: "var(--series-fixed)", dynamic: "var(--series-dynamic)", modul3: "var(--series-modul3)" };
+      const SERIES = {
+        fixed: "var(--series-fixed)",
+        dynamic: "var(--series-dynamic)",
+        modul3: "var(--series-modul3)",
+        pv: "var(--series-pv)",
+        battery: "var(--series-battery)",
+      };
       const BLUEPRINT_URL =
         "https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=" +
         "https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F" +
@@ -214,7 +233,7 @@
           time: "Zeitpunkt",
           lang: "Sprache",
           theme: "Darstellung",
-          households: { wohnung: "Wohnung", haus: "Haus mit E-Auto und Wärmepumpe" },
+          households: { wohnung: "Wohnung", haus: "Haus mit PV, Speicher, E-Auto und Wärmepumpe" },
           moments: { winter: "Winterabend", summer: "Sommerabend" },
           auto: "Auto", light: "Hell", dark: "Dunkel",
           banner: (time) =>
@@ -230,7 +249,7 @@
           costsPerDay: "Kosten je Tag",
           today: "Heute",
           todayTitle: "Preis je Viertelstunde und Verbrauch",
-          usage: "Verbrauch (kWh je Viertelstunde)",
+          usage: "Strombezug (kWh je Viertelstunde)",
           now: "jetzt",
           curveNote: "Dynamische Preise inklusive Aufschlägen und MwSt.",
           curveModul3: " Mit Modul 3 ist das Netzentgelt nachts niedriger und abends höher.",
@@ -253,10 +272,10 @@
           response: "Antwort der Aktion anzeigen",
           about: "Erfunden, aber echt gerechnet",
           data:
-            "Börsenpreise, Verbräuche und Tarife sind erfunden; es gibt keinen echten Anbieter oder Netzbetreiber dahinter. " +
+            "Börsenpreise, Verbräuche, Tarife und die PV-Anlage sind erfunden; es gibt keinen echten Anbieter oder Netzbetreiber dahinter. " +
             "Gebucht werden sie vom Code der Integration, Viertelstunde für Viertelstunde über ein Jahr – genau wie in deinem Home Assistant.",
           credits: "Symbole: Material Design Icons (Pictogrammers Free License).",
-          tariffsTitle: "Die erfundenen Tarife",
+          tariffsTitle: "Die erfundenen Tarife und die PV-Anlage",
           fixedDesc: (d) => `${ct(d.price)} ct/kWh, ${eur(d.base_price)} im Monat`,
           dynamicDesc: (d) =>
             `Börsenpreis + ${ct(d.grid_fee)} ct Netzentgelt + ${ct(d.levies)} ct Steuern/Abgaben + ${ct(d.margin)} ct Anbieter, ` +
@@ -268,6 +287,32 @@
             "die README hat ihn fertig zum Einfügen.",
           readme: "Dashboard in der README →",
           stillToday: "bis jetzt",
+          solar: "PV und Speicher",
+          savingPv: "Ersparnis PV",
+          savingBattery: "Ersparnis Speicher",
+          savingOf: (name, tariff) => `${name} (${tariff})`,
+          savingMonthOf: (name, tariff) => `${name} Monat (${tariff})`,
+          casesTitle: (tariff) => `Drei Fälle im aktuellen Tarif (${tariff})`,
+          caseWithout: "ohne PV und Speicher",
+          casePv: "nur PV (ohne Speicher gedacht)",
+          caseActual: "tatsächlich",
+          caseSaving: (name, value) => `${name}: <b>${value}</b>`,
+          perTariff: "Ersparnis je Tarif",
+          together: "zusammen",
+          perKwh: "je entladener kWh",
+          consumption: "Verbrauch",
+          pvEnergy: "PV (Wechselrichter)",
+          feedIn: "Einspeisung",
+          unpaid: (kwh) => `davon ${kwh} kWh ohne Vergütung (negative Preise)`,
+          discharged: "Speicher entladen",
+          solarNote: (p) =>
+            `Erfundene Anlage: ${num(p.kwp, 0)} kWp, Speicher ${num(p.battery_kwh, 0)} kWh am Hybrid-Wechselrichter, ` +
+            `Einspeisevergütung ${ct(p.feed_in_rate)} ct/kWh, keine Vergütung bei negativen Preisen (§ 51 EEG). ` +
+            "Stündlich aus der Langzeitstatistik der Zähler, seit der Einrichtung; Grundpreise bleiben außen vor.",
+          solarDesc: (p) =>
+            `${num(p.kwp, 0)} kWp Süddach, Speicher ${num(p.battery_kwh, 0)} kWh / ${num(p.battery_kw, 0)} kW am Hybrid-Wechselrichter ` +
+            `(Eigenverbrauch zuerst, nicht ins E-Auto), Einspeisevergütung ${ct(p.feed_in_rate)} ct/kWh, § 51 EEG`,
+          yearSolarTitle: (tariff) => `Ersparnis durch PV und Speicher je Monat (${tariff})`,
         },
         en: {
           demo: "demo",
@@ -276,7 +321,7 @@
           time: "Moment",
           lang: "Language",
           theme: "Theme",
-          households: { wohnung: "Flat", haus: "House with EV and heat pump" },
+          households: { wohnung: "Flat", haus: "House with PV, battery, EV and heat pump" },
           moments: { winter: "Winter evening", summer: "Summer evening" },
           auto: "Auto", light: "Light", dark: "Dark",
           banner: (time) => `All prices, consumption and tariffs are made up – for demonstration only. Demo time: ${time}.`,
@@ -291,7 +336,7 @@
           costsPerDay: "Costs per day",
           today: "Today",
           todayTitle: "Price per quarter hour and consumption",
-          usage: "Consumption (kWh per quarter hour)",
+          usage: "Grid purchase (kWh per quarter hour)",
           now: "now",
           curveNote: "Dynamic prices including surcharges and VAT.",
           curveModul3: " With Modul 3 the grid fee is lower at night and higher in the evening.",
@@ -314,10 +359,10 @@
           response: "Show the action's response",
           about: "Made up, but computed for real",
           data:
-            "Exchange prices, consumption and tariffs are made up; there is no real supplier or grid operator behind them. " +
+            "Exchange prices, consumption, tariffs and the PV system are made up; there is no real supplier or grid operator behind them. " +
             "They are booked by the integration's own code, quarter hour by quarter hour over a year – just as in your Home Assistant.",
           credits: "Icons: Material Design Icons (Pictogrammers Free License).",
-          tariffsTitle: "The made-up tariffs",
+          tariffsTitle: "The made-up tariffs and PV system",
           fixedDesc: (d) => `${ct(d.price)} ct/kWh, ${eur(d.base_price)} per month`,
           dynamicDesc: (d) =>
             `exchange price + ${ct(d.grid_fee)} ct grid fee + ${ct(d.levies)} ct taxes/levies + ${ct(d.margin)} ct supplier, ` +
@@ -329,6 +374,32 @@
             "the README has it ready to paste.",
           readme: "Dashboard in the README →",
           stillToday: "so far",
+          solar: "PV and battery",
+          savingPv: "Saving by PV",
+          savingBattery: "Saving by battery",
+          savingOf: (name, tariff) => `${name} (${tariff})`,
+          savingMonthOf: (name, tariff) => `${name} month (${tariff})`,
+          casesTitle: (tariff) => `Three cases under the current tariff (${tariff})`,
+          caseWithout: "without PV and battery",
+          casePv: "PV only (imagined without battery)",
+          caseActual: "actual",
+          caseSaving: (name, value) => `${name}: <b>${value}</b>`,
+          perTariff: "Saving per tariff",
+          together: "together",
+          perKwh: "per kWh discharged",
+          consumption: "Consumption",
+          pvEnergy: "PV (inverter)",
+          feedIn: "Feed-in",
+          unpaid: (kwh) => `of which ${kwh} kWh unpaid (negative prices)`,
+          discharged: "Battery discharged",
+          solarNote: (p) =>
+            `Made-up system: ${num(p.kwp, 0)} kWp, battery ${num(p.battery_kwh, 0)} kWh on a hybrid inverter, ` +
+            `feed-in tariff ${ct(p.feed_in_rate)} ct/kWh, no payment at negative prices (§ 51 EEG). ` +
+            "Every hour from the meters' long-term statistics, since the setup; base prices are left out.",
+          solarDesc: (p) =>
+            `${num(p.kwp, 0)} kWp facing south, battery ${num(p.battery_kwh, 0)} kWh / ${num(p.battery_kw, 0)} kW on a hybrid inverter ` +
+            `(self-consumption first, not into the car), feed-in tariff ${ct(p.feed_in_rate)} ct/kWh, § 51 EEG`,
+          yearSolarTitle: (tariff) => `Saving by PV and battery per month (${tariff})`,
         },
       };
 
@@ -500,12 +571,72 @@
           </section>`;
       }
 
+      function solarSection(data, view, keys, labels) {
+        const tx = t();
+        if (!view.solar) return "";
+        const current = keys[0];
+        const name = labels[current];
+        const now = view.solar.sensors[current];
+        const month = view.solar.month[current];
+        const tone = (v) => (v > 0 ? "less" : v < 0 ? "more" : "");
+        const stats = [
+          stat(tx.savingOf(tx.savingPv, name), now.saving_pv, "c6", tone(now.saving_pv)),
+          stat(tx.savingOf(tx.savingBattery, name), now.saving_battery, "c6", tone(now.saving_battery)),
+          stat(tx.savingMonthOf(tx.savingPv, name), month.saving_pv, "c6"),
+          stat(tx.savingMonthOf(tx.savingBattery, name), month.saving_battery, "c6"),
+        ];
+        const a = now.pv;
+        const cases = [
+          [tx.caseWithout, a.cost_without_pv_and_battery],
+          [tx.casePv, a.cost_pv_without_battery],
+          [tx.caseActual, a.cost_actual],
+        ];
+        const top = Math.max(1, ...cases.map((c) => c[1]));
+        const bar = (value) => `<div class="bar" style="width:${Math.max(0, (value / top) * 100)}%"></div>`;
+        const saving = (label, value) => `<div class="saving">↳ ${tx.caseSaving(escapeHtml(label), eur(value))}</div>`;
+        const casesHtml = cases
+          .map(
+            ([label, value], i) =>
+              `<span class="label">${escapeHtml(label)}</span>${bar(value)}<span class="value">${eur(value)}</span>` +
+              (i === 0 ? saving(tx.savingPv, now.saving_pv) : i === 1 ? saving(tx.savingBattery, now.saving_battery) : ""),
+          )
+          .join("");
+        const row = (mdi, label, value, note = "") =>
+          `<div class="row">${icon(mdi)}<span>${escapeHtml(label)}${note ? `<small>${note}</small>` : ""}</span><span class="value">${value}</span></div>`;
+        const kwh = (v) => `${num(v, 0)} kWh`;
+        const b = now.battery;
+        const value = b.value_per_kwh_ct === null ? "" : `${ct(b.value_per_kwh_ct)} ct ${tx.perKwh} (${escapeHtml(name)})`;
+        const energy = `
+          <div class="rows">
+            ${row("lightning-bolt", tx.consumption, kwh(a.consumption_kwh))}
+            ${row("solar-power-variant", tx.pvEnergy, kwh(a.pv_kwh))}
+            ${row("transmission-tower-import", tx.energy, kwh(a.purchase_kwh))}
+            ${row("transmission-tower-export", tx.feedIn, kwh(a.feed_in_kwh), tx.unpaid(num(a.feed_in_unpaid_kwh, 0)))}
+            ${row("home-battery", tx.discharged, kwh(b.discharged_kwh), value)}
+          </div>`;
+        const table = `<table class="year"><tr><th></th><th>${tx.savingPv}</th><th>${tx.savingBattery}</th><th>${tx.together}</th></tr>
+          ${keys
+            .map((k) => {
+              const v = view.solar.sensors[k];
+              return `<tr><td>${escapeHtml(labels[k])}</td><td>${eur(v.saving_pv)}</td><td>${eur(v.saving_battery)}</td><td>${eur(v.saving_pv + v.saving_battery)}</td></tr>`;
+            })
+            .join("")}</table>`;
+        return `
+          <section class="section">
+            <div class="heading">${icon("solar-power-variant")}<span>${tx.solar}</span></div>
+            <div class="grid">${stats.join("")}</div>
+            <div class="card"><div class="card-title">${tx.casesTitle(name)}</div><div class="cases">${casesHtml}</div>${energy}</div>
+            <div class="card"><div class="card-title">${tx.perTariff}</div>${table}<div class="footnote" style="padding-top:8px">${tx.solarNote(data.pv_system)}</div></div>
+          </section>`;
+      }
+
       function devicesSection(data, view, keys, labels) {
         const tx = t();
         const since = tx.since(dateFmt(data.setup, { day: "numeric", month: "long", year: "numeric" }));
         const row = (mdi, name, value, note = "") =>
           `<div class="row">${icon(mdi)}<span>${escapeHtml(name)}${note ? `<small>${note}</small>` : ""}</span><span class="value">${value}</span></div>`;
         const ranking = view.ranking.map((r) => `${escapeHtml(r.tariff)}: ${eur(r.cost)}`).join(" · ");
+        const solar = view.solar?.sensors;
         const meter = `
           <div class="card"><div class="device">${escapeHtml(tx.meter(data.device))}</div><div class="rows">
             ${row("transmission-tower-import", tx.energy, `${num(view.energy_kwh, 2)} kWh`, since)}
@@ -520,6 +651,8 @@
                 ${row("cash-multiple", tx.cost, eur(v.cost))}
                 ${row("tag-outline", tx.averagePrice, `${ct(v.average_ct)} ct/kWh`)}
                 ${v.difference === null ? "" : row("plus-minus-variant", tx.difference, signedEur(v.difference))}
+                ${solar ? row("solar-power-variant", tx.savingPv, eur(solar[k].saving_pv)) : ""}
+                ${solar ? row("home-battery", tx.savingBattery, eur(solar[k].saving_battery), solar[k].battery.value_per_kwh_ct === null ? "" : `${ct(solar[k].battery.value_per_kwh_ct)} ct ${tx.perKwh}`) : ""}
               </div></div>`;
           })
           .join("");
@@ -576,10 +709,33 @@
         const head = `<tr><th></th>${keys.map((k) => `<th>${escapeHtml(labels[k])}</th>`).join("")}</tr>`;
         const totals = Object.fromEntries(year.tariffs.map((r) => [r.tariff, r]));
         const line = (name, fn) => `<tr><td>${name}</td>${keys.map((k) => `<td>${fn(totals[labels[k]])}</td>`).join("")}</tr>`;
+        const pv = year.pv_battery;
+        const savings = pv ? Object.fromEntries(pv.tariffs.map((r) => [r.tariff, r])) : {};
+        const solarLine = (name, fn, cls = "") =>
+          `<tr class="${cls}"><td>${name}</td>${keys.map((k) => `<td>${fn(savings[labels[k]])}</td>`).join("")}</tr>`;
+        const solarLines = pv
+          ? solarLine(tx.savingPv, (r) => eur(r.saving_pv), "split") + solarLine(tx.savingBattery, (r) => eur(r.saving_battery))
+          : "";
+        let solarChart = "";
+        if (pv) {
+          const name = labels[keys[0]];
+          const months = pv.months.map((m) => {
+            const r = m.tariffs.find((x) => x.tariff === name);
+            return {
+              title: m.month,
+              label: dateFmt(`${m.month}-15`, { month: "short" }),
+              values: { pv: Math.max(0, r.saving_pv), battery: Math.max(0, r.saving_battery) },
+            };
+          });
+          const parts = { pv: tx.savingPv, battery: tx.savingBattery };
+          solarChart = `<div class="card"><div class="card-title">${tx.yearSolarTitle(name)}</div>
+            ${barChart(months, ["pv", "battery"], parts, 220, 1240)}${legend(["pv", "battery"], parts)}</div>`;
+        }
         const table = `<table class="year">${head}
           ${line(tx.total, (r) => eur(r.cost))}
           ${line(tx.averagePrice, (r) => `${ct(r.average_price_ct)} ct/kWh`)}
-          ${line(tx.difference, (r) => (r.current ? "–" : signedEur(r.difference_to_current)))}</table>`;
+          ${line(tx.difference, (r) => (r.current ? "–" : signedEur(r.difference_to_current)))}
+          ${solarLines}</table>`;
         return `
           <section class="section wide">
             <div class="heading">${icon("calendar-month-outline")}<span>${tx.year}</span></div>
@@ -589,6 +745,7 @@
               ${table}
               <details><summary>${tx.response}</summary><pre>${escapeHtml(yaml(year).trimStart())}</pre></details>
             </div>
+            ${solarChart}
           </section>`;
       }
 
@@ -613,6 +770,7 @@
         document.getElementById("dashboard").innerHTML =
           compareSection(data, view, keys, labels) +
           curveSection(view, keys, labels) +
+          solarSection(data, view, keys, labels) +
           devicesSection(data, view, keys, labels) +
           notificationSection(view) +
           yearSection(data, keys, labels);
@@ -621,7 +779,8 @@
             const text = d.kind === "fixed" ? tx.fixedDesc(d) : tx.dynamicDesc(d) + (d.modul3 ? `; ${tx.modul3Desc(d.modul3)}` : "");
             return `<li><b>${escapeHtml(d.title)}${d.current ? ` (${tx.current})` : ""}:</b> ${escapeHtml(text)}</li>`;
           })
-          .join("");
+          .join("") +
+          (data.pv_system ? `<li><b>${tx.solar}:</b> ${escapeHtml(tx.solarDesc(data.pv_system))}</li>` : "");
       }
 
       function applyTheme() {

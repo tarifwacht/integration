@@ -13,7 +13,7 @@
 
 **What would your electricity have cost with a different tariff?** Tarifwacht ("tariff watch") prices your actual grid consumption in Home Assistant quarter hour by quarter hour against any number of tariffs – fixed price, dynamic, with or without Modul 3 – and shows which one would have been cheaper. Each dynamic tariff gets the price of **exactly that quarter hour**, not the price of whatever moment the meter happens to report.
 
-**Try it without installing:** the [demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with an EV and a heat pump – with made-up prices and tariffs, but computed by the integration's own code.
+**Try it without installing:** the [demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with PV, battery, an EV and a heat pump, there also the saving by PV and battery – with made-up prices and tariffs, but computed by the integration's own code.
 
 Tarifwacht is built for Germany: quarter-hour day-ahead prices, German price components and the time-variable grid fee under § 14a EnWG. Days and months (base prices) follow German local time.
 
@@ -155,7 +155,7 @@ The calculation runs per hour and tariff in three cases: **without PV and batter
 
 - **Every hour from the long-term statistics**, since the setup of the Tarifwacht entry; the [compare action](#comparison-for-a-period) also covers the time before.
 - Within an hour PV and consumption are netted: the PV saving comes out a little high and the battery saving a little low (the battery fills exactly these gaps).
-- With a dynamic tariff the battery is usually worth more than with a fixed price, as it replaces expensive evening electricity.
+- With a dynamic tariff the PV usually saves a little less than with a fixed price, as midday electricity is cheap there. The battery, on the other hand, can be worth more when it replaces expensive evening electricity – that depends on the fixed price and on the evening it covers.
 
 ## Entities
 
