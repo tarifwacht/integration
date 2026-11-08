@@ -291,6 +291,31 @@ async def recalculate(
     return result
 
 
+async def meter_every_hour(hass: HomeAssistant) -> None:
+    """Meter sums (Wh): 1 kWh in every hour from 24.10. 13:00 up to the
+    setup hour (25.10. 15:00 UTC)."""
+    metadata: dict[str, Any] = {
+        "has_sum": True,
+        "mean_type": StatisticMeanType.NONE,
+        "name": None,
+        "source": "recorder",
+        "statistic_id": METER,
+        "unit_of_measurement": "Wh",
+    }
+    if "unit_class" in StatisticMetaData.__annotations__:
+        metadata["unit_class"] = "energy"
+    hours = [FIRST_METER_HOUR + n * HOUR for n in range(28)]
+    async_import_statistics(
+        hass,
+        metadata,  # type: ignore[arg-type]
+        [
+            {"start": h, "sum": n * 1000.0, "state": n * 1000.0}
+            for n, h in enumerate(hours)
+        ],
+    )
+    await async_wait_recording_done(hass)
+
+
 @pytest.mark.freeze_time(NOW)
 async def test_import_earlier_after_an_import_and_a_recalculation(
     hass: HomeAssistant,
@@ -300,33 +325,34 @@ async def test_import_earlier_after_an_import_and_a_recalculation(
     change. Before, the import added the whole time from that row to the
     setup once more (owner's instance: +4,738 kWh at the boundary)."""
     entry = await setup_entry(hass, market=False)
-    await import_meter_statistics(hass)
+    await meter_every_hour(hass)
     ids = {key: entity_id(hass, entry, key) for key in ("energy", "fixed_cost")}
     await live_statistics(
         hass, {sid: "kWh" if key == "energy" else "EUR" for key, sid in ids.items()}
     )
     # 25.10. 00:00 CEST = 24.10. 22:00 UTC up to the setup.
-    await import_statistics(hass, entry, "2026-10-25")
+    first = await import_statistics(hass, entry, "2026-10-25")
     await async_wait_recording_done(hass)
+    assert first["sensors"][ids["energy"]]["hours"] == 18
     await recalculate(hass, entry, "2026-10-25")
     before = dict(await sums(hass, ids["fixed_cost"]))
 
     result = await import_statistics(hass, entry, "2026-10-24")
     await async_wait_recording_done(hass)
-    # 24.10. 14:00-24:00 CEST: 4 kWh at 30 ct, base price 40 of 96 quarters.
-    assert result["sensors"][ids["energy"]]["added"] == pytest.approx(4.0)
+    # 24.10. 14:00-24:00 CEST: 9 kWh at 30 ct, base price 40 of 96 quarters.
+    shift = 9 * 0.30 + 40 / 96
+    assert result["sensors"][ids["energy"]]["added"] == pytest.approx(9.0)
     assert result["sensors"][ids["fixed_cost"]]["added"] == pytest.approx(
-        1.2 + 40 / 96, abs=1e-4
+        shift, abs=1e-4
     )
     boundary = datetime(2026, 10, 24, 22, tzinfo=UTC)
-    for key, own in (("energy", 0.0), ("fixed_cost", 0.04)):
+    for key, own in (("energy", 1.0), ("fixed_cost", 0.30 + 0.04)):
         rows = dict(await sums(hass, ids[key]))
-        # The first old row: its own hour only (no meter values after 24.10.
-        # 16:00 UTC; base price 4 of the 100 quarter hours of 25.10.).
+        # The first old row: its own hour only (1 kWh; base price 4 of the
+        # 100 quarter hours of 25.10.).
         assert rows[boundary] - rows[boundary - HOUR] == pytest.approx(own, abs=1e-4)
     # The rows from there on keep their changes.
     after = dict(await sums(hass, ids["fixed_cost"]))
-    shift = 1.2 + 40 / 96
     for hour, total in before.items():
         assert after[hour] == pytest.approx(total + shift, abs=1e-4), hour
 
