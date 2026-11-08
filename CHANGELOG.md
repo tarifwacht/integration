@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.1 – 2026-11-08
 
 - **Neu: eigene Karte „Tarifwacht“** fürs Dashboard, ohne Zusatzkarten aus HACS (*Dashboard bearbeiten → Karte hinzufügen →* „Tarifwacht“). Sie zeigt auf einen Blick, was dein Tarif kostet, ob ein anderer dieses Jahr günstiger gewesen wäre (und um wie viel) und was PV und Speicher sparen – jeweils heute, im Monat und im Kalenderjahr: oben dein Tarif, darunter jeder andere Tarif mit seinem Unterschied zu deinem (rot teurer, grün günstiger), mit PV und Speicher die Ersparnis zusammen und einzeln und was sie mit jedem anderen Tarif gespart hätten, dazu Säulen der letzten zwölf Monate. Die Karte passt sich an: Ohne PV-Anlage fehlt der Teil „PV und Speicher“, ohne Speicherzähler die Zeile „Speicher“. Im Editor wählst du nur den Eintrag; Tarife und Sensoren findet sie selbst, auch nach dem Umbenennen von Entitäten. Teile (Tarife, PV und Speicher, Diagramm) und Zeiträume sind wählbar, so kann die Karte auch zweimal ins Dashboard – etwa nur „PV und Speicher“ neben dem Speicher. Die Werte kommen aus der Langzeitstatistik wie bei einer Statistik-Karte, mit „Statistik nachtragen“ auch vor der Einrichtung; die Karte fragt alle fünf Minuten neu und nicht, solange die Seite im Hintergrund ist. Tarifwacht trägt sie selbst als Dashboard-Ressource ein und beim Entfernen des letzten Eintrags wieder aus. Deutsch und Englisch, helles und dunkles Theme, auch am Handy.
 - **Neues Attribut `current`** an „Günstigster Tarif“: der Name deines aktuellen Tarifs, etwa für eine Kachel „Dein Tarif“ (`state_content: current`).
