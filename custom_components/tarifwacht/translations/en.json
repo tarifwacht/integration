@@ -42,7 +42,7 @@
         "description": "How does Home Assistant know your dynamic tariff's price? Recommended: exchange price plus surcharges – only then can Tarifwacht also calculate the time before the setup (looking back, importing statistics).",
         "menu_options": {
           "dynamic_market": "Exchange price plus surcharges (recommended)",
-          "dynamic_total": "Sensor with the total price (from the setup on only)"
+          "dynamic_total": "Sensor with the total price (also your own tariff) – from the setup on only"
         }
       },
       "dynamic_market": {
@@ -66,13 +66,13 @@
       },
       "dynamic_total": {
         "title": "Dynamic tariff: total price sensor",
-        "description": "A sensor that already contains the whole price per kWh: exchange price plus grid fee, levies, taxes, supplier surcharge and VAT. Calculates only from the setup on (no lookback, no import of statistics) – for that, choose “exchange price plus surcharges”.",
+        "description": "A sensor that already contains the whole price per kWh – the total price of a dynamic tariff (exchange price plus grid fee, levies, taxes, supplier surcharge and VAT) or your own tariff as a template sensor in €/kWh. A sensor only knows its own past: calculates only from the setup on (no lookback, no import of statistics) – for a dynamic tariff better choose “exchange price plus surcharges”.",
         "data": {
           "price_entity": "Total price sensor",
           "base_price": "Base price per month"
         },
         "data_description": {
-          "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS.",
+          "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, (experimental) Nord Pool or ENTSO-E from HACS, or any other sensor in €/kWh, e.g. a template with your own tariff.",
           "base_price": "Optional, incl. VAT. Booked pro rata per day."
         }
       }
@@ -105,7 +105,7 @@
           "description": "Which kind of tariff? Tarifwacht computes every tariff over the whole period since setup.",
           "menu_options": {
             "fixed": "Fixed price",
-            "dynamic_total": "Dynamic: sensor with the total price",
+            "dynamic_total": "Dynamic: sensor with the total price (also your own tariff)",
             "dynamic_market": "Dynamic: exchange price plus surcharges"
           }
         },
@@ -127,7 +127,7 @@
         },
         "dynamic_total": {
           "title": "Dynamic tariff: total price sensor",
-          "description": "A sensor that already contains the whole price per kWh: exchange price plus grid fee, levies, taxes, supplier surcharge and VAT. Calculates only from the setup on (no lookback, no import of statistics) – for that, choose “exchange price plus surcharges”.",
+          "description": "A sensor that already contains the whole price per kWh – the total price of a dynamic tariff (exchange price plus grid fee, levies, taxes, supplier surcharge and VAT) or your own tariff as a template sensor in €/kWh. A sensor only knows its own past: calculates only from the setup on (no lookback, no import of statistics) – for a dynamic tariff better choose “exchange price plus surcharges”.",
           "data": {
             "name": "Name",
             "price_entity": "Total price sensor",
@@ -137,7 +137,7 @@
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
-            "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS.",
+            "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, (experimental) Nord Pool or ENTSO-E from HACS, or any other sensor in €/kWh, e.g. a template with your own tariff.",
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
           }

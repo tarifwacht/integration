@@ -84,7 +84,7 @@ Note: the old HACS dashboard (before Home Assistant 2026.11) does not show the i
 
 1. **Grid import meter:** name (e.g. "Home") and meter.
 2. **Fixed-price tariff:** energy price (ct/kWh, gross), optionally the base price per month. It becomes "My current tariff".
-3. **Dynamic tariff:** first choose the kind – **exchange price plus surcharges** (recommended, see [Adding a dynamic tariff](#adding-a-dynamic-tariff)) or a sensor with the total price (calculates only from the setup on) –, then the prices.
+3. **Dynamic tariff:** first choose the kind – **exchange price plus surcharges** (recommended, see [Adding a dynamic tariff](#adding-a-dynamic-tariff)) or a sensor with the total price (also your own tariff; calculates only from the setup on) –, then the prices.
 
 This creates the first two tariffs. If you set up Tarifwacht before 0.1.0 with a total price sensor: add the dynamic tariff a second time as "exchange price plus surcharges", then you can delete the old one.
 
@@ -97,7 +97,7 @@ This creates the first two tariffs. If you set up Tarifwacht before 0.1.0 with a
 | Kind | Inputs |
 |---|---|
 | Fixed price | energy price (ct/kWh, gross) |
-| Dynamic: sensor with the total price | sensor that already contains all components – calculates only from the setup on |
+| Dynamic: sensor with the total price (also your own tariff) | any sensor in €/kWh that already contains the whole price: the total price of a dynamic tariff, or your own tariff as a template sensor (e.g. a tariff with day and night prices). A sensor only knows its own past – calculates only from the setup on |
 | Dynamic: exchange price plus surcharges | exchange price sensor; grid fee, taxes/levies, supplier surcharge (each ct/kWh net); VAT (%) |
 
 Every tariff has an optional base price (per month or per year) and the switch **My current tariff** – the other tariffs show their difference to this one.

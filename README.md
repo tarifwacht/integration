@@ -82,7 +82,7 @@ Hinweis: Im alten HACS-Dashboard (vor Home Assistant 2026.11) fehlt das Icon ([H
 
 1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler.
 2. **Festpreistarif:** Arbeitspreis (ct/kWh, brutto), optional der Grundpreis pro Monat. Er wird „Mein aktueller Tarif“.
-3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (rechnet nur ab der Einrichtung) –, dann die Preise.
+3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (auch eigener Tarif; rechnet nur ab der Einrichtung) –, dann die Preise.
 
 Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0 mit einem Gesamtpreis-Sensor eingerichtet: den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen, danach kannst du den alten löschen.
 
@@ -95,7 +95,7 @@ Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0 mit eine
 | Art | Eingaben |
 |---|---|
 | Festpreis | Arbeitspreis (ct/kWh, brutto) |
-| Dynamisch: Sensor mit Gesamtpreis | Sensor, der schon alle Bestandteile enthält – rechnet nur ab der Einrichtung |
+| Dynamisch: Sensor mit Gesamtpreis (auch eigener Tarif) | Jeder Sensor in €/kWh, der schon den ganzen Preis enthält: der Gesamtpreis eines dynamischen Tarifs oder auch dein eigener Tarif als Template-Sensor (etwa ein Tarif mit Tag- und Nachtpreis). Ein Sensor kennt nur seine eigene Vergangenheit – rechnet nur ab der Einrichtung |
 | Dynamisch: Börsenpreis plus Aufschläge | Börsenpreis-Sensor; Netzentgelt, Steuern/Abgaben, Anbieteraufschlag (je ct/kWh netto); Mehrwertsteuer (%) |
 
 Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Schalter **Mein aktueller Tarif** – die anderen Tarife zeigen ihre Differenz zu diesem.
