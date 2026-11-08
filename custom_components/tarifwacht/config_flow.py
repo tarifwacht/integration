@@ -88,8 +88,10 @@ from .tariff_config import (
     default_titles,
     entry_data,
     initial_fixed_tariff,
+    price_entity,
     state_at,
 )
+from .tariff_summary import edit_hint, summary
 from .tariffs import BasePeriod
 
 
@@ -605,12 +607,35 @@ class TariffSubentryFlow(ConfigSubentryFlow):
         options.append("add_change")
         if data.get(CONF_CHANGES):
             options.append("remove_change")
-        return self.async_show_menu(step_id="reconfigure", menu_options=options)
+        # On top what applies today and every price state: the list of
+        # subentries shows only the tariff's name.
+        sensor_name = None
+        if entity := price_entity(data):
+            state = self.hass.states.get(entity)
+            sensor_name = state.name if state is not None else entity
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=options,
+            description_placeholders={
+                "summary": summary(
+                    data,
+                    dt_util.now(BERLIN).date(),
+                    german=self._german,
+                    sensor_name=sensor_name,
+                )
+            },
+        )
+
+    @property
+    def _german(self) -> bool:
+        return self.hass.config.language.startswith("de")
 
     async def async_step_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """The form of the tariff's kind, prefilled (values from the start)."""
+        """ "Edit prices from the start": the form of the tariff's kind,
+        prefilled with the values from the start (also name, current tariff
+        and bonus)."""
         kind = self._get_reconfigure_subentry().data[CONF_KIND]
         return await self._async_tariff_step(kind, None)
 
@@ -749,12 +774,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 del data[CONF_CHANGES]
             return self.async_update_and_abort(self._get_entry(), subentry, data=data)
 
-        german = self.hass.config.language.startswith("de")
         options = [
             selector.SelectOptionDict(
                 value=c[CONF_FROM],
                 label=date.fromisoformat(c[CONF_FROM]).strftime("%d.%m.%Y")
-                if german
+                if self._german
                 else c[CONF_FROM],
             )
             for c in changes
@@ -870,6 +894,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 _tariff_schema(kind), suggested
             ),
             errors=errors,
+            # Editing shows the values from the start: say so, and where a
+            # later price goes.
+            description_placeholders={
+                "edit_hint": edit_hint(self._german) if subentry is not None else ""
+            },
         )
 
     def _clear_current(self, entry: ConfigEntry, keep: Any) -> None:

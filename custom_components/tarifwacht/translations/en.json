@@ -122,7 +122,7 @@
         },
         "fixed": {
           "title": "Fixed price",
-          "description": "Prices including VAT, as on your contract or offer.",
+          "description": "Prices including VAT, as on your contract or offer.{edit_hint}",
           "data": {
             "name": "Name",
             "price": "Energy price",
@@ -161,7 +161,7 @@
         },
         "dynamic_total": {
           "title": "Dynamic tariff: total price sensor",
-          "description": "A sensor that already contains the whole price per kWh – the total price of a dynamic tariff (exchange price plus grid fee, levies, taxes, supplier surcharge and VAT) or your own tariff as a template sensor in €/kWh. A sensor only knows its own past: calculates only from the setup on (no lookback, no import of statistics) – for a dynamic tariff better choose “exchange price plus surcharges”.",
+          "description": "A sensor that already contains the whole price per kWh – the total price of a dynamic tariff (exchange price plus grid fee, levies, taxes, supplier surcharge and VAT) or your own tariff as a template sensor in €/kWh. A sensor only knows its own past: calculates only from the setup on (no lookback, no import of statistics) – for a dynamic tariff better choose “exchange price plus surcharges”.{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Total price sensor",
@@ -201,7 +201,7 @@
         },
         "dynamic_market": {
           "title": "Dynamic tariff: exchange price plus surcharges",
-          "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.",
+          "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Exchange price sensor",
@@ -251,8 +251,9 @@
         },
         "reconfigure": {
           "title": "Change tariff",
+          "description": "{summary}",
           "menu_options": {
-            "edit": "Edit tariff (name, current tariff, prices from the start)",
+            "edit": "Edit prices from the start (also name, current tariff, bonus)",
             "modul3": "Modul 3: time-variable grid fee (§ 14a EnWG)",
             "add_change": "Add a price change from a date",
             "remove_change": "Remove a price change"
@@ -706,6 +707,9 @@
       },
       "average_price": {
         "name": "Average price"
+      },
+      "price_now": {
+        "name": "Energy price now"
       },
       "difference": {
         "name": "Difference to current tariff"

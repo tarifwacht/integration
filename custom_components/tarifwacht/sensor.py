@@ -5,6 +5,10 @@ saved under it since the start of the period (solar.py, from the long-term
 statistics, recomputed every hour), and with a purchase cost when each has
 paid for itself (payback.py, as attributes).
 
+"Energy price now" shows the price of the current quarter hour as the
+engine books it, with what applies today and the next price change as
+attributes (tariff_summary.py); no long-term statistics.
+
 Each tariff (subentry) has its own device. Unique ids are
 `{entry_id}_{tariff key}_{sensor}`; the two tariffs of 0.1.0b1 keep the keys
 "fixed" and "dynamic", so their entities keep their ids and history.
@@ -14,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -23,7 +28,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import UnitOfEnergy
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -35,7 +40,9 @@ from .lookback import hour_start
 from .payback import BATTERY, PV, payback_attributes
 from .runtime import MeterRuntime, TariffInfo, has_battery
 from .solar import SolarTotals
+from .tariff_summary import price_now_attributes
 from .tariffs import TariffTotals
+from .timeslots import slot_start
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -172,6 +179,28 @@ TARIFF_SENSORS = (
 DIFFERENCE = _money("difference", _difference, _left_out)
 
 
+def _price_now(
+    runtime: MeterRuntime, tariff: TariffInfo, now: datetime
+) -> float | None:
+    """The tariff's price of the quarter hour of `now` in ct/kWh (gross),
+    None while the price sensor has none for it."""
+    engine_tariff = runtime.engine.tariffs.get(tariff.key)
+    price = None if engine_tariff is None else engine_tariff.price(slot_start(now))
+    return None if price is None else round(price * 100, 4)
+
+
+# No state class: a price for automations and dashboards, not a statistic
+# (long-term statistics would add a row per hour and tariff for a value the
+# price sensor already has). No entity category: it is a main value.
+PRICE_NOW = TariffSensorDescription(
+    key="price_now",
+    translation_key="price_now",
+    native_unit_of_measurement="ct/kWh",
+    suggested_display_precision=2,
+    value=lambda r, t: _price_now(r, t, dt_util.utcnow()),
+)
+
+
 @dataclass(frozen=True, kw_only=True)
 class SolarSensorDescription(TariffSensorDescription):
     """A saving of PV or battery under one tariff."""
@@ -235,7 +264,10 @@ async def async_setup_entry(
         if battery:
             descriptions.append(SAVING_BATTERY)
         async_add_entities(
-            [TariffSensor(entry, tariff, d) for d in descriptions],
+            [
+                *(TariffSensor(entry, tariff, d) for d in descriptions),
+                PriceNowSensor(entry, tariff),
+            ],
             config_subentry_id=tariff.subentry_id,
         )
 
@@ -326,7 +358,11 @@ class TariffSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self.async_on_remove(self.runtime.add_listener(self.async_write_ha_state))
+        self.async_on_remove(self.runtime.add_listener(self._on_runtime_update))
+
+    @callback
+    def _on_runtime_update(self) -> None:
+        self.async_write_ha_state()
 
     @property
     def native_value(self) -> float | None:
@@ -339,3 +375,45 @@ class TariffSensor(SensorEntity):
             return description.solar_attributes(self.runtime, self.tariff)
         attributes = description.attributes
         return attributes(self.runtime) if attributes is not None else None
+
+
+class PriceNowSensor(TariffSensor):
+    """The energy price of the current quarter hour (ct/kWh, gross).
+
+    Fixed price with its Modul 3 windows, exchange price plus surcharges and
+    VAT (Modul 3 too), or the total-price sensor: the same price the engine
+    books. The runtime notifies about once a minute and on every quarter
+    hour; the state is written only when price or attributes change - for a
+    fixed price practically never.
+    """
+
+    def __init__(self, entry: TarifwachtConfigEntry, tariff: TariffInfo) -> None:
+        super().__init__(entry, tariff, PRICE_NOW)
+        self._shown: tuple[float | None, dict[str, Any]] | None = None
+
+    def _now(self) -> tuple[float | None, dict[str, Any]]:
+        now = dt_util.utcnow()
+        return (
+            _price_now(self.runtime, self.tariff, now),
+            price_now_attributes(self.tariff.data, now),
+        )
+
+    def _current(self) -> tuple[float | None, dict[str, Any]]:
+        if self._shown is None:
+            self._shown = self._now()
+        return self._shown
+
+    @callback
+    def _on_runtime_update(self) -> None:
+        now = self._now()
+        if now != self._shown:
+            self._shown = now
+            self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> float | None:
+        return self._current()[0]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return self._current()[1]

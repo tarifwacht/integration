@@ -24,6 +24,9 @@
       "average_price": {
         "default": "mdi:tag-outline"
       },
+      "price_now": {
+        "default": "mdi:currency-eur"
+      },
       "difference": {
         "default": "mdi:plus-minus-variant"
       },

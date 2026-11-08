@@ -122,7 +122,7 @@
         },
         "fixed": {
           "title": "Festpreis",
-          "description": "Preise brutto, wie in deinem Vertrag oder Angebot.",
+          "description": "Preise brutto, wie in deinem Vertrag oder Angebot.{edit_hint}",
           "data": {
             "name": "Name",
             "price": "Arbeitspreis",
@@ -161,7 +161,7 @@
         },
         "dynamic_total": {
           "title": "Dynamischer Tarif: Sensor mit Gesamtpreis",
-          "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält – der Gesamtpreis eines dynamischen Tarifs (Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer) oder dein eigener Tarif als Template-Sensor in €/kWh. Ein Sensor kennt nur seine eigene Vergangenheit: Rechnet nur ab der Einrichtung (kein Rückblick, kein Nachtragen der Statistik) – für einen dynamischen Tarif deshalb besser „Börsenpreis plus Aufschläge“ wählen.",
+          "description": "Ein Sensor, der bereits den ganzen Preis je kWh enthält – der Gesamtpreis eines dynamischen Tarifs (Börsenpreis plus Netzentgelt, Abgaben, Steuern, Anbieteraufschlag und Mehrwertsteuer) oder dein eigener Tarif als Template-Sensor in €/kWh. Ein Sensor kennt nur seine eigene Vergangenheit: Rechnet nur ab der Einrichtung (kein Rückblick, kein Nachtragen der Statistik) – für einen dynamischen Tarif deshalb besser „Börsenpreis plus Aufschläge“ wählen.{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Sensor mit Gesamtpreis",
@@ -201,7 +201,7 @@
         },
         "dynamic_market": {
           "title": "Dynamischer Tarif: Börsenpreis plus Aufschläge",
-          "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.",
+          "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Sensor mit Börsenpreis",
@@ -251,8 +251,9 @@
         },
         "reconfigure": {
           "title": "Tarif ändern",
+          "description": "{summary}",
           "menu_options": {
-            "edit": "Tarif bearbeiten (Name, aktueller Tarif, Preise ab Beginn)",
+            "edit": "Preise ab Beginn bearbeiten (auch Name, aktueller Tarif, Bonus)",
             "modul3": "Modul 3: zeitvariables Netzentgelt (§ 14a EnWG)",
             "add_change": "Preisänderung ab einem Datum hinzufügen",
             "remove_change": "Preisänderung entfernen"
@@ -706,6 +707,9 @@
       },
       "average_price": {
         "name": "Durchschnittspreis"
+      },
+      "price_now": {
+        "name": "Arbeitspreis jetzt"
       },
       "difference": {
         "name": "Differenz zum aktuellen Tarif"

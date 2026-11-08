@@ -47,7 +47,7 @@ from custom_components.tarifwacht.solar import (  # noqa: E402
     solar_totals,
 )
 from custom_components.tarifwacht.tariff_config import tariff_from_data  # noqa: E402
-from custom_components.tarifwacht.timeslots import QUARTER  # noqa: E402
+from custom_components.tarifwacht.timeslots import QUARTER, slot_start  # noqa: E402
 
 OUT = ROOT / "docs" / "demo" / "data"
 MARKET = "sensor.boersenpreis"
@@ -603,6 +603,8 @@ def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[
             "consumption_cost": round(totals.consumption_cost, 2),
             "cost": round(totals.cost, 2),
             "average_ct": round(totals.average_price * 100, 2),
+            # Sensor "Energy price now": the price of this quarter hour.
+            "price_now_ct": round(engine.tariffs[key].price(slot_start(utc_now)) * 100, 2),
             "difference": None if key == "fixed" else round(engine.compared_cost(key) - current, 2),
         }  # fmt: skip
     days = []

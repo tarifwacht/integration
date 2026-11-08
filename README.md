@@ -24,7 +24,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 ## Inhalt
 
 - [Was Tarifwacht kann](#was-tarifwacht-kann) · [Hinweise zum Vergleich](#hinweise-zum-vergleich) · [Was Tarifwacht nicht kann](#was-tarifwacht-nicht-kann)
-- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
+- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Wo sehe ich meine Tarife?](#wo-sehe-ich-meine-tarife) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
 - **Nutzen:** [Entitäten](#entitäten) · [Karte](#karte) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen) · [Statistik neu berechnen](#statistik-neu-berechnen)
 - **Mehr:** [Datenschutz](#datenschutz) · [Fehlerbehebung](#fehlerbehebung) · [Entfernen](#entfernen) · [Fehler melden](#fehler-melden) · [Danke](#danke) · [Weitere Wachten](#weitere-wachten)
 
@@ -115,13 +115,20 @@ Hast du in **EPEX Spot** einen Aufschlag und eine Steuer eingestellt, übernimm 
 | Aufschlag absolut, z. B. 0,15 €/kWh | Anbieteraufschlag **15** ct/kWh (Tarifwacht rechnet in Cent: € × 100) |
 | Steuer, z. B. 19 % | Mehrwertsteuer 19 % |
 
-Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Geprüft für einen absoluten Aufschlag; einen prozentualen haben wir noch nicht nachgerechnet. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Tarif bearbeiten*).
+Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Geprüft für einen absoluten Aufschlag; einen prozentualen haben wir noch nicht nachgerechnet. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Preise ab Beginn bearbeiten*).
+
+### Wo sehe ich meine Tarife?
+
+*Einstellungen → Geräte & Dienste → Tarifwacht*: Unter dem Eintrag (z. B. „Haus“) steht jeder Tarif als eigener Block, dort nur mit seinem Namen.
+
+- **Zahnrad am Tarif:** oben steht, was heute gilt (Arbeitspreis und Grundpreis, beim Börsenpreis-Tarif Netzentgelt, Abgaben, Aufschlag und MwSt., beim Sensor mit Gesamtpreis dessen Name), darunter jede eingetragene Preisänderung mit Datum (künftige mit „(kommt)“), Bonus, Modul 3 und ob es dein aktueller Tarif ist. Darunter die Menüpunkte zum Ändern.
+- **Gerät des Tarifs** (z. B. „Haus Festpreis“): der Sensor **Arbeitspreis jetzt** mit dem Preis der laufenden Viertelstunde, als Attribute Grundpreis, `valid_since`, die nächste Preisänderung und der Bonus (siehe [Entitäten](#entitäten)).
 
 ### Tarif ändern
 
 Beim Tarif auf das Zahnrad (*Konfigurieren*):
 
-- **Tarif bearbeiten:** Name, aktueller Tarif, Bonus und Preise **ab Beginn** – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu.
+- **Preise ab Beginn bearbeiten:** Name, aktueller Tarif, Bonus und Preise **ab Beginn** des Tarifs (nicht die heute gültigen, wenn es Preisänderungen gibt) – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu. Ein neuer Preis ab einem späteren Datum gehört in den nächsten Punkt.
 - **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt; Mehrwertsteuer und Grundpreis-Zeitraum stehen eingeklappt unter **Weitere Angaben**, Modul 3 im Abschnitt **Modul 3 (optional)** – aufgeklappt, wenn der Tarif Modul 3 heute nutzt. Bleibt der Abschnitt Modul 3 ungeöffnet, gelten dessen bisherige Werte weiter.
 - **Preisänderung entfernen:** danach gelten wieder die Preise davor.
 - **Modul 3** (bei „Börsenpreis plus Aufschläge“ und beim Festpreis), siehe unten.
@@ -190,6 +197,7 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 | Verbrauchskosten | € | Strombezug × Preis der jeweiligen Viertelstunde |
 | Kosten gesamt | € | Verbrauchskosten plus Grundpreis, abzüglich eines Bonus ab seinem Datum |
 | Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug (mit Bonus: kurz nach einem großen Bonus auch unter 0) |
+| Arbeitspreis jetzt | ct/kWh | Preis der laufenden Viertelstunde, brutto, so wie Tarifwacht ihn bucht (Festpreis mit Modul 3, Börsenpreis plus Aufschläge und MwSt., Gesamtpreis-Sensor); Attribute `base_price_eur` und `base_period` (heute gültiger Grundpreis), `valid_since` (seit wann der Preisstand gilt, leer: ab Beginn), `next_change` (Datum und Werte der nächsten Preisänderung), `bonus` (Betrag und Datum), `modul3_active_now` (Modul 3 in diesem Quartal). Ohne Langzeitstatistik |
 | Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst; fehlende Preise siehe unten) |
 | Ersparnis PV | € | nur mit [PV und Speicher](#pv-und-speicher): was die PV seit der Einrichtung gespart hat; Attribute `since` (Beginn), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, Energiemengen (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Ersparnis Speicher | € | nur mit Speicherzählern: was der Speicher zusätzlich gespart hat; Attribute `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (Ersparnis je entladener kWh) |

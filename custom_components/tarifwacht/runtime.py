@@ -6,7 +6,7 @@ import asyncio
 import logging
 import math
 from collections.abc import Callable, Coroutine, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
@@ -210,6 +210,8 @@ class TariffInfo:
     subentry_id: str
     title: str
     current: bool
+    # The subentry's data (prices from the start, price changes, bonus).
+    data: Mapping[str, Any] = field(default_factory=dict, compare=False)
 
 
 def solar_subentry(entry: ConfigEntry) -> ConfigSubentry | None:
@@ -339,6 +341,7 @@ class MeterRuntime:
                 subentry_id=subentry.subentry_id,
                 title=subentry.title,
                 current=bool(subentry.data.get(CONF_CURRENT)),
+                data=subentry.data,
             )
             if entity := price_entity(subentry.data):
                 if own_entity(hass, entity):

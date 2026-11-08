@@ -26,7 +26,7 @@ The user interface is available in German and English and follows the language o
 ## Contents
 
 - [Features](#features) · [Notes on the comparison](#notes-on-the-comparison) · [What Tarifwacht does not do](#what-tarifwacht-does-not-do)
-- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
+- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Where do I see my tariffs?](#where-do-i-see-my-tariffs) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
 - **Using it:** [Entities](#entities) · [Card](#card) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics) · [Recalculate statistics](#recalculate-statistics)
 - **More:** [Privacy](#privacy) · [Troubleshooting](#troubleshooting) · [Removal](#removal) · [Reporting issues](#reporting-issues) · [Thanks](#thanks) · [Sister integrations](#sister-integrations)
 
@@ -117,13 +117,20 @@ If you set a surcharge and a tax in **EPEX Spot**, simply copy these values – 
 | absolute surcharge, e.g. 0.15 €/kWh | supplier surcharge **15** ct/kWh (Tarifwacht uses cents: € × 100) |
 | tax, e.g. 19 % | VAT 19 % |
 
-Leave grid fee and taxes/levies empty – they are already in the surcharge. Checked for an absolute surcharge; a percentage surcharge has not been verified yet. Once you have the price sheets, you can split the surcharge later (*Edit tariff*).
+Leave grid fee and taxes/levies empty – they are already in the surcharge. Checked for an absolute surcharge; a percentage surcharge has not been verified yet. Once you have the price sheets, you can split the surcharge later (*Edit prices from the start*).
+
+### Where do I see my tariffs?
+
+*Settings → Devices & services → Tarifwacht*: under the entry (e.g. "Home") each tariff is a block of its own, there with its name only.
+
+- **Cog of the tariff:** at the top what applies today (energy and base price; for the exchange price tariff grid fee, levies, surcharge and VAT; for the total price sensor its name), below every price change with its date (future ones marked "(upcoming)"), bonus, Modul 3 and whether it is your current tariff. Below that the menu entries to change it.
+- **Device of the tariff** (e.g. "Home Fixed price"): the sensor **Energy price now** with the price of the current quarter hour; as attributes the base price, `valid_since`, the next price change and the bonus (see [Entities](#entities)).
 
 ### Changing a tariff
 
 Click the cog (*Configure*) on the tariff:
 
-- **Edit tariff:** name, current tariff, bonus and prices **from the start** – for typos and corrections. Tarifwacht recalculates the whole period.
+- **Edit prices from the start:** name, current tariff, bonus and prices **from the start** of the tariff (not today's if there are price changes) – for typos and corrections. Tarifwacht recalculates the whole period. A new price from a later date goes into the next entry.
 - **Add a price change from a date:** new prices from midnight of that day (German local time), e.g. a price increase by your supplier or new grid fees. The previous prices still apply before that. The form is pre-filled with today's prices; VAT and base price period sit collapsed under **More**, Modul 3 in the section **Modul 3 (optional)** – open if the tariff uses Modul 3 today. If the Modul 3 section is left closed, its previous values stay valid.
 - **Remove a price change:** the prices before it apply again.
 - **Modul 3** (for "exchange price plus surcharges" and for the fixed price), see below.
@@ -192,6 +199,7 @@ On every tariff (e.g. "Home Fixed price"):
 | Consumption cost | € | grid purchase × price of the respective quarter hour |
 | Total cost | € | consumption cost plus base price, less a bonus from its date on |
 | Average price | ct/kWh | total cost ÷ grid purchase (with the bonus: shortly after a large bonus even below 0) |
+| Energy price now | ct/kWh | price of the current quarter hour, gross, as Tarifwacht books it (fixed price with Modul 3, exchange price plus surcharges and VAT, total price sensor); attributes `base_price_eur` and `base_period` (base price valid today), `valid_since` (since when the price state applies, empty: from the start), `next_change` (date and values of the next price change), `bonus` (amount and date), `modul3_active_now` (Modul 3 in this quarter). No long-term statistics |
 | Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself; missing prices: see below) |
 | Saving by PV | € | only with [PV and battery](#pv-and-battery): what the PV saved since the setup; attributes `since` (start), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, energies (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Saving by battery | € | only with battery meters: what the battery saved on top; attributes `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (saving per kWh discharged) |

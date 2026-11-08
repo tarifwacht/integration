@@ -278,6 +278,7 @@
           consumptionCost: "Verbrauchskosten",
           cost: "Kosten gesamt",
           averagePrice: "Durchschnittspreis",
+          priceNow: "Arbeitspreis jetzt",
           difference: "Differenz zum aktuellen Tarif",
           current: "aktueller Tarif",
           since: (d) => `seit der Einrichtung am ${d}`,
@@ -368,6 +369,7 @@
           consumptionCost: "Consumption cost",
           cost: "Total cost",
           averagePrice: "Average price",
+          priceNow: "Energy price now",
           difference: "Difference to current tariff",
           current: "current tariff",
           since: (d) => `since setup on ${d}`,
@@ -675,6 +677,7 @@
                 ${row("cash", tx.consumptionCost, eur(v.consumption_cost))}
                 ${row("cash-multiple", tx.cost, eur(v.cost))}
                 ${row("tag-outline", tx.averagePrice, `${ct(v.average_ct)} ct/kWh`)}
+                ${row("currency-eur", tx.priceNow, `${ct(v.price_now_ct)} ct/kWh`)}
                 ${v.difference === null ? "" : row("plus-minus-variant", tx.difference, signedEur(v.difference))}
                 ${solar ? row("solar-power-variant", tx.savingPv, eur(solar[k].saving_pv)) : ""}
                 ${solar ? row("home-battery", tx.savingBattery, eur(solar[k].saving_battery), solar[k].battery.value_per_kwh_ct === null ? "" : `${ct(solar[k].battery.value_per_kwh_ct)} ct ${tx.perKwh}`) : ""}

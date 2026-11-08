@@ -17,6 +17,7 @@ from custom_components.tarifwacht.const import DOMAIN, KINDS, VERSION
 from custom_components.tarifwacht.sensor import (
     DIFFERENCE,
     ENERGY,
+    PRICE_NOW,
     SAVING_BATTERY,
     SAVING_PV,
     TARIFF_SENSORS,
@@ -75,7 +76,15 @@ def test_translations_complete() -> None:
 def test_every_sensor_translated() -> None:
     strings = load(INTEGRATION / "strings.json")
     keys = {
-        d.key for d in (*TARIFF_SENSORS, DIFFERENCE, ENERGY, SAVING_PV, SAVING_BATTERY)
+        d.key
+        for d in (
+            *TARIFF_SENSORS,
+            DIFFERENCE,
+            ENERGY,
+            SAVING_PV,
+            SAVING_BATTERY,
+            PRICE_NOW,
+        )
     } | {"cheapest"}
     assert set(strings["entity"]["sensor"]) == keys
 
