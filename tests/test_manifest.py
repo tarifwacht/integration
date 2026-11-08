@@ -144,7 +144,10 @@ def test_every_entity_and_action_has_an_icon() -> None:
     strings = load(INTEGRATION / "strings.json")
     assert set(icons["entity"]["sensor"]) == set(strings["entity"]["sensor"])
     assert set(icons["entity"]["button"]) == set(strings["entity"]["button"])
-    assert set(strings["entity"]["button"]) == {"issue_report"}
+    assert set(strings["entity"]["button"]) == {
+        "issue_report",
+        "recalculate_statistics",
+    }
     assert set(icons["services"]) == set(strings["services"])
 
 

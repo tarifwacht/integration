@@ -1,9 +1,14 @@
-"""Button: a short report for a bug report (issue_report.py).
+"""Buttons of the meter device.
 
-Tarifwacht's part of it: the sources by role ("meter", "tariff 2 price"),
-the tariffs by kind and number with their prices from a fixed list of fields,
-and a few lines on the bookings. Never the entry or tariff names (free text),
-entity ids or the meter reading.
+"Recalculate statistics": the long-term statistics of the sensors with the
+current tariffs (statistics_import.async_recalculate); the result as a
+notification.
+
+"Report for a bug report" (issue_report.py). Tarifwacht's part of it: the
+sources by role ("meter", "tariff 2 price"), the tariffs by kind and number
+with their prices from a fixed list of fields, and a few lines on the
+bookings. Never the entry or tariff names (free text), entity ids or the
+meter reading.
 """
 
 from __future__ import annotations
@@ -13,10 +18,12 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
+from homeassistant.components import persistent_notification
 from homeassistant.components.button import ButtonEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.translation import async_get_translations
 
 from . import TarifwachtConfigEntry
 from .const import (
@@ -44,7 +51,8 @@ from .frontend_resource import card_status
 from .issue_report import Lines, build, show
 from .modul3 import WindowError, parse_windows
 from .runtime import MeterRuntime, tariff_subentries
-from .smard_cache import DATA_SMARD
+from .smard_cache import DATA_SMARD, SmardError
+from .statistics_import import StatisticsImportError, async_recalculate
 from .tariff_config import price_entity, tariff_key
 
 NAME = "Tarifwacht"
@@ -67,7 +75,113 @@ async def async_setup_entry(
     entry: TarifwachtConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities([IssueReport(entry)])
+    async_add_entities([RecalculateStatistics(entry), IssueReport(entry)])
+
+
+class RecalculateStatistics(MeterEntity, ButtonEntity):
+    """Recalculate the long-term statistics of the sensors with the current
+    tariffs, e.g. after a tariff was corrected; the result as a notification."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, entry: TarifwachtConfigEntry) -> None:
+        super().__init__(entry, "recalculate_statistics")
+        self._entry = entry
+
+    async def async_press(self) -> None:
+        hass, entry = self.hass, self._entry
+        texts = await notification_texts(hass)
+        german = (hass.config.language or "").startswith("de")
+        try:
+            result = await async_recalculate(hass, entry)
+        except StatisticsImportError as err:
+            title = texts["recalculate_failed_title"]
+            message = texts[f"import_{err.key}"]
+        except SmardError as err:
+            title = texts["recalculate_failed_title"]
+            message = texts["smard_failed"].replace("{error}", str(err))
+        else:
+            title = texts["recalculated_title"]
+            message = recalculated_message(hass, entry.title, result, texts, german)
+        persistent_notification.async_create(
+            hass,
+            message,
+            title=title,
+            notification_id=f"{DOMAIN}_recalculate_{entry.entry_id}",
+        )
+
+
+async def notification_texts(hass: HomeAssistant) -> dict[str, str]:
+    """The texts of the notification in the user's language: kept with the
+    action's error messages (category "exceptions" of the translations)."""
+    prefix = f"component.{DOMAIN}.exceptions."
+    raw = await async_get_translations(
+        hass, hass.config.language, "exceptions", {DOMAIN}
+    )
+    return {
+        key.removeprefix(prefix).removesuffix(".message"): text
+        for key, text in raw.items()
+        if key.startswith(prefix)
+    }
+
+
+def _fill(text: str, **values: str) -> str:
+    for key, value in values.items():
+        text = text.replace(f"{{{key}}}", value)
+    return text
+
+
+def _moment(value: str, german: bool) -> str:
+    moment = datetime.fromisoformat(value)
+    return f"{moment:%d.%m.%Y %H:%M}" if german else f"{moment:%Y-%m-%d %H:%M}"
+
+
+def recalculated_message(
+    hass: HomeAssistant,
+    name: str,
+    result: Mapping[str, Any],
+    texts: Mapping[str, str],
+    german: bool,
+) -> str:
+    """What was recalculated: the period, each sensor's change of its sum,
+    tariffs left out, hours left out as implausible."""
+    sensors: Mapping[str, Mapping[str, Any]] = result["sensors"]
+    parts = [
+        _fill(
+            texts["recalculated"],
+            name=name,
+            count=str(len(sensors)),
+            start=_moment(result["start"], german),
+            end=_moment(result["end"], german),
+        )
+    ]
+    lines = []
+    for entity_id, info in sensors.items():
+        state = hass.states.get(entity_id)
+        label = state.name if state is not None else entity_id
+        unit = (state.attributes.get("unit_of_measurement") if state else None) or ""
+        change = info.get("change")
+        if change is None:
+            continue
+        number = f"{change:+.2f}"
+        if german:
+            number = number.replace(".", ",")
+        lines.append(f"- {label}: {number} {unit}".rstrip())
+    if lines:
+        parts.append(texts["recalculated_changes"] + "\n" + "\n".join(lines))
+    if result.get("skipped"):
+        parts.append(
+            _fill(texts["recalculated_skipped"], tariffs=", ".join(result["skipped"]))
+        )
+    if implausible := result.get("hours_implausible"):
+        parts.append(
+            _fill(
+                texts["recalculated_implausible"],
+                count=str(implausible["count"]),
+                hours=", ".join(_moment(h, german) for h in implausible["hours"]),
+            )
+        )
+    return "\n\n".join(parts)
 
 
 class IssueReport(MeterEntity, ButtonEntity):

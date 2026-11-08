@@ -3,6 +3,9 @@
     "button": {
       "issue_report": {
         "default": "mdi:clipboard-text-outline"
+      },
+      "recalculate_statistics": {
+        "default": "mdi:database-refresh-outline"
       }
     },
     "sensor": {

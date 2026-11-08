@@ -11,19 +11,62 @@ Pure Python, no Home Assistant imports.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
-from datetime import datetime, timedelta, tzinfo
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta, tzinfo
 
+from .const import MAX_GRID_POWER_KW
+from .meter import POWER_MARGIN
 from .tariffs import PriceSource, Tariff
 from .timeslots import QUARTER, slot_start
 
 HOUR = timedelta(hours=1)
+FIVE_MINUTES = timedelta(minutes=5)
+
+# The largest plausible change of an energy meter in one hour of the
+# long-term statistics: the same bound the live meter applies to every
+# reading (meter.py, MeterEvent.JUMP), 100 kW x 1.5 = 150 kWh.
+MAX_HOURLY_KWH = MAX_GRID_POWER_KW * POWER_MARGIN
 
 
 def hour_start(moment: datetime) -> datetime:
     """UTC start of the hour (German offsets are whole hours)."""
     return slot_start(moment).replace(minute=0)
+
+
+def period_start(moment: datetime, width: timedelta) -> datetime:
+    """UTC start of the period of `width` (5 minutes, 15 minutes, an hour)
+    containing `moment`."""
+    seconds = int(width.total_seconds())
+    stamp = int(moment.timestamp())
+    return datetime.fromtimestamp(stamp - stamp % seconds, UTC)
+
+
+def plausible_hours(
+    rows: Iterable[tuple[datetime, float, float | None]],
+    max_kwh: float = MAX_HOURLY_KWH,
+) -> tuple[list[tuple[datetime, float]], list[datetime]]:
+    """Hourly changes of a meter (start, change, state of the row) split into
+    plausible ones and the hours left out.
+
+    Left out: more than `max_kwh` (a unit glitch, e.g. Wh reported as kWh:
+    107 -> 109851.5), less than 0 (meter replaced or reset in the
+    statistics), and the hour after a jump in which the state falls again
+    (109851.5 -> 110.131): Home Assistant takes that for a new cycle and adds
+    the whole reading (110 kWh) to the sum.
+    """
+    kept: list[tuple[datetime, float]] = []
+    left_out: list[datetime] = []
+    jump_state: float | None = None
+    for hour, change, state in rows:
+        back = jump_state is not None and state is not None and state < jump_state
+        if change < 0 or change > max_kwh or back:
+            left_out.append(hour)
+            jump_state = state if change > max_kwh else None
+        else:
+            kept.append((hour, change))
+            jump_state = None
+    return kept, left_out
 
 
 @dataclass(frozen=True)
@@ -52,6 +95,8 @@ class Lookback:
     hours_without_energy: int = 0
     # Exchange prices of SMARD.de were needed (attribution in the response).
     uses_smard: bool = False
+    # Hours of the meter's statistics left out as implausible (plausible_hours).
+    implausible_hours: list[datetime] = field(default_factory=list)
 
 
 def spread_hours(
@@ -80,9 +125,62 @@ class HourlyCosts:
     incomplete: set[str]
 
 
+def period_costs(
+    quarters: Iterable[tuple[datetime, float]],
+    tariffs: Mapping[str, Tariff],
+    start: datetime,
+    end: datetime,
+    tz: tzinfo,
+    width: timedelta = HOUR,
+) -> HourlyCosts:
+    """Sum the quarter hours in [start, end) per period of `width`, every
+    period of it listed (keys: UTC period starts).
+
+    Periods shorter than a quarter hour (5 minutes, for short-term
+    statistics) get an equal share of their quarter hour's energy, priced
+    with its price. Periods without energy still carry the base price.
+    """
+    periods: list[datetime] = []
+    period = period_start(start, width)
+    while period < end:
+        periods.append(period)
+        period += width
+    energy = dict.fromkeys(periods, 0.0)
+    consumption = {key: dict.fromkeys(periods, 0.0) for key in tariffs}
+    incomplete: set[str] = set()
+    parts = max(1, QUARTER // width)
+    for slot, kwh in quarters:
+        if not start <= slot < end:
+            continue
+        prices: dict[str, float] = {}
+        for key, tariff in tariffs.items():
+            if (price := tariff.price(slot)) is None:
+                if kwh:
+                    incomplete.add(key)
+                continue
+            prices[key] = price
+        share = kwh / parts
+        for part in range(parts):
+            bucket = period_start(slot + part * width, width)
+            if bucket not in energy:
+                continue
+            energy[bucket] += share
+            for key, price in prices.items():
+                consumption[key][bucket] += share * price
+    cost = {
+        key: {
+            period: consumption[key][period]
+            + tariff.base_between(max(period, start), min(period + width, end), tz)
+            for period in periods
+        }
+        for key, tariff in tariffs.items()
+    }
+    return HourlyCosts(energy, consumption, cost, incomplete)
+
+
 def hourly_costs(
     quarters: Iterable[tuple[datetime, float]],
-    tariffs: dict[str, Tariff],
+    tariffs: Mapping[str, Tariff],
     start: datetime,
     end: datetime,
     tz: tzinfo,
@@ -91,34 +189,7 @@ def hourly_costs(
 
     Hours without energy still carry the base price.
     """
-    hours: list[datetime] = []
-    hour = hour_start(start)
-    while hour < end:
-        hours.append(hour)
-        hour += HOUR
-    energy = dict.fromkeys(hours, 0.0)
-    consumption = {key: dict.fromkeys(hours, 0.0) for key in tariffs}
-    incomplete: set[str] = set()
-    for slot, kwh in quarters:
-        if not start <= slot < end:
-            continue
-        hour = hour_start(slot)
-        energy[hour] += kwh
-        for key, tariff in tariffs.items():
-            if (price := tariff.price(slot)) is None:
-                if kwh:
-                    incomplete.add(key)
-                continue
-            consumption[key][hour] += kwh * price
-    cost = {
-        key: {
-            hour: consumption[key][hour]
-            + tariff.base_between(max(hour, start), min(hour + HOUR, end), tz)
-            for hour in hours
-        }
-        for key, tariff in tariffs.items()
-    }
-    return HourlyCosts(energy, consumption, cost, incomplete)
+    return period_costs(quarters, tariffs, start, end, tz, HOUR)
 
 
 def hours_without_energy(

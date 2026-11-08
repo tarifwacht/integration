@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -67,9 +68,11 @@ from .lookback import (
     Lookback,
     hour_start,
     hours_without_energy,
+    plausible_hours,
     spread_hours,
 )
 from .meter import MeterTracker, to_kwh
+from .outdated import async_clear_outdated
 from .prices import (
     ParsedPrices,
     PriceTable,
@@ -232,6 +235,23 @@ def solar_settings(data: Mapping[str, Any]) -> SolarSettings:
     )
 
 
+# Marks an hour of a meter's statistics left out as implausible (see
+# lookback.plausible_hours); solar_flows skips such hours.
+IMPLAUSIBLE = math.nan
+
+
+def implausible_hours(hourly: Mapping[str, Mapping[datetime, float]]) -> list[datetime]:
+    """Hours in which any of the meters had an implausible change."""
+    return sorted(
+        {
+            hour
+            for values in hourly.values()
+            for hour, value in values.items()
+            if math.isnan(value)
+        }
+    )
+
+
 @dataclass(frozen=True)
 class SolarInputs:
     """What the saving by PV and battery over a period is computed from."""
@@ -241,6 +261,14 @@ class SolarInputs:
     settings: SolarSettings
     market: PriceSource | None
     used_smard: bool
+    # Hours left out because a meter's change was implausible.
+    implausible: list[datetime]
+
+
+# Saving per hour and tariff (None: a gap), SMARD.de used, implausible hours.
+type SolarHourly = tuple[
+    dict[str, dict[datetime, tuple[float, float]] | None], bool, list[datetime]
+]
 
 
 def tariff_subentries(entry: ConfigEntry) -> list[ConfigSubentry]:
@@ -290,6 +318,11 @@ class MeterRuntime:
             tz=BERLIN,
         )
         self.tariffs: dict[str, TariffInfo] = {}
+        # The subentries as this runtime started: a change that alters past
+        # hours shows a repair issue (outdated.py).
+        self.subentry_data: dict[str, dict[str, Any]] = {
+            key: dict(subentry.data) for key, subentry in entry.subentries.items()
+        }
         # Sources that are Tarifwacht's own sensors (chosen before the forms
         # refused them) are never read; a repair issue names them.
         self.meter_own = own_entity(hass, self.meter_entity)
@@ -365,7 +398,11 @@ class MeterRuntime:
         until = self.engine.started
         if until is None or slot_start(start) >= until:
             return None
-        hourly = await self._async_hourly_energy(hour_start(start), until)
+        recorded = await self._async_hourly_energy(hour_start(start), until)
+        # Changes no meter can make in an hour (a unit glitch) or below zero
+        # are left out, by the same bound as live readings.
+        hourly, implausible = plausible_hours(recorded)
+        changes = [(hour, change) for hour, change, _ in recorded]
         smard: PriceTable = PriceTable()
         market = self._market_tariffs()
         if market:
@@ -375,8 +412,9 @@ class MeterRuntime:
             consumption=spread_hours(hourly, start, until),
             tariffs=self._build_tariffs(smard),
             until=until,
-            hours_without_energy=hours_without_energy(hourly, start, until),
+            hours_without_energy=hours_without_energy(changes, start, until),
             uses_smard=bool(market),
+            implausible_hours=[h for h in implausible if h >= hour_start(start)],
         )
 
     def _sources(self) -> list[str]:
@@ -514,8 +552,9 @@ class MeterRuntime:
 
     async def _async_hourly_energy(
         self, start: datetime, end: datetime
-    ) -> list[tuple[datetime, float]]:
-        """The meter's energy per hour (kWh) from the long-term statistics."""
+    ) -> list[tuple[datetime, float, float | None]]:
+        """The meter's energy per hour (kWh) from the long-term statistics,
+        with the state at the end of the hour (start, change, state)."""
         if self.meter_own:
             return []  # never read: every hour counts as without energy
         rows = await get_instance(self.hass).async_add_executor_job(
@@ -526,10 +565,10 @@ class MeterRuntime:
             {self.meter_entity},
             "hour",
             {"energy": UnitOfEnergy.KILO_WATT_HOUR},
-            {"change"},
+            {"change", "state"},
         )
         return [
-            (dt_util.utc_from_timestamp(row["start"]), row["change"])
+            (dt_util.utc_from_timestamp(row["start"]), row["change"], row.get("state"))
             for row in rows.get(self.meter_entity, [])
             if row.get("change") is not None
         ]
@@ -537,7 +576,10 @@ class MeterRuntime:
     async def _async_hourly(
         self, entities: set[str], start: datetime, end: datetime
     ) -> dict[str, dict[datetime, float]]:
-        """Energy per hour (kWh) of several meters from the long-term statistics."""
+        """Energy per hour (kWh) of several meters from the long-term statistics.
+
+        An implausible change (lookback.plausible_hours) is `IMPLAUSIBLE`.
+        """
         rows = await get_instance(self.hass).async_add_executor_job(
             statistics_during_period,
             self.hass,
@@ -546,22 +588,29 @@ class MeterRuntime:
             entities,
             "hour",
             {"energy": UnitOfEnergy.KILO_WATT_HOUR},
-            {"change"},
+            {"change", "state"},
         )
-        return {
-            entity: {
-                dt_util.utc_from_timestamp(row["start"]): row["change"]
+        hourly: dict[str, dict[datetime, float]] = {}
+        for entity in entities:
+            changes = [
+                (
+                    dt_util.utc_from_timestamp(row["start"]),
+                    row["change"],
+                    row.get("state"),
+                )
                 for row in rows.get(entity, [])
                 if row.get("change") is not None
-            }
-            for entity in entities
-        }
+            ]
+            kept, left_out = plausible_hours(changes)
+            hourly[entity] = dict(kept) | dict.fromkeys(left_out, IMPLAUSIBLE)
+        return hourly
 
     def solar_flows(
         self, hourly: Mapping[str, Mapping[datetime, float]]
     ) -> dict[datetime, HourFlows]:
         """The hours with purchase, feed-in and PV recorded (battery: 0 if
-        missing). A negative change (meter reset) counts as 0."""
+        missing). Hours with an implausible change of any meter are left out
+        (`implausible_hours`); a negative change counts as 0."""
         data = self.solar_data
         assert data is not None
         purchase = hourly.get(self.meter_entity, {})
@@ -578,6 +627,10 @@ class MeterRuntime:
                 discharged=max(0.0, discharged.get(hour, 0.0)),
             )
             for hour in sorted(set(purchase) & set(feed_in) & set(pv))
+            if not any(
+                math.isnan(values.get(hour, 0.0))
+                for values in (purchase, feed_in, pv, charged, discharged)
+            )
         }
 
     def solar_entities(self) -> set[str]:
@@ -624,12 +677,18 @@ class MeterRuntime:
         self._notify()
 
     async def _async_solar_inputs(
-        self, start: datetime, end: datetime, lookback: Lookback | None
+        self,
+        start: datetime,
+        end: datetime,
+        lookback: Lookback | None,
+        *,
+        smard: bool = True,
     ) -> SolarInputs | None:
         """Hourly flows in [start, end) with tariffs and market prices, also
         before the setup (the tariffs of `lookback`). With the negative price
         rule, exchange prices before the setup come from SMARD.de (raises
-        SmardError). None without PV and battery."""
+        SmardError) unless `smard` is false (as the sensors compute). None
+        without PV and battery."""
         if self.solar_data is None or self.meter_own:
             return None
         hourly = await self._async_hourly(self.solar_entities(), hour_start(start), end)
@@ -644,6 +703,7 @@ class MeterRuntime:
             and market is not None
             and started is not None
             and start < started
+            and smard
         ):
             smard = await smard_cache(self.hass).async_prices(start, started)
             market = FallbackPrice(market, smard, started)
@@ -654,39 +714,55 @@ class MeterRuntime:
             if start <= hour < end
         }
         return SolarInputs(
-            flows, tariffs, solar_settings(self.solar_data), market, used_smard
+            flows,
+            tariffs,
+            solar_settings(self.solar_data),
+            market,
+            used_smard,
+            [h for h in implausible_hours(hourly) if start <= h < end],
         )
 
     async def async_solar_between(
         self, start: datetime, end: datetime, lookback: Lookback | None
-    ) -> tuple[SolarResult, bool] | None:
+    ) -> tuple[SolarResult, bool, list[datetime]] | None:
         """The saving by PV and battery in [start, end) for the compare
-        action. Second value: SMARD.de was used."""
+        action. Then: SMARD.de was used; hours left out as implausible."""
         inputs = await self._async_solar_inputs(start, end, lookback)
         if inputs is None:
             return None
         result = solar_totals(
             inputs.flows, inputs.tariffs, inputs.settings, BERLIN, inputs.market
         )
-        return result, inputs.used_smard
+        return result, inputs.used_smard, inputs.implausible
 
     async def async_solar_hourly(
-        self, start: datetime, end: datetime, lookback: Lookback | None
-    ) -> tuple[dict[str, dict[datetime, tuple[float, float]] | None], bool] | None:
+        self,
+        start: datetime,
+        end: datetime,
+        lookback: Lookback | None,
+        *,
+        smard: bool = True,
+    ) -> SolarHourly | None:
         """Saving by PV and battery per hour and tariff in [start, end), for
-        the statistics import (solar.hourly_savings). Second value: SMARD.de
-        was used."""
-        inputs = await self._async_solar_inputs(start, end, lookback)
+        the statistics import (solar.hourly_savings). Then: SMARD.de was used;
+        hours left out as implausible. `smard`: see _async_solar_inputs."""
+        inputs = await self._async_solar_inputs(start, end, lookback, smard=smard)
         if inputs is None:
             return None
         savings = hourly_savings(
             inputs.flows, inputs.tariffs, inputs.settings, inputs.market
         )
-        return savings, inputs.used_smard
+        return savings, inputs.used_smard, inputs.implausible
 
     @callback
     def _on_solar_tick(self, now: datetime) -> None:
         self._background(self.async_refresh_solar(now), "PV and battery")
+
+    @property
+    def started_at(self) -> datetime | None:
+        """When this runtime started (setup or reload, e.g. after a tariff
+        change)."""
+        return self._started_at
 
     @property
     def current(self) -> TariffInfo | None:
@@ -941,6 +1017,7 @@ class MeterRuntime:
         await self._store.async_remove()
         for issue_id in self._stored_issue_ids():
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        async_clear_outdated(self.hass, self.entry.entry_id)
 
     @callback
     def add_listener(self, listener: Callable[[], None]) -> CALLBACK_TYPE:

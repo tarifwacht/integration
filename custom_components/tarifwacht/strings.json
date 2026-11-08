@@ -426,6 +426,9 @@
     "button": {
       "issue_report": {
         "name": "Report for a bug report"
+      },
+      "recalculate_statistics": {
+        "name": "Recalculate statistics"
       }
     },
     "sensor": {
@@ -476,7 +479,7 @@
     },
     "import_statistics": {
       "name": "Import statistics",
-      "description": "Writes the hours before the sensors' first long-term statistics (energy, costs, difference, saving by PV and battery) so statistics cards and graphs also show the time before the setup. Changes the statistics database – create a backup first.",
+      "description": "Writes the hours before the sensors' first long-term statistics (energy, costs, difference, saving by PV and battery) so statistics cards and graphs also show the time before the setup. With “Replace existing statistics” the hours from the start on are recalculated with the current tariffs, too (after a tariff was corrected). Changes the statistics database – create a backup first.",
       "fields": {
         "config_entry": {
           "name": "Meter",
@@ -484,7 +487,11 @@
         },
         "start": {
           "name": "Start",
-          "description": "First day to import, before the setup. Not earlier than the meter's long-term statistics."
+          "description": "First day to import, before the setup (with “Replace existing statistics” also later). Not earlier than the meter's long-term statistics."
+        },
+        "replace": {
+          "name": "Replace existing statistics",
+          "description": "Also recalculate the hours that already have statistics, from the start up to the last full hour, with the current tariffs. Without it only the time before the first statistics is filled in. The button “Recalculate statistics” on the meter's device does the same from the first statistics on."
         }
       }
     }
@@ -507,6 +514,30 @@
     },
     "import_prices_missing": {
       "message": "Nothing imported: every tariff lacks prices in this period. A tariff with a total price sensor has no prices from before the setup – add it as “exchange price plus surcharges” as well."
+    },
+    "import_busy": {
+      "message": "The statistics of this entry are being imported or recalculated right now – please wait until that is done."
+    },
+    "import_nothing_to_recalculate": {
+      "message": "Nothing to recalculate: Home Assistant has not compiled a full hour of these sensors since the start yet. Please try again in an hour."
+    },
+    "recalculated_title": {
+      "message": "Tarifwacht: statistics recalculated"
+    },
+    "recalculated": {
+      "message": "{name}: the long-term statistics of {count} sensors from {start} to {end} are recalculated with the current tariffs. Statistics graphs and the card show the new values; the sensors continue from them."
+    },
+    "recalculated_changes": {
+      "message": "Change of the total:"
+    },
+    "recalculated_skipped": {
+      "message": "Left out because prices are missing: {tariffs}."
+    },
+    "recalculated_implausible": {
+      "message": "{count} hours with an implausible meter change were left out (first: {hours})."
+    },
+    "recalculate_failed_title": {
+      "message": "Tarifwacht: statistics not recalculated"
     }
   },
   "issues": {
@@ -533,6 +564,10 @@
     "backfill_failed": {
       "title": "Consumption could not be read from the recorder ({name})",
       "description": "After the update from 0.1.0b1, Tarifwacht reads the consumption since setup from the recorder once. This failed: {error}. Live booking is not affected; the next start of Home Assistant tries again."
+    },
+    "statistics_outdated": {
+      "title": "Past statistics show old prices ({name})",
+      "description": "A tariff (or PV and battery) of {name} was changed. Tarifwacht applies it to the whole period and the sensors already show the new totals – but the long-term statistics of past hours (statistics graphs, the months of the card, values per day) still hold the old ones. Press the button “Recalculate statistics” on the device {name} (Settings → Devices & services → Tarifwacht). Create a backup first. This notice disappears afterwards."
     }
   }
 }

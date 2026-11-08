@@ -1,4 +1,6 @@
-"""Action tarifwacht.compare: costs of every tariff in a chosen period."""
+"""Actions: tarifwacht.compare (costs of every tariff in a chosen period) and
+tarifwacht.import_statistics (history before the statistics; with `replace`
+the statistics from the start on recalculated)."""
 
 from __future__ import annotations
 
@@ -23,7 +25,12 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .smard import ATTRIBUTION
 from .smard_cache import SmardError
-from .statistics_import import StatisticsImportError, async_import_history
+from .statistics_import import (
+    StatisticsImportError,
+    async_import_history,
+    async_recalculate,
+    implausible_summary,
+)
 
 if TYPE_CHECKING:
     from . import TarifwachtConfigEntry
@@ -36,6 +43,7 @@ SERVICE_IMPORT_STATISTICS = "import_statistics"
 ATTR_CONFIG_ENTRY = "config_entry"
 ATTR_START = "start"
 ATTR_END = "end"
+ATTR_REPLACE = "replace"
 
 COMPARE_SCHEMA = vol.Schema(
     {
@@ -48,6 +56,7 @@ IMPORT_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY): ConfigEntrySelector({"integration": DOMAIN}),
         vol.Required(ATTR_START): cv.date,
+        vol.Optional(ATTR_REPLACE, default=False): cv.boolean,
     }
 )
 
@@ -197,6 +206,8 @@ def async_setup_services(hass: HomeAssistant) -> None:
             }
             if lookback.uses_smard:
                 response["estimate"]["exchange_prices"] = ATTRIBUTION
+            if summary := implausible_summary(lookback.implausible_hours):
+                response["estimate"]["hours_implausible"] = summary
         months = []
         for month, costs in result.months.items():
             month_rows = _tariff_rows(runtime, costs, details=False)
@@ -220,10 +231,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 translation_placeholders={"error": str(err)},
             ) from err
         if solar is not None:
-            solar_result, used_smard = solar
+            solar_result, used_smard, implausible = solar
             response["pv_battery"] = _solar_response(runtime, solar_result)
             if used_smard:
                 response["pv_battery"]["exchange_prices"] = ATTRIBUTION
+            if summary := implausible_summary(implausible):
+                response["pv_battery"]["hours_implausible"] = summary
         return response
 
     async def import_statistics(call: ServiceCall) -> ServiceResponse:
@@ -231,7 +244,10 @@ def async_setup_services(hass: HomeAssistant) -> None:
             hass, DOMAIN, call.data[ATTR_CONFIG_ENTRY]
         )
         try:
-            result = await async_import_history(hass, entry, call.data[ATTR_START])
+            if call.data[ATTR_REPLACE]:
+                result = await async_recalculate(hass, entry, call.data[ATTR_START])
+            else:
+                result = await async_import_history(hass, entry, call.data[ATTR_START])
         except StatisticsImportError as err:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key=f"import_{err.key}"

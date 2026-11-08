@@ -249,10 +249,14 @@ async def test_import_statistics_of_the_saving(hass: HomeAssistant) -> None:
         self: MeterRuntime, start: datetime, end: datetime, lookback: Any
     ) -> tuple[dict[str, Any], bool]:
         calls.append((start, end))
-        return {
-            "fixed": {hour: (0.30, 0.10), hour + HOUR: (0.20, 0.05)},
-            "dynamic": None,
-        }, False
+        return (
+            {
+                "fixed": {hour: (0.30, 0.10), hour + HOUR: (0.20, 0.05)},
+                "dynamic": None,
+            },
+            False,
+            [],
+        )
 
     with patch.object(MeterRuntime, "async_solar_hourly", fake_hourly):
         result = await import_statistics(hass, entry, "2026-10-24")

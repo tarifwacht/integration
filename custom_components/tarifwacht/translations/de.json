@@ -426,6 +426,9 @@
     "button": {
       "issue_report": {
         "name": "Bericht für Fehlermeldung"
+      },
+      "recalculate_statistics": {
+        "name": "Statistik neu berechnen"
       }
     },
     "sensor": {
@@ -476,7 +479,7 @@
     },
     "import_statistics": {
       "name": "Statistik nachtragen",
-      "description": "Schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren (Strombezug, Kosten, Differenz, Ersparnis PV und Speicher), damit Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.",
+      "description": "Schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren (Strombezug, Kosten, Differenz, Ersparnis PV und Speicher), damit Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Mit „Vorhandene Statistik ersetzen“ werden auch die Stunden ab dem Beginn mit den aktuellen Tarifen neu berechnet (nach einer Tarifkorrektur). Greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.",
       "fields": {
         "config_entry": {
           "name": "Zähler",
@@ -484,7 +487,11 @@
         },
         "start": {
           "name": "Beginn",
-          "description": "Erster Tag, der nachgetragen wird, vor der Einrichtung. Nicht früher als die Langzeitstatistik des Zählers."
+          "description": "Erster Tag, der nachgetragen wird, vor der Einrichtung (mit „Vorhandene Statistik ersetzen“ auch später). Nicht früher als die Langzeitstatistik des Zählers."
+        },
+        "replace": {
+          "name": "Vorhandene Statistik ersetzen",
+          "description": "Auch die Stunden mit vorhandener Statistik vom Beginn bis zur letzten vollen Stunde mit den aktuellen Tarifen neu berechnen. Ohne: nur die Zeit vor der ersten Statistik nachtragen. Die Schaltfläche „Statistik neu berechnen“ am Gerät des Zählers macht dasselbe ab der ersten Statistik."
         }
       }
     }
@@ -507,6 +514,30 @@
     },
     "import_prices_missing": {
       "message": "Nichts nachgetragen: Allen Tarifen fehlen in diesem Zeitraum Preise. Ein Tarif mit Gesamtpreis-Sensor hat keine Preise von vor der Einrichtung – lege ihn zusätzlich als „Börsenpreis plus Aufschläge“ an."
+    },
+    "import_busy": {
+      "message": "Die Statistik dieses Eintrags wird gerade nachgetragen oder neu berechnet – bitte warten, bis das fertig ist."
+    },
+    "import_nothing_to_recalculate": {
+      "message": "Nichts neu zu berechnen: Home Assistant hat seit dem Beginn noch keine volle Stunde dieser Sensoren erfasst. Bitte in einer Stunde erneut versuchen."
+    },
+    "recalculated_title": {
+      "message": "Tarifwacht: Statistik neu berechnet"
+    },
+    "recalculated": {
+      "message": "{name}: Die Langzeitstatistik von {count} Sensoren ist von {start} bis {end} mit den aktuellen Tarifen neu berechnet. Statistik-Diagramme und die Karte zeigen die neuen Werte, die Sensoren zählen von dort weiter."
+    },
+    "recalculated_changes": {
+      "message": "Unterschied zur bisherigen Summe:"
+    },
+    "recalculated_skipped": {
+      "message": "Ausgelassen, weil Preise fehlen: {tariffs}."
+    },
+    "recalculated_implausible": {
+      "message": "{count} Stunden mit unplausiblem Zählerwert ausgelassen (zuerst: {hours})."
+    },
+    "recalculate_failed_title": {
+      "message": "Tarifwacht: Statistik nicht neu berechnet"
     }
   },
   "issues": {
@@ -533,6 +564,10 @@
     "backfill_failed": {
       "title": "Verbrauch konnte nicht aus dem Recorder gelesen werden ({name})",
       "description": "Nach dem Update von 0.1.0b1 liest Tarifwacht den Verbrauch seit der Einrichtung einmalig aus dem Recorder. Das ist fehlgeschlagen: {error}. Die laufende Buchung ist davon nicht betroffen; der nächste Start von Home Assistant versucht es erneut."
+    },
+    "statistics_outdated": {
+      "title": "Vergangene Statistik zeigt alte Preise ({name})",
+      "description": "Ein Tarif (oder PV und Speicher) von {name} wurde geändert. Tarifwacht wendet das auf den ganzen Zeitraum an, die Sensoren zeigen schon die neuen Summen – die Langzeitstatistik vergangener Stunden (Statistik-Diagramme, Monate der Karte, Werte je Tag) enthält aber noch die alten. Drücke am Gerät {name} die Schaltfläche „Statistik neu berechnen“ (Einstellungen → Geräte & Dienste → Tarifwacht). Lege vorher ein Backup an. Danach verschwindet dieser Hinweis."
     }
   }
 }

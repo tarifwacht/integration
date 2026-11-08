@@ -23,3 +23,7 @@ import_statistics:
       example: "2026-01-01"
       selector:
         date:
+    replace:
+      default: false
+      selector:
+        boolean:

@@ -19,11 +19,13 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util import dt as dt_util
 from homeassistant.util.hass_dict import HassKey
 
 from .cards import async_setup_cards
 from .const import CONF_KEY, DOMAIN, SUBENTRY_TARIFF, TARIFF_DYNAMIC
 from .frontend_resource import async_register_card, async_unregister_card
+from .outdated import async_mark_outdated
 from .rename import renamed_data, renamed_tariff, renamed_unique_id, sources
 from .runtime import MeterRuntime, tariff_subentries
 from .services import async_setup_services
@@ -166,6 +168,13 @@ async def _async_update_listener(
 ) -> None:
     if entry.entry_id in hass.data.get(RENAMED, ()):
         return  # renamed sources: the reload follows the burst
+    runtime = getattr(entry, "runtime_data", None)
+    if isinstance(runtime, MeterRuntime):
+        # A changed tariff applies to past hours, their statistics do not
+        # follow by themselves: repair issue naming the button.
+        async_mark_outdated(
+            hass, entry, runtime.subentry_data, runtime.engine.started, dt_util.utcnow()
+        )
     hass.config_entries.async_schedule_reload(entry.entry_id)
 
 
