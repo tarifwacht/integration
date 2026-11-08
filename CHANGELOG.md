@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.5 – 2026-11-08
 
 - **Fehler behoben: Statistik nachtragen ab einem früheren Tag** nach einem ersten Nachtragen (und ggf. Neuberechnen) addierte die ganze Zeit vom bisherigen ersten Statistikwert bis zur Einrichtung ein zweites Mal – die Langzeitstatistik sprang an dieser Grenze (z. B. um Tausende kWh beim Strombezug und um den entsprechenden Betrag bei den Kosten). Jetzt schließt die bisherige Statistik mit der Änderung ihrer ersten Stunde an. Wer betroffen ist: einmal **Statistik neu berechnen** (Schaltfläche am Gerät des Zählers) bringt alles in Ordnung.
 - **Was gilt heute? Übersicht im Zahnrad des Tarifs.** Unter *Einstellungen → Geräte & Dienste → Tarifwacht* stand jeder Tarif nur mit seinem Namen da. Jetzt zeigt das Zahnrad oben, was heute gilt – etwa *Festpreis · heute: 30,5 ct/kWh + 13,00 €/Monat (seit 01.01.2026)*, beim Börsenpreis-Tarif *Börsenpreis + Netzentgelt 9 + Abgaben 5 + Aufschlag 2 ct (netto) + MwSt. 19 %*, beim Sensor mit Gesamtpreis dessen Namen –, darunter alle Preisstände mit Datum (künftige mit „(kommt)“), Bonus, Modul 3 (aus/an mit Quartalen) und ob es dein aktueller Tarif ist.
