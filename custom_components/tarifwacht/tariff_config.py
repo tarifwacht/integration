@@ -41,7 +41,19 @@ from .const import (
     TARIFF_FIXED,
 )
 from .modul3 import modul3_from_data
-from .tariffs import BasePeriod, ComposedPrice, FixedPrice, PriceSource, Tariff
+from .tariffs import (
+    BasePeriod,
+    ComposedPrice,
+    FixedPrice,
+    FixedWithGridFee,
+    PriceSource,
+    Tariff,
+)
+
+# Modul 3 of a fixed price: the standard grid fee contained in the price
+# (ct/kWh net) and the VAT on the difference (percent), kept with the windows.
+MODUL3_STANDARD = "standard"
+MODUL3_VAT = "vat"
 
 
 def tariff_key(subentry_id: str, data: Mapping[str, Any]) -> str:
@@ -65,7 +77,7 @@ def change_fields(kind: str) -> tuple[str, ...]:
     """What a price change of a tariff of this kind may set."""
     base = (CONF_BASE_PRICE, CONF_BASE_PERIOD)
     if kind == KIND_FIXED:
-        return (CONF_PRICE, *base)
+        return (CONF_PRICE, CONF_MODUL3, *base)
     if kind == KIND_DYNAMIC_MARKET:
         return (CONF_GRID_FEE, CONF_LEVIES, CONF_MARGIN, CONF_VAT, CONF_MODUL3, *base)
     return base
@@ -123,7 +135,20 @@ def _single_tariff(
     kind = data[CONF_KIND]
     prices: PriceSource
     if kind == KIND_FIXED:
-        prices = FixedPrice(float(data[CONF_PRICE]) / 100)
+        modul3_data = data.get(CONF_MODUL3) or {}
+        standard = float(modul3_data.get(MODUL3_STANDARD) or 0)
+        modul3 = modul3_from_data(modul3_data, standard, BERLIN)
+        price = float(data[CONF_PRICE]) / 100
+        prices = (
+            FixedPrice(price)
+            if modul3 is None
+            else FixedWithGridFee(
+                price,
+                modul3.standard,
+                float(modul3_data.get(MODUL3_VAT) or 0) / 100,
+                modul3.fee,
+            )
+        )
     elif kind == KIND_DYNAMIC_TOTAL:
         prices = price_table(data[CONF_PRICE_ENTITY])
     elif kind == KIND_DYNAMIC_MARKET:

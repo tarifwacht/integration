@@ -12,14 +12,18 @@ import pytest
 
 from custom_components.tarifwacht.const import (
     BERLIN,
+    CONF_CHANGES,
+    CONF_FROM,
     CONF_GRID_FEE,
     CONF_KIND,
     CONF_LEVIES,
     CONF_MARGIN,
     CONF_MODUL3,
+    CONF_PRICE,
     CONF_PRICE_ENTITY,
     CONF_VAT,
     KIND_DYNAMIC_MARKET,
+    KIND_FIXED,
 )
 from custom_components.tarifwacht.modul3 import (
     WindowError,
@@ -28,7 +32,7 @@ from custom_components.tarifwacht.modul3 import (
     parse_windows,
 )
 from custom_components.tarifwacht.prices import PriceTable
-from custom_components.tarifwacht.tariff_config import tariff_from_data
+from custom_components.tarifwacht.tariff_config import change_fields, tariff_from_data
 
 NETZE_BW = {
     "active": True,
@@ -128,3 +132,64 @@ def test_market_tariff_with_modul3() -> None:
     # Without Modul 3: the standard grid fee all day.
     plain = tariff_from_data({**data, CONF_MODUL3: {}}, lambda _: market)
     assert plain.price(nt_slot) == pytest.approx((0.05 + 0.1357) * 1.19)
+
+
+# Netzgesellschaft Düsseldorf 2026 (see above), passed on by a fixed-price
+# supplier: 30 ct/kWh gross (an example price) contains the standard 7.91 ct.
+DUSSELDORF_FIXED = {
+    "active": True,
+    "nt": 3.16,
+    "ht": 8.19,
+    "quarters": [1, 4],
+    "nt_windows": "04:30-05:00",
+    "ht_windows": "18:00-20:00",
+    "standard": 7.91,
+    "vat": 19.0,
+}
+
+
+def test_fixed_tariff_with_modul3() -> None:
+    """fixed + (fee of the window - standard fee contained) * (1 + VAT); the
+    fixed price outside the windows and outside the quarters."""
+    data = {
+        CONF_KIND: KIND_FIXED,
+        CONF_PRICE: 30.0,
+        CONF_MODUL3: DUSSELDORF_FIXED,
+    }
+    tariff = tariff_from_data(data, lambda _: PriceTable())
+    nt = tariff.price(local(2026, 1, 15, 4, 30))
+    assert nt == pytest.approx(0.30 + (0.0316 - 0.0791) * 1.19)
+    assert nt == pytest.approx(0.243475)
+    ht = tariff.price(local(2026, 1, 15, 18, 0))
+    assert ht == pytest.approx(0.303332)
+    assert tariff.price(local(2026, 1, 15, 12, 0)) == pytest.approx(0.30)
+    # May is Q2: the fixed price, also inside the windows.
+    assert tariff.price(local(2026, 5, 15, 4, 30)) == pytest.approx(0.30)
+    assert tariff.price(local(2026, 5, 15, 18, 0)) == pytest.approx(0.30)
+    # Off, or never set: the fixed price all day.
+    for modul3 in ({**DUSSELDORF_FIXED, "active": False}, {}):
+        plain = tariff_from_data({**data, CONF_MODUL3: modul3}, lambda _: PriceTable())
+        assert plain.price(local(2026, 1, 15, 4, 30)) == pytest.approx(0.30)
+    assert "modul3" in change_fields(KIND_FIXED)
+
+
+def test_fixed_tariff_modul3_from_a_price_change() -> None:
+    """A new price sheet from 1 January: windows and fees of the change, the
+    fixed price of the change; before it no Modul 3."""
+    data = {
+        CONF_KIND: KIND_FIXED,
+        CONF_PRICE: 30.0,
+        CONF_CHANGES: [
+            {
+                CONF_FROM: "2027-01-01",
+                CONF_PRICE: 32.0,
+                CONF_MODUL3: {**DUSSELDORF_FIXED, "nt_windows": "02:00-05:00"},
+            }
+        ],
+    }
+    tariff = tariff_from_data(data, lambda _: PriceTable())
+    assert tariff.price(local(2026, 12, 31, 3, 0)) == pytest.approx(0.30)
+    assert tariff.price(local(2027, 1, 1, 3, 0)) == pytest.approx(
+        0.32 + (0.0316 - 0.0791) * 1.19
+    )
+    assert tariff.price(local(2027, 1, 1, 12, 0)) == pytest.approx(0.32)

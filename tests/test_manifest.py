@@ -121,8 +121,9 @@ def test_solar_steps_match() -> None:
 def test_price_change_fields_translated() -> None:
     step = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]["step"]
     fields = {"from"} | {key for kind in KINDS for key in change_fields(kind)}
-    # Modul 3 is stored as one value but entered in six fields.
-    fields = (fields - {"modul3"}) | set(step["modul3"]["data"])
+    # Modul 3 is stored as one value but entered in six fields (a fixed
+    # price: eight, with the grid fee it contains and the VAT).
+    fields = (fields - {"modul3"}) | set(step["modul3_fixed"]["data"])
     assert set(step["add_change"]["data"]) == fields
     assert set(step["reconfigure"]["menu_options"]) == {
         "edit",
@@ -134,8 +135,14 @@ def test_price_change_fields_translated() -> None:
 
 def test_modul3_fields_translated() -> None:
     strings = load(INTEGRATION / "strings.json")
-    step = strings["config_subentries"]["tariff"]["step"]["modul3"]
-    assert set(step["data"]) == {str(key) for key in _modul3_fields()}
+    steps = strings["config_subentries"]["tariff"]["step"]
+    for step, kind in (("modul3", "dynamic_market"), ("modul3_fixed", "fixed")):
+        fields = {str(key) for key in _modul3_fields(kind)}
+        assert set(steps[step]["data"]) == fields, step
+    assert set(steps["modul3_fixed"]["data"]) - set(steps["modul3"]["data"]) == {
+        "standard_fee",
+        "vat",
+    }
     assert set(strings["selector"]["quarters"]["options"]) == {"1", "2", "3", "4"}
 
 

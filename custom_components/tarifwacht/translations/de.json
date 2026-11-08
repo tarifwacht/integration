@@ -194,11 +194,13 @@
             "ht": "Netzentgelt Hochlaststufe (HT)",
             "quarters": "Quartale, in denen die Zeitfenster gelten",
             "nt_windows": "Zeitfenster Niedriglast (NT)",
-            "ht_windows": "Zeitfenster Hochlast (HT)"
+            "ht_windows": "Zeitfenster Hochlast (HT)",
+            "standard_fee": "Im Festpreis enthaltenes Netzentgelt"
           },
           "data_description": {
             "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
-            "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
+            "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt.",
+            "standard_fee": "ct/kWh netto: das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt."
           }
         },
         "remove_change": {
@@ -220,6 +222,29 @@
             "ht_windows": "Zeitfenster Hochlast (HT)"
           },
           "data_description": {
+            "nt": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "ht": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "quarters": "Außerhalb dieser Quartale gilt den ganzen Tag das normale Netzentgelt.",
+            "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
+            "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
+          }
+        },
+        "modul3_fixed": {
+          "title": "Modul 3 ({tariff})",
+          "description": "Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) nach § 14a EnWG Modul 3 hängt das Netzentgelt von der Uhrzeit ab. Gibt dein Festpreis-Anbieter das weiter, bleibt der Arbeitspreis fest und nur sein Netzentgelt-Anteil ändert sich: In den Niedriglast- (NT) und Hochlastfenstern (HT) der gewählten Quartale gilt Festpreis + (Netzentgelt des Fensters − enthaltenes Netzentgelt) × (1 + Mehrwertsteuer), sonst der Festpreis ({price} ct/kWh). Gilt für den gesamten Strombezug des Zählers. Werte ab Beginn des Tarifs; ein neues Preisblatt als Preisänderung eintragen.",
+          "data": {
+            "modul3_active": "Modul 3 aktiv",
+            "standard_fee": "Im Festpreis enthaltenes Netzentgelt",
+            "vat": "Mehrwertsteuer",
+            "nt": "Netzentgelt Niedriglaststufe (NT)",
+            "ht": "Netzentgelt Hochlaststufe (HT)",
+            "quarters": "Quartale, in denen die Zeitfenster gelten",
+            "nt_windows": "Zeitfenster Niedriglast (NT)",
+            "ht_windows": "Zeitfenster Hochlast (HT)"
+          },
+          "data_description": {
+            "standard_fee": "ct/kWh netto: das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
+            "vat": "Auf den Unterschied des Netzentgelts, in Prozent.",
             "nt": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
             "ht": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
             "quarters": "Außerhalb dieser Quartale gilt den ganzen Tag das normale Netzentgelt.",

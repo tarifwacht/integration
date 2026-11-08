@@ -53,7 +53,7 @@ from .modul3 import WindowError, parse_windows
 from .runtime import MeterRuntime, tariff_subentries
 from .smard_cache import DATA_SMARD, SmardError
 from .statistics_import import StatisticsImportError, async_recalculate
-from .tariff_config import price_entity, tariff_key
+from .tariff_config import MODUL3_STANDARD, MODUL3_VAT, price_entity, tariff_key
 
 NAME = "Tarifwacht"
 METER_ROLE = "meter"
@@ -262,11 +262,17 @@ def _modul3(data: Mapping[str, Any]) -> str:
     quarters = ",".join(
         str(q) for q in sorted(int(q) for q in data.get("quarters", []))
     )
-    return (
+    text = (
         f"NT {_num(data.get('nt'))} ct {_windows(data.get('nt_windows'))}, "
         f"HT {_num(data.get('ht'))} ct {_windows(data.get('ht_windows'))}, "
         f"quarters {quarters or '-'}"
     )
+    if MODUL3_STANDARD in data:  # a fixed price passing Modul 3 on
+        text += (
+            f", standard fee contained {_num(data.get(MODUL3_STANDARD))} ct, "
+            f"VAT {_num(data.get(MODUL3_VAT))} %"
+        )
+    return text
 
 
 def tariff_settings(tariffs: Sequence[Mapping[str, Any]]) -> Lines:

@@ -450,6 +450,71 @@ async def test_modul3(hass: HomeAssistant) -> None:
     assert data["modul3"] == modul3
 
 
+async def test_modul3_of_a_fixed_price(hass: HomeAssistant) -> None:
+    """A fixed-price supplier passing Modul 3 on: the form also asks for the
+    standard grid fee contained in the price; a price change can bring a new
+    price sheet (example values of Netzgesellschaft Düsseldorf 2026)."""
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+    result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+    assert result["menu_options"] == ["edit", "modul3", "add_change"]
+    result = await flows.async_configure(result["flow_id"], {"next_step_id": "modul3"})
+    assert result["step_id"] == "modul3_fixed"
+    form = {
+        "modul3_active": True,
+        "vat": 19.0,
+        "nt": 3.16,
+        "ht": 8.19,
+        "quarters": ["1", "4"],
+        "nt_windows": "04:30-05:00",
+        "ht_windows": "18:00-20:00",
+    }
+    result = await configure_tariff(hass, result, form)
+    assert result["errors"] == {"standard_fee": "price_required"}
+    result = await configure_tariff(hass, result, {**form, "standard_fee": 7.91})
+    assert result["type"] is FlowResultType.ABORT
+    modul3 = {
+        "active": True,
+        "nt": 3.16,
+        "ht": 8.19,
+        "quarters": [1, 4],
+        "nt_windows": "04:30-05:00",
+        "ht_windows": "18:00-20:00",
+        "standard": 7.91,
+        "vat": 19.0,
+    }
+    assert entry.subentries[FIXED_SUBENTRY].data["modul3"] == modul3
+
+    # A new price sheet from 1 January 2027 as a price change.
+    result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+    result = await flows.async_configure(
+        result["flow_id"], {"next_step_id": "add_change"}
+    )
+    suggested = {
+        str(key): (key.description or {}).get("suggested_value")
+        for key in result["data_schema"].schema
+    }
+    assert suggested["standard_fee"] == 7.91
+    assert suggested["modul3_active"] is True
+    change = {
+        "from": "2027-01-01",
+        "price": 32.0,
+        "base_period": "month",
+        **form,
+        "standard_fee": 8.0,
+        "nt_windows": "02:00-05:00",
+    }
+    result = await configure_tariff(hass, result, change)
+    assert result["type"] is FlowResultType.ABORT
+    (stored,) = entry.subentries[FIXED_SUBENTRY].data["changes"]
+    assert stored["price"] == 32.0
+    assert stored["modul3"] == {
+        **modul3,
+        "standard": 8.0,
+        "nt_windows": "02:00-05:00",
+    }
+
+
 async def test_reconfigure_meter_renamed_while_open(hass: HomeAssistant) -> None:
     """The meter is renamed while the form is open: submitting the shown (old)
     id keeps the new one and the pending rename note (review 0.1.2)."""

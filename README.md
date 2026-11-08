@@ -121,7 +121,7 @@ Beim Tarif auf das Zahnrad (*Konfigurieren*):
 - **Tarif bearbeiten:** Name, aktueller Tarif und Preise **ab Beginn** – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu.
 - **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt.
 - **Preisänderung entfernen:** danach gelten wieder die Preise davor.
-- **Modul 3** (nur bei „Börsenpreis plus Aufschläge“), siehe unten.
+- **Modul 3** (bei „Börsenpreis plus Aufschläge“ und beim Festpreis), siehe unten.
 
 Jede Änderung gilt rückwirkend für den ganzen Zeitraum; die Sensoren zeigen sofort die neuen Summen. Die Langzeitstatistik vergangener Stunden (Statistik-Diagramme, Monate der [Karte](#karte)) behält aber die alten Werte – dafür gibt es [Statistik neu berechnen](#statistik-neu-berechnen). Ein Reparaturhinweis erinnert daran.
 
@@ -140,6 +140,7 @@ Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) kannst du bei
 - **Zeitfenster:** Ortszeit im Viertelstundenraster, mehrere mit Komma getrennt, auch über Mitternacht – z. B. `23:00-06:00` oder `01:45-06:15, 22:30-24:00`.
 - Alle Werte stehen im Preisblatt deines Netzbetreibers. Ändern sie sich (meist zum Jahreswechsel), das neue Preisblatt als Preisänderung ab dem Stichtag eintragen.
 - Modul 3 gilt für den **gesamten** Netzbezug der Marktlokation, nicht nur für Wärmepumpe oder Wallbox. Das passt, solange das Gerät nicht über einen eigenen Zähler läuft.
+- **Beim Festpreis:** Auch ein Anbieter mit festem Arbeitspreis kann Modul 3 weitergeben – der Energiepreis bleibt fest, nur der Netzentgelt-Anteil ändert sich. Dafür fragt das Formular zusätzlich das **im Festpreis enthaltene Netzentgelt** (die normale Stufe aus dem Preisblatt, ct/kWh netto) und die Mehrwertsteuer (Vorschlag 19 %). In den Fenstern der gewählten Quartale gilt dann Festpreis + (Netzentgelt des Fensters − enthaltenes Netzentgelt) × (1 + MwSt.), sonst der Festpreis. Beispiel: Festpreis 30 ct, enthalten 7,91 ct, NT 3,16 ct → in einem NT-Fenster im Januar 30 + (3,16 − 7,91) × 1,19 = 24,35 ct; im Mai 30 ct. Ein neues Preisblatt (z. B. ab 1. Januar) trägst du wie beim Börsenpreis-Tarif als Preisänderung ein, mit Festpreis und Modul-3-Werten.
 
 Grundlage: Festlegung der Bundesnetzagentur BK8-22/010-A; Einzelheiten und Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 

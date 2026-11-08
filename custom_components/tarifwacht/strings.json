@@ -194,11 +194,13 @@
             "ht": "Grid fee high-load level (HT)",
             "quarters": "Quarters in which the windows apply",
             "nt_windows": "Low-load windows (NT)",
-            "ht_windows": "High-load windows (HT)"
+            "ht_windows": "High-load windows (HT)",
+            "standard_fee": "Grid fee contained in the fixed price"
           },
           "data_description": {
             "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
-            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
+            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies.",
+            "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet."
           }
         },
         "remove_change": {
@@ -220,6 +222,29 @@
             "ht_windows": "High-load windows (HT)"
           },
           "data_description": {
+            "nt": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "ht": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "quarters": "Outside these quarters the standard grid fee applies all day.",
+            "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
+            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
+          }
+        },
+        "modul3_fixed": {
+          "title": "Modul 3 ({tariff})",
+          "description": "With a controllable consumer (heat pump, wallbox) under § 14a EnWG Modul 3 the grid fee depends on the time of day. If your fixed-price supplier passes it on, the energy price stays fixed and only its grid fee part changes: in the low-load (NT) and high-load (HT) windows of the chosen quarters the price is the fixed price + (grid fee of the window − grid fee contained) × (1 + VAT), otherwise the fixed price ({price} ct/kWh). Applies to the meter's whole grid purchase. Values from the start of the tariff; enter a new price sheet as a price change.",
+          "data": {
+            "modul3_active": "Modul 3 active",
+            "standard_fee": "Grid fee contained in the fixed price",
+            "vat": "VAT",
+            "nt": "Grid fee low-load level (NT)",
+            "ht": "Grid fee high-load level (HT)",
+            "quarters": "Quarters in which the windows apply",
+            "nt_windows": "Low-load windows (NT)",
+            "ht_windows": "High-load windows (HT)"
+          },
+          "data_description": {
+            "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
+            "vat": "On the difference of the grid fee, in percent.",
             "nt": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
             "ht": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
             "quarters": "Outside these quarters the standard grid fee applies all day.",

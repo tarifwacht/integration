@@ -51,6 +51,25 @@ class ComposedPrice:
         return (price + self.surcharge + fee) * (1 + self.vat)
 
 
+@dataclass(frozen=True)
+class FixedWithGridFee:
+    """A fixed price whose grid fee part follows Modul 3 (§ 14a EnWG).
+
+    price + (grid fee of the quarter hour - standard grid fee) * (1 + vat):
+    the supplier passes the time-variable grid fee on, the rest of the price
+    stays fixed. Outside the windows and quarters the fee is the standard one,
+    so the fixed price applies unchanged. EUR/kWh, `vat` as a fraction.
+    """
+
+    price: float
+    standard: float
+    vat: float
+    grid_fee: Callable[[datetime], float]
+
+    def get(self, slot: datetime) -> float | None:
+        return self.price + (self.grid_fee(slot) - self.standard) * (1 + self.vat)
+
+
 class BasePeriod(StrEnum):
     """What a base price is quoted for."""
 

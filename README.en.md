@@ -123,7 +123,7 @@ Click the cog (*Configure*) on the tariff:
 - **Edit tariff:** name, current tariff and prices **from the start** – for typos and corrections. Tarifwacht recalculates the whole period.
 - **Add a price change from a date:** new prices from midnight of that day (German local time), e.g. a price increase by your supplier or new grid fees. The previous prices still apply before that. The form is pre-filled with today's prices.
 - **Remove a price change:** the prices before it apply again.
-- **Modul 3** (only for "exchange price plus surcharges"), see below.
+- **Modul 3** (for "exchange price plus surcharges" and for the fixed price), see below.
 
 Every change applies to the whole period; the sensors show the new totals at once. The long-term statistics of past hours (statistics graphs, months of the [card](#card)) keep the old values, though – that is what [Recalculate statistics](#recalculate-statistics) is for. A repair notice reminds you.
 
@@ -142,6 +142,7 @@ With a controllable consumer (heat pump, wallbox) you can choose Modul 3 with yo
 - **Time windows:** local time on the quarter-hour grid, several separated by commas, also across midnight – e.g. `23:00-06:00` or `01:45-06:15, 22:30-24:00`.
 - All figures are in your grid operator's price sheet. When they change (usually at the turn of the year), enter the new price sheet as a price change from its effective date.
 - Modul 3 applies to the **entire** grid consumption of the metering point, not only to the heat pump or wallbox. That fits as long as the device does not have its own meter.
+- **With a fixed price:** a supplier with a fixed energy price can pass Modul 3 on as well – the energy price stays fixed, only the grid fee part changes. For this the form also asks for the **grid fee contained in the fixed price** (the normal level from the price sheet, ct/kWh net) and the VAT (suggested 19 %). In the windows of the chosen quarters the price is then fixed price + (grid fee of the window − grid fee contained) × (1 + VAT), otherwise the fixed price. Example: fixed price 30 ct, contained 7.91 ct, NT 3.16 ct → in a low-load window in January 30 + (3.16 − 7.91) × 1.19 = 24.35 ct; in May 30 ct. A new price sheet (e.g. from 1 January) is entered as a price change, as for the exchange price tariff, with fixed price and Modul 3 values.
 
 Basis: Bundesnetzagentur determination BK8-22/010-A; details and sources (German) in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
