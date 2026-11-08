@@ -909,7 +909,13 @@
           <div class="cardtype"><code>type: custom:tarifwacht-card</code></div></section>`;
       }
 
+      // The card's clock runs from the moment of the view (its last twelve
+      // months and the current calendar year count from "now"); the page
+      // itself does not use Date.now.
+      const REAL_NOW = Date.now;
       function mountCard(data, view) {
+        const shift = new Date(view.now).getTime() - REAL_NOW();
+        Date.now = () => REAL_NOW() + shift;
         demo = demoHass(data, view, state.household);
         const slot = document.querySelector("[data-card]");
         const card = document.createElement("tarifwacht-card");

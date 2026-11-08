@@ -49,8 +49,8 @@ const TEXT = {
     together: "zusammen",
     pv: "PV",
     battery: "Speicher",
-    costsPerMonth: "Kosten je Monat in €",
-    savingPerMonth: (name) => `Ersparnis je Monat in € (mit ${name})`,
+    costsPerMonth: "Kosten je Monat in € (letzte 12 Monate)",
+    savingPerMonth: (name) => `Ersparnis je Monat in € (mit ${name}, letzte 12 Monate)`,
     noStatistics: "Noch keine Langzeitstatistik.",
     parts: { tariffs: "Tarife", solar: "PV und Speicher", chart: "Diagramm je Monat" },
     editor: {
@@ -80,8 +80,8 @@ const TEXT = {
     together: "together",
     pv: "PV",
     battery: "Battery",
-    costsPerMonth: "Costs per month in €",
-    savingPerMonth: (name) => `Saving per month in € (with ${name})`,
+    costsPerMonth: "Costs per month in € (last 12 months)",
+    savingPerMonth: (name) => `Saving per month in € (with ${name}, last 12 months)`,
     noStatistics: "No long-term statistics yet.",
     parts: { tariffs: "Tariffs", solar: "PV and battery", chart: "Chart per month" },
     editor: {
@@ -150,6 +150,8 @@ const STYLE = `
   svg text { font-size: 11px; fill: var(--secondary-text-color); }
   svg .axis { stroke: var(--divider-color); stroke-width: 1; }
   svg .zero { stroke: var(--secondary-text-color); stroke-width: 1; opacity: 0.5; }
+  svg .turn { stroke: var(--secondary-text-color); stroke-width: 1; opacity: 0.6; }
+  svg text.year { font-size: 10px; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--secondary-text-color); margin-top: 4px; }
   .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
     margin-right: 4px; vertical-align: -1px; background: var(--c); }
@@ -277,8 +279,8 @@ function monthRows(hass, ids) {
   const known = months.get(key);
   if (!known?.loading && (!known || (known.due < Date.now() && !document.hidden))) {
     months.set(key, { ...known, loading: true });
-    // 13 months back; the recorder cuts months in the server's time zone,
-    // the last twelve complete ones and the current one are shown.
+    // Over a year back; the recorder cuts months in the server's time zone,
+    // the current month and the eleven before are shown.
     hass.callWS({
       type: "recorder/statistics_during_period",
       start_time: new Date(Date.now() - 400 * 86400000).toISOString(),
@@ -676,9 +678,14 @@ class TarifwachtCard extends HTMLElement {
 
   // ---- Charts -------------------------------------------------------------------------
 
+  /** "2026-11": year and month of a moment in the server's time zone. */
+  _ym(ms) {
+    return new Date(ms).toLocaleDateString("en-CA", { timeZone: this._timeZone(), year: "numeric", month: "2-digit" });
+  }
+
   /** Months of the series: [[start, {series key: change}]], the last twelve
-   * complete ones and the current one; the current month as the table
-   * shows it (the monthly statistics lag up to an hour). */
+   * months (the current one and the eleven before); the current month as
+   * the table shows it (the monthly statistics lag up to an hour). */
   _monthData(ids, series) {
     const rows = monthRows(this._hass, ids);
     if (rows === undefined) return undefined;
@@ -692,11 +699,16 @@ class TarifwachtCard extends HTMLElement {
         months.set(start, m);
       }
     }
-    const sorted = [...months.entries()].sort((a, b) => a[0] - b[0]).slice(-13);
+    const now = this._ym(Date.now());
+    const [year, month] = now.split("-").map(Number);
+    const back = year * 12 + month - 1 - 11;
+    const first = `${Math.floor(back / 12)}-${String((back % 12) + 1).padStart(2, "0")}`;
+    const sorted = [...months.entries()]
+      .filter(([start]) => this._ym(start) >= first && this._ym(start) <= now)
+      .sort((a, b) => a[0] - b[0]);
     if (sorted.length) {
-      const ym = (ms) => new Date(ms).toLocaleDateString("en-CA", { timeZone: this._timeZone(), year: "numeric", month: "2-digit" });
       const last = sorted[sorted.length - 1];
-      if (ym(last[0]) === ym(Date.now())) {
+      if (this._ym(last[0]) === now) {
         for (const s of series) {
           const value = statValue(this._hass, s.id, "month");
           if (typeof value === "number") last[1][s.key] = value;
@@ -729,13 +741,18 @@ class TarifwachtCard extends HTMLElement {
   }
 
   /** Bars per month: side by side (costs per tariff) or stacked (PV and
-   * battery; a negative part goes below zero). Drawn at the card's width. */
+   * battery; a negative part goes below zero). Drawn at the card's width.
+   * Months of the previous calendar year are paler; a thin line before
+   * January with the two years marks the turn of the year (as the column
+   * "Year" counts the calendar year). */
   _barChart(caption, months, series, stacked) {
+    const thisYear = this._ym(Date.now()).slice(0, 4);
+    const turn = months.findIndex(([start]) => this._ym(start).slice(0, 4) === thisYear);
     const W = Math.max(260, Math.round((this._width || 520) - 32));
-    const H = 170;
+    const H = turn > 0 ? 184 : 170;
     const L = 40;
     const R = 4;
-    const T = 8;
+    const T = turn > 0 ? 22 : 8;
     const B = 20;
     let lo = 0;
     let hi = 0;
@@ -767,14 +784,22 @@ class TarifwachtCard extends HTMLElement {
     const slot = (W - L - R) / months.length;
     const every = slot < 30 ? 2 : 1;
     let bars = "";
+    if (turn > 0) {
+      const x = (L + turn * slot).toFixed(1);
+      const year = (start) => new Date(start).toLocaleDateString(lang, { year: "numeric", timeZone: zone });
+      bars += `<line class="turn" x1="${x}" x2="${x}" y1="2" y2="${H - B}"/>`
+        + `<text class="year" x="${(L + turn * slot - 4).toFixed(1)}" y="12" text-anchor="end">${escapeHtml(year(months[turn - 1][0]))}</text>`
+        + `<text class="year" x="${(L + turn * slot + 4).toFixed(1)}" y="12">${escapeHtml(year(months[turn][0]))}</text>`;
+    }
     months.forEach(([start, m], i) => {
       const date = new Date(start);
       const label = date.toLocaleDateString(lang, { month: "short", timeZone: zone });
       const long = date.toLocaleDateString(lang, { month: "long", year: "numeric", timeZone: zone });
+      const past = turn > 0 && i < turn ? ` fill-opacity="0.45"` : "";
       const rect = (x, from, to, width, s, value) => {
         const top = Math.min(y(from), y(to));
         const height = Math.max(Math.abs(y(from) - y(to)), value ? 1 : 0);
-        return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" fill="${s.color}" rx="1">`
+        return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" fill="${s.color}"${past} rx="1">`
           + `<title>${escapeHtml(long)} · ${escapeHtml(s.label)}: ${escapeHtml(this._eur(value))}</title></rect>`;
       };
       if (stacked) {
