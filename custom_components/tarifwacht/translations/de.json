@@ -252,7 +252,73 @@
       "step": {
         "user": {
           "title": "PV und Speicher",
-          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.\n\nTipp: Nutzt du auch [Einspeisewacht]({einspeisewacht_url}) oder [Speicherwacht]({speicherwacht_url}), sind diese Felder schon ausgefüllt.",
+          "data": {
+            "feed_in_entity": "Einspeisezähler",
+            "pv_entity": "PV-Zähler",
+            "charged_entity": "Speicher geladen",
+            "discharged_entity": "Speicher entladen",
+            "feed_in_rate": "Einspeisevergütung",
+            "negative_unpaid": "Keine Vergütung bei negativen Preisen",
+            "market_entity": "Börsenpreis-Sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Ins Netz eingespeiste Energie (kWh-Zähler), z. B. vom Smart Meter.",
+            "pv_entity": "PV-Energie (kWh-Zähler). Hängt der Speicher am selben Wechselrichter (Hybrid-Wechselrichter): dessen AC-Erzeugung.",
+            "charged_entity": "Optional, zusammen mit „Speicher entladen“: in den Speicher geladene Energie (kWh-Zähler).",
+            "discharged_entity": "Optional: aus dem Speicher entnommene Energie (kWh-Zähler).",
+            "feed_in_rate": "Was du je eingespeister kWh bekommst.",
+            "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
+            "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          }
+        },
+        "suggested_einspeisewacht": {
+          "title": "PV und Speicher",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.\n\nZähler vorbelegt aus Einspeisewacht „{einspeisewacht}“ – bitte prüfen.",
+          "data": {
+            "feed_in_entity": "Einspeisezähler",
+            "pv_entity": "PV-Zähler",
+            "charged_entity": "Speicher geladen",
+            "discharged_entity": "Speicher entladen",
+            "feed_in_rate": "Einspeisevergütung",
+            "negative_unpaid": "Keine Vergütung bei negativen Preisen",
+            "market_entity": "Börsenpreis-Sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Ins Netz eingespeiste Energie (kWh-Zähler), z. B. vom Smart Meter.",
+            "pv_entity": "PV-Energie (kWh-Zähler). Hängt der Speicher am selben Wechselrichter (Hybrid-Wechselrichter): dessen AC-Erzeugung.",
+            "charged_entity": "Optional, zusammen mit „Speicher entladen“: in den Speicher geladene Energie (kWh-Zähler).",
+            "discharged_entity": "Optional: aus dem Speicher entnommene Energie (kWh-Zähler).",
+            "feed_in_rate": "Was du je eingespeister kWh bekommst.",
+            "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
+            "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          }
+        },
+        "suggested_speicherwacht": {
+          "title": "PV und Speicher",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.\n\nZähler vorbelegt aus Speicherwacht „{speicherwacht}“ – bitte prüfen.",
+          "data": {
+            "feed_in_entity": "Einspeisezähler",
+            "pv_entity": "PV-Zähler",
+            "charged_entity": "Speicher geladen",
+            "discharged_entity": "Speicher entladen",
+            "feed_in_rate": "Einspeisevergütung",
+            "negative_unpaid": "Keine Vergütung bei negativen Preisen",
+            "market_entity": "Börsenpreis-Sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Ins Netz eingespeiste Energie (kWh-Zähler), z. B. vom Smart Meter.",
+            "pv_entity": "PV-Energie (kWh-Zähler). Hängt der Speicher am selben Wechselrichter (Hybrid-Wechselrichter): dessen AC-Erzeugung.",
+            "charged_entity": "Optional, zusammen mit „Speicher entladen“: in den Speicher geladene Energie (kWh-Zähler).",
+            "discharged_entity": "Optional: aus dem Speicher entnommene Energie (kWh-Zähler).",
+            "feed_in_rate": "Was du je eingespeister kWh bekommst.",
+            "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
+            "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          }
+        },
+        "suggested_both": {
+          "title": "PV und Speicher",
+          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.\n\nZähler vorbelegt aus Einspeisewacht „{einspeisewacht}“ und Speicherwacht „{speicherwacht}“ – bitte prüfen.",
           "data": {
             "feed_in_entity": "Einspeisezähler",
             "pv_entity": "PV-Zähler",

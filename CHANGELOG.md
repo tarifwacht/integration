@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **PV und Speicher: Zähler auch aus Speicherwacht, mit Hinweis.** Ist [Speicherwacht](https://github.com/speicherwacht/integration) eingerichtet, sind jetzt auch „Speicher geladen“ und „Speicher entladen“ vorausgefüllt (wie bisher Einspeisezähler, Vergütung, § 51 und Börsenpreis aus Einspeisewacht; einmalig übernommen, keine Abhängigkeit). Ein Satz unter der Beschreibung des Formulars nennt, woher die Vorschläge kommen – etwa *Zähler vorbelegt aus Einspeisewacht „Dach“ und Speicherwacht „Speicher“ – bitte prüfen.*; bei mehreren Einträgen gilt der erste. Ist keine der beiden eingerichtet, steht dort ein Tipp mit Links zu Einspeisewacht und Speicherwacht. Nur im Formular, keine Benachrichtigung.
+
 ## 0.2.2 – 2026-11-08
 
 - **Karte: Diagramme passen zur Spalte „Jahr“.** Die Säulen „Kosten je Monat“ und „Ersparnis je Monat“ zeigen genau die letzten zwölf Monate (den laufenden und die elf davor); bisher waren es dreizehn, im November also zwei Novembers nebeneinander. Monate des Vorjahres sind blasser, eine dünne Linie vor dem Januar mit den beiden Jahreszahlen trennt die Jahre – kräftig ist so genau das Kalenderjahr, das die Spalte „Jahr“ und die Kopfzeile zählen. Im Dezember liegen alle zwölf Monate im laufenden Jahr, dann gibt es keine Linie. Die Überschriften sagen jetzt „(letzte 12 Monate)“. Bild in der README neu.

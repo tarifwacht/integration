@@ -97,6 +97,27 @@ def test_reconfigure_step_matches_user_step() -> None:
     assert steps["reconfigure"] == steps["user"]
 
 
+def test_solar_steps_match() -> None:
+    """The steps with and without suggestions differ only in their hint."""
+    for name in ("strings.json", "translations/de.json"):
+        steps = load(INTEGRATION / name)["config_subentries"]["solar"]["step"]
+        base = steps["reconfigure"]
+        variants = {
+            "user": ("{einspeisewacht_url}", "{speicherwacht_url}"),
+            "suggested_einspeisewacht": ("{einspeisewacht}",),
+            "suggested_speicherwacht": ("{speicherwacht}",),
+            "suggested_both": ("{einspeisewacht}", "{speicherwacht}"),
+        }
+        for step, placeholders in variants.items():
+            text = steps[step]
+            assert {k: v for k, v in text.items() if k != "description"} == {
+                k: v for k, v in base.items() if k != "description"
+            }, (name, step)
+            assert text["description"].startswith(base["description"] + "\n\n")
+            for placeholder in placeholders:
+                assert placeholder in text["description"], (name, step)
+
+
 def test_price_change_fields_translated() -> None:
     step = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]["step"]
     fields = {"from"} | {key for kind in KINDS for key in change_fields(kind)}

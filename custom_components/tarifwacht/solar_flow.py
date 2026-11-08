@@ -1,13 +1,15 @@
 """Subentry flow "PV and battery": the meters and what feed-in earns.
 
 At most one per entry. Prefilled from an Einspeisewacht entry if there is
-one (feed-in meter, rate, the negative price rule, exchange price sensor);
-copied once, no dependency at runtime. Whether the battery sits behind the PV
+one (feed-in meter, rate, the negative price rule, exchange price sensor) and
+from a Speicherwacht entry (battery meters); copied once, no dependency at
+runtime. The form names the entries, or links the sisters if there is none. Whether the battery sits behind the PV
 inverter is asked in plain words, with the answer the data suggest.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date, timedelta
 from typing import Any
 
@@ -63,12 +65,17 @@ METERS = (
 )
 
 
-def from_einspeisewacht(hass: HomeAssistant) -> dict[str, Any]:
-    """Suggested values from an Einspeisewacht entry (the first one)."""
-    entries = hass.config_entries.async_entries("einspeisewacht")
-    if not entries:
-        return {}
-    data = entries[0].data
+EINSPEISEWACHT = "einspeisewacht"
+SPEICHERWACHT = "speicherwacht"
+# The form links the sisters when none is set up.
+SISTER_URLS = {
+    "einspeisewacht_url": "https://github.com/einspeisewacht/integration",
+    "speicherwacht_url": "https://github.com/speicherwacht/integration",
+}
+
+
+def from_einspeisewacht(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Suggested values from the data of an Einspeisewacht entry."""
     found: dict[str, Any] = {}
     if meter := data.get("meter_entity"):
         found[CONF_FEED_IN_ENTITY] = meter
@@ -86,6 +93,43 @@ def from_einspeisewacht(hass: HomeAssistant) -> dict[str, Any]:
             commissioned >= SECTION_51_FROM and data.get("smart_meter")
         )
     return found
+
+
+def from_speicherwacht(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Suggested battery meters from the data of a Speicherwacht entry."""
+    entities = data.get("entities") or {}
+    charged, discharged = entities.get("charged"), entities.get("discharged")
+    if not (charged and discharged):
+        return {}
+    return {CONF_CHARGED_ENTITY: charged, CONF_DISCHARGED_ENTITY: discharged}
+
+
+def from_sisters(hass: HomeAssistant) -> tuple[dict[str, Any], dict[str, str]]:
+    """Suggested values from the first Einspeisewacht and Speicherwacht entry,
+    and the titles of the entries that gave some (by domain)."""
+    values: dict[str, Any] = {}
+    sources: dict[str, str] = {}
+    for domain, read in (
+        (EINSPEISEWACHT, from_einspeisewacht),
+        (SPEICHERWACHT, from_speicherwacht),
+    ):
+        entries = hass.config_entries.async_entries(domain, include_ignore=False)
+        if not entries:
+            continue
+        found = {k: v for k, v in read(entries[0].data).items() if k not in values}
+        if found:
+            values.update(found)
+            sources[domain] = entries[0].title
+    return values, sources
+
+
+def suggestion_step(sources: Mapping[str, str]) -> str:
+    """The step whose text names where the suggestions come from."""
+    if not sources:
+        return "user"
+    if len(sources) > 1:
+        return "suggested_both"
+    return f"suggested_{next(iter(sources))}"
 
 
 def validate_meter(hass: HomeAssistant, entity_id: str, purchase: str) -> str | None:
@@ -186,6 +230,7 @@ class SolarSubentryFlow(ConfigSubentryFlow):
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
         self._detected: bool | None = None
+        self._placeholders: dict[str, str] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -193,9 +238,28 @@ class SolarSubentryFlow(ConfigSubentryFlow):
         entry = self._get_entry()
         if any(s.subentry_type == SUBENTRY_SOLAR for s in entry.subentries.values()):
             return self.async_abort(reason="single_solar")
-        return await self._async_meters(
-            "user", user_input, from_einspeisewacht(self.hass)
-        )
+        if user_input is not None:
+            return await self._async_meters("user", user_input, {})
+        values, sources = from_sisters(self.hass)
+        self._placeholders = {**SISTER_URLS, **sources}
+        return await self._async_meters(suggestion_step(sources), None, values)
+
+    # One step per source of the suggestions, so that each has its own text
+    # (see the battery steps below); "user" has none and shows the tip.
+    async def async_step_suggested_einspeisewacht(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return await self._async_meters("suggested_einspeisewacht", user_input, {})
+
+    async def async_step_suggested_speicherwacht(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return await self._async_meters("suggested_speicherwacht", user_input, {})
+
+    async def async_step_suggested_both(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return await self._async_meters("suggested_both", user_input, {})
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -236,7 +300,10 @@ class SolarSubentryFlow(ConfigSubentryFlow):
                 self._data[CONF_SAME_INVERTER] = False
                 return self._finish()
         return self.async_show_form(
-            step_id=step_id, data_schema=_schema(values), errors=errors
+            step_id=step_id,
+            data_schema=_schema(values),
+            errors=errors,
+            description_placeholders=self._placeholders,
         )
 
     def _has_market_tariff(self) -> bool:

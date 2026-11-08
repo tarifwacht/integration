@@ -128,10 +128,10 @@ async def test_battery_step_and_errors(hass: HomeAssistant) -> None:
     assert added.data[CONF_DISCHARGED_ENTITY] == DISCHARGED
 
 
-async def test_prefilled_from_einspeisewacht(hass: HomeAssistant) -> None:
-    set_sources(hass)
+def add_einspeisewacht(hass: HomeAssistant, title: str = "Dach") -> None:
     MockConfigEntry(
         domain="einspeisewacht",
+        title=title,
         data={
             "meter_entity": FEED_IN,
             "rates": [7.94],
@@ -140,12 +140,119 @@ async def test_prefilled_from_einspeisewacht(hass: HomeAssistant) -> None:
             "smart_meter": True,
         },
     ).add_to_hass(hass)
+
+
+def add_speicherwacht(
+    hass: HomeAssistant, title: str, charged: str, discharged: str
+) -> None:
+    MockConfigEntry(
+        domain="speicherwacht",
+        title=title,
+        data={
+            "name": title,
+            "entities": {
+                "charged": charged,
+                "discharged": discharged,
+                "soc": "sensor.battery_soc",
+            },
+            "capacity": 10.0,
+        },
+    ).add_to_hass(hass)
+
+
+async def test_tip_without_sisters(hass: HomeAssistant) -> None:
+    set_sources(hass)
     entry = mock_entry()
     entry.add_to_hass(hass)
     result = await start_solar(hass, entry)
+    # "user" carries the tip with links to both sisters.
+    assert result["step_id"] == "user"
+    placeholders = result["description_placeholders"]
+    assert placeholders["einspeisewacht_url"] == (
+        "https://github.com/einspeisewacht/integration"
+    )
+    assert placeholders["speicherwacht_url"] == (
+        "https://github.com/speicherwacht/integration"
+    )
+    assert suggested(result, CONF_FEED_IN_ENTITY) is None
+    # An error shows the same step with its tip again.
+    result = await configure(hass, result, solar_input(**{CONF_FEED_IN_ENTITY: METER}))
+    assert result["step_id"] == "user"
+    assert result["description_placeholders"]["speicherwacht_url"]
+
+
+async def test_prefilled_from_einspeisewacht(hass: HomeAssistant) -> None:
+    set_sources(hass)
+    add_einspeisewacht(hass)
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    result = await start_solar(hass, entry)
+    assert result["step_id"] == "suggested_einspeisewacht"
+    assert result["description_placeholders"]["einspeisewacht"] == "Dach"
     assert suggested(result, CONF_FEED_IN_ENTITY) == FEED_IN
     assert suggested(result, CONF_FEED_IN_RATE) == 7.94
     assert suggested(result, "market_entity") == PRICE
+    assert suggested(result, CONF_CHARGED_ENTITY) is None
+    with patch("custom_components.tarifwacht.async_setup_entry", return_value=True):
+        result = await configure(
+            hass, result, solar_input(**{CONF_FEED_IN_ENTITY: METER})
+        )
+        assert result["step_id"] == "suggested_einspeisewacht"
+        assert result["errors"] == {CONF_FEED_IN_ENTITY: "same_as_purchase"}
+        result = await configure(hass, result, solar_input())
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_prefilled_from_speicherwacht(hass: HomeAssistant) -> None:
+    set_sources(hass)
+    # An ignored Einspeisewacht entry has no data and is no source.
+    MockConfigEntry(domain="einspeisewacht", source="ignore", data={}).add_to_hass(hass)
+    # Two storages: the first one is used and named.
+    add_speicherwacht(hass, "Speicher", CHARGED, DISCHARGED)
+    add_speicherwacht(hass, "Balkon", "sensor.other_charged", "sensor.other_out")
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    result = await start_solar(hass, entry)
+    assert result["step_id"] == "suggested_speicherwacht"
+    assert result["description_placeholders"]["speicherwacht"] == "Speicher"
+    assert suggested(result, CONF_CHARGED_ENTITY) == CHARGED
+    assert suggested(result, CONF_DISCHARGED_ENTITY) == DISCHARGED
+    assert suggested(result, CONF_FEED_IN_ENTITY) is None
+    result = await configure(
+        hass,
+        result,
+        solar_input(
+            **{CONF_CHARGED_ENTITY: CHARGED, CONF_DISCHARGED_ENTITY: DISCHARGED}
+        ),
+    )
+    assert result["step_id"] == "battery_unknown"
+
+
+async def test_prefilled_from_both(hass: HomeAssistant) -> None:
+    set_sources(hass)
+    add_einspeisewacht(hass)
+    add_speicherwacht(hass, "Speicher", CHARGED, DISCHARGED)
+    entry = mock_entry()
+    entry.add_to_hass(hass)
+    result = await start_solar(hass, entry)
+    assert result["step_id"] == "suggested_both"
+    assert result["description_placeholders"]["einspeisewacht"] == "Dach"
+    assert result["description_placeholders"]["speicherwacht"] == "Speicher"
+    assert suggested(result, CONF_FEED_IN_ENTITY) == FEED_IN
+    assert suggested(result, CONF_CHARGED_ENTITY) == CHARGED
+
+
+async def test_reconfigure_without_hint(hass: HomeAssistant) -> None:
+    set_sources(hass)
+    add_einspeisewacht(hass)
+    entry = solar_entry()
+    entry.add_to_hass(hass)
+    solar = next(
+        s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_SOLAR
+    )
+    result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
+    assert result["step_id"] == "reconfigure"
+    assert not result["description_placeholders"]
 
 
 def solar_entry() -> MockConfigEntry:

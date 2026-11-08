@@ -252,7 +252,73 @@
       "step": {
         "user": {
           "title": "PV and battery",
-          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.\n\nTip: if you also use [Einspeisewacht]({einspeisewacht_url}) or [Speicherwacht]({speicherwacht_url}), these fields are filled in already.",
+          "data": {
+            "feed_in_entity": "Feed-in meter",
+            "pv_entity": "PV meter",
+            "charged_entity": "Battery charged",
+            "discharged_entity": "Battery discharged",
+            "feed_in_rate": "Feed-in tariff",
+            "negative_unpaid": "No payment at negative prices",
+            "market_entity": "Exchange price sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
+            "pv_entity": "PV energy (kWh counter). With a battery on the same inverter (hybrid inverter): its AC output.",
+            "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
+            "discharged_entity": "Optional: energy out of the battery (kWh counter).",
+            "feed_in_rate": "What you get per kWh fed in.",
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
+            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          }
+        },
+        "suggested_einspeisewacht": {
+          "title": "PV and battery",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.\n\nMeters suggested from Einspeisewacht “{einspeisewacht}” – please check.",
+          "data": {
+            "feed_in_entity": "Feed-in meter",
+            "pv_entity": "PV meter",
+            "charged_entity": "Battery charged",
+            "discharged_entity": "Battery discharged",
+            "feed_in_rate": "Feed-in tariff",
+            "negative_unpaid": "No payment at negative prices",
+            "market_entity": "Exchange price sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
+            "pv_entity": "PV energy (kWh counter). With a battery on the same inverter (hybrid inverter): its AC output.",
+            "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
+            "discharged_entity": "Optional: energy out of the battery (kWh counter).",
+            "feed_in_rate": "What you get per kWh fed in.",
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
+            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          }
+        },
+        "suggested_speicherwacht": {
+          "title": "PV and battery",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.\n\nMeters suggested from Speicherwacht “{speicherwacht}” – please check.",
+          "data": {
+            "feed_in_entity": "Feed-in meter",
+            "pv_entity": "PV meter",
+            "charged_entity": "Battery charged",
+            "discharged_entity": "Battery discharged",
+            "feed_in_rate": "Feed-in tariff",
+            "negative_unpaid": "No payment at negative prices",
+            "market_entity": "Exchange price sensor"
+          },
+          "data_description": {
+            "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
+            "pv_entity": "PV energy (kWh counter). With a battery on the same inverter (hybrid inverter): its AC output.",
+            "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
+            "discharged_entity": "Optional: energy out of the battery (kWh counter).",
+            "feed_in_rate": "What you get per kWh fed in.",
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
+            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          }
+        },
+        "suggested_both": {
+          "title": "PV and battery",
+          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.\n\nMeters suggested from Einspeisewacht “{einspeisewacht}” and Speicherwacht “{speicherwacht}” – please check.",
           "data": {
             "feed_in_entity": "Feed-in meter",
             "pv_entity": "PV meter",
