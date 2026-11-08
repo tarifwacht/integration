@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Plausibilitätsprüfung: Fehlwert über mehrere Stunden.** Stand ein falscher Zählerwert (z. B. Wh als kWh) länger als eine Stunde an, wurde das Zurückfallen danach als neuer Zählerzyklus gebucht, solange er unter 150 kWh blieb. Jetzt fällt es auch dann heraus.
+
 ## 0.2.4 – 2026-11-08
 
 - **Neu: Schaltfläche „Statistik neu berechnen“** am Gerät des Zählers (unter *Konfiguration*). Korrigierst du einen Tarif – Preise, Grundpreis, Preisänderung ab einem Datum, Modul 3, aktueller Tarif – oder PV und Speicher, rechnen Sensoren und „Tarife vergleichen“ sofort mit den neuen Werten, die Langzeitstatistik vergangener Stunden (Statistik-Diagramme, Werte je Tag und Monat, die Karte) behielt aber die alten, auch nachgetragene. Die Schaltfläche berechnet die Statistik aller Tarifwacht-Sensoren mit Summe von ihrem ersten Wert bis zur letzten vollen Stunde mit den aktuellen Tarifen neu; die Statistik danach schließt ohne Sprung an. Das Ergebnis erscheint als Benachrichtigung (Zeitraum, Änderung der Summe je Sensor, ausgelassene Tarife). Nach einer Tarifänderung erinnert ein Reparaturhinweis daran; er verschwindet nach dem Neuberechnen.

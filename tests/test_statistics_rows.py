@@ -146,6 +146,21 @@ def test_unit_glitch_in_the_statistics_is_left_out() -> None:
     assert plausible_hours([(hour, 150.1, None)])[1] == [hour]
 
 
+def test_a_wrong_reading_lasting_hours_is_still_caught() -> None:
+    """The wrong reading stays two hours before the state falls back: the
+    fall back (a new cycle of 110 kWh, under the bound) is still left out."""
+    hour = utc(2025, 9, 24, 13)
+    rows = [
+        (hour, 109744.5, 109851.5),
+        (hour + HOUR, 0.0, 109851.5),
+        (hour + 2 * HOUR, 110.131, 110.131),
+        (hour + 3 * HOUR, 1.914, 112.045),
+    ]
+    kept, left_out = plausible_hours(rows)
+    assert left_out == [hour, hour + 2 * HOUR]
+    assert kept == [(hour + HOUR, 0.0), (hour + 3 * HOUR, 1.914)]
+
+
 def test_a_new_cycle_without_a_jump_stays() -> None:
     """A state that falls without a jump before (meter reset to 0): the
     hour's change is the new reading and stays."""

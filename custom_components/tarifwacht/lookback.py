@@ -53,7 +53,9 @@ def plausible_hours(
     107 -> 109851.5), less than 0 (meter replaced or reset in the
     statistics), and the hour after a jump in which the state falls again
     (109851.5 -> 110.131): Home Assistant takes that for a new cycle and adds
-    the whole reading (110 kWh) to the sum.
+    the whole reading (110 kWh) to the sum. Also when the wrong reading lasted a few
+    hours: until the state falls below the jump's, the fall back is expected
+    (same rule as Wärmewacht's plausible.py).
     """
     kept: list[tuple[datetime, float]] = []
     left_out: list[datetime] = []
@@ -65,7 +67,9 @@ def plausible_hours(
             jump_state = state if change > max_kwh else None
         else:
             kept.append((hour, change))
-            jump_state = None
+            # A wrong reading may last a few hours: the fall back comes later.
+            if state is None:
+                jump_state = None
     return kept, left_out
 
 
