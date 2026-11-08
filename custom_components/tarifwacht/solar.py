@@ -28,6 +28,9 @@ Feed-in: a fixed rate; with `negative_unpaid` (§ 51 EEG, plants from
 day-ahead price.
 
 Pure Python, no Home Assistant imports.
+
+Copies: waermewacht/custom_components/waermewacht/solar.py (verbatim excerpt:
+HourFlows, SolarSettings, detect_same_inverter).
 """
 
 from __future__ import annotations

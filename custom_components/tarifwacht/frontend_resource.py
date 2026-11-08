@@ -15,6 +15,13 @@ by the app itself, after the polyfill.
 
 With resources in YAML mode they cannot be changed, so the card falls back
 to the extra module URL.
+
+Derived from
+streckenwacht/custom_components/streckenwacht/frontend_resource.py (as of
+a248633), adapted: card name in the log messages, card URL from cards.py, note
+on the frontend polyfill up to Home Assistant 2026.10. A bug there may be here
+too; tools/check_shared.py in the parent folder reports changes to the
+original.
 """
 
 from __future__ import annotations

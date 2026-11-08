@@ -3,7 +3,10 @@
 All German offsets are whole hours, so flooring in UTC gives the same slot
 boundaries as local time, also on DST changeover days (92 or 100 slots).
 
-Copied from Einspeisewacht (commit e4fd5fc), developed independently since.
+Derived from einspeisewacht/custom_components/einspeisewacht/timeslots.py (as
+of 9d42dcc), adapted: split_interval only linear (no weight by the sun's
+height). A bug there may be here too; tools/check_shared.py in the parent
+folder reports changes to the original.
 """
 
 from __future__ import annotations

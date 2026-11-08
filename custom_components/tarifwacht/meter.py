@@ -1,6 +1,10 @@
 """Turn readings of a cumulative energy meter into energy per quarter hour.
 
-Copied from Einspeisewacht (commit e4fd5fc), developed independently since.
+Derived from einspeisewacht/custom_components/einspeisewacht/meter.py (as of
+1a69db8), adapted: no spreading of long gaps by a weight (GAP), no aliases of
+a renamed meter (rename.py moves the stored state), limits described for grid
+purchase. A bug there may be here too; tools/check_shared.py in the parent
+folder reports changes to the original.
 """
 
 from __future__ import annotations

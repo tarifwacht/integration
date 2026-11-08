@@ -7,7 +7,10 @@ day-ahead price for the bidding zone DE-LU in EUR/MWh, delivered in weekly
 files that start on Monday 00:00 local time. Before 1 October 2025 the
 quarter-hour series repeats each hourly price four times.
 
-Copied from Einspeisewacht (commit 65857dc), developed independently since.
+Derived from einspeisewacht/custom_components/einspeisewacht/smard.py (as of
+aec036e), adapted: helper week_start instead of _moment, own purpose in the
+docstring. A bug there may be here too; tools/check_shared.py in the parent
+folder reports changes to the original.
 
 Data: Bundesnetzagentur | SMARD.de, CC BY 4.0.
 """

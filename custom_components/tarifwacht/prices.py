@@ -1,6 +1,9 @@
 """Day-ahead prices per quarter hour, parsed from price sensor forecasts.
 
-Copied from Einspeisewacht (commit e4fd5fc), developed independently since.
+Derived from einspeisewacht/custom_components/einspeisewacht/prices.py (as of
+9d42dcc), adapted: extended by the Nord Pool and ENTSO-E formats, prices from
+recorder states and a PriceTable on SlotSeries. A bug there may be here too;
+tools/check_shared.py in the parent folder reports changes to the original.
 """
 
 from __future__ import annotations
