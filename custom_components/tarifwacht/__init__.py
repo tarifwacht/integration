@@ -25,7 +25,7 @@ from homeassistant.util.hass_dict import HassKey
 from .cards import async_setup_cards
 from .const import CONF_KEY, DOMAIN, SUBENTRY_TARIFF, TARIFF_DYNAMIC
 from .frontend_resource import async_register_card, async_unregister_card
-from .outdated import async_mark_outdated
+from .outdated import async_mark_outdated, merge_stale, stale_statistics
 from .rename import renamed_data, renamed_tariff, renamed_unique_id, sources
 from .runtime import MeterRuntime, tariff_subentries
 from .services import async_setup_services
@@ -174,6 +174,15 @@ async def _async_update_listener(
         # follow by themselves: repair issue naming the button.
         async_mark_outdated(
             hass, entry, runtime.subentry_data, runtime.engine.started, dt_util.utcnow()
+        )
+        # Which sensors from when: the button rewrites only those. Stored by
+        # the stop before the reload.
+        merge_stale(
+            runtime.engine.stale_statistics,
+            stale_statistics(
+                runtime.subentry_data,
+                {key: s.data for key, s in entry.subentries.items()},
+            ),
         )
     hass.config_entries.async_schedule_reload(entry.entry_id)
 

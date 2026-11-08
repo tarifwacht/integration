@@ -101,6 +101,42 @@ def bonus_of(data: Mapping[str, Any]) -> tuple[float, datetime | None]:
     return amount, change_start({CONF_FROM: day})
 
 
+# What a tariff's own costs do not depend on (the current tariff only moves
+# the differences), and what changes them only from a date on.
+_NOT_OWN_COSTS = (CONF_CURRENT,)
+_FROM_A_DATE = (CONF_CHANGES, CONF_BONUS, CONF_BONUS_DATE)
+
+
+def stale_since(
+    old: Mapping[str, Any], new: Mapping[str, Any]
+) -> tuple[bool, datetime | None]:
+    """Whether a changed tariff changes its own costs, and from when.
+
+    (False, None): unchanged. (True, moment): from that UTC instant on -
+    the earliest price change added, removed or altered, or the bonus's
+    date (old or new). (True, None): from the start (the values from the
+    start, Modul 3 from the start, the kind or the price sensor).
+    """
+
+    def rest(data: Mapping[str, Any]) -> dict[str, Any]:
+        skip = (*_NOT_OWN_COSTS, *_FROM_A_DATE)
+        return {k: v for k, v in data.items() if k not in skip}
+
+    if rest(old) != rest(new):
+        return True, None
+    moments: list[datetime] = []
+    before = {c[CONF_FROM]: c for c in old.get(CONF_CHANGES) or []}
+    after = {c[CONF_FROM]: c for c in new.get(CONF_CHANGES) or []}
+    for day in before.keys() | after.keys():
+        if before.get(day) != after.get(day):
+            moments.append(change_start({CONF_FROM: day}))
+    if (old_bonus := bonus_of(old)) != (new_bonus := bonus_of(new)):
+        moments += [at for _, at in (old_bonus, new_bonus) if at is not None]
+    if not moments:
+        return False, None
+    return True, min(moments)
+
+
 def state_at(data: Mapping[str, Any], day: date) -> dict[str, Any]:
     """The tariff's values valid on `day`: the start values plus all changes
     from before or on that day."""

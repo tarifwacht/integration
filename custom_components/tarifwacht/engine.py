@@ -98,6 +98,10 @@ class Engine:
     # UTC days before this are stored in yearly archives, not in the live state.
     archived_until: date | None = None
     meter_events: Counter[str] = field(default_factory=Counter)
+    # Sensors whose statistics a tariff change made stale (unique id suffix
+    # -> first stale moment, None: all); the recalculation uses and clears
+    # it (outdated.stale_statistics). Stored, so it survives a restart.
+    stale_statistics: dict[str, datetime | None] = field(default_factory=dict)
     last_parse: dict[str, ParsedPrices] = field(default_factory=dict)
     # Derived, not stored.
     energy: float = 0.0
@@ -382,6 +386,10 @@ class Engine:
             else None,
             "archived_until": days_from.isoformat() if days_from else None,
             "meter_events": dict(self.meter_events),
+            "stale_statistics": {
+                suffix: since.isoformat() if since else None
+                for suffix, since in self.stale_statistics.items()
+            },
         }
 
     def archive_dict(self, year: int, before: date) -> dict[str, Any]:
@@ -410,6 +418,10 @@ class Engine:
         archived = data.get("archived_until")
         self.archived_until = date.fromisoformat(archived) if archived else None
         self.meter_events = Counter(data.get("meter_events", {}))
+        self.stale_statistics = {
+            suffix: datetime.fromisoformat(since) if since else None
+            for suffix, since in (data.get("stale_statistics") or {}).items()
+        }
 
     def restore_archive(self, data: dict[str, Any]) -> None:
         """Add an archived year; days in the live state take precedence."""

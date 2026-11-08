@@ -16,7 +16,11 @@ replaces the hourly rows (and the short-term rows of the last days) from
 each sensor's first row (or the chosen day) up to the last compiled hour
 with values computed like the import, and shifts the rows after it so Home
 Assistant continues without a jump (statistics_rows.py, docs/ENTWICKLUNG.md
-"Statistik neu berechnen").
+"Statistik neu berechnen"). The button rewrites only the sensors a change
+made stale, from the earliest moment that changed (`stale_statistics`;
+unknown: all of them, from the first row). Rows whose values stay are not
+written at all: small hardware (an SD card) gets no needless writes, and a
+second press writes nothing.
 
 A tariff without the price of a quarter hour in the period is skipped as a
 whole: no gaps in the permanent statistics.
@@ -25,6 +29,7 @@ whole: no gaps in the permanent statistics.
 from __future__ import annotations
 
 import asyncio
+import math
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
@@ -61,6 +66,7 @@ from .statistics_rows import Row, add_values, build_rows, place_savings, total_b
 
 if TYPE_CHECKING:
     from . import TarifwachtConfigEntry
+    from .engine import Engine
     from .runtime import SolarHourly
 
 # One import or recalculation per entry at a time (kept across reloads).
@@ -73,6 +79,8 @@ EPOCH = datetime(2000, 1, 1, tzinfo=UTC)
 # for 10 days by default. Older ones (with a longer `purge_keep_days`) stay
 # as they are; only 5-minute graphs of that time show them.
 SHORT_TERM_PERIOD = timedelta(days=10)
+# A recalculated row differing from the stored one by less is not written.
+ROW_TOLERANCE = 1e-6
 
 
 class StatisticsImportError(Exception):
@@ -152,6 +160,30 @@ def _targets(
         if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
             solar_targets[entity_id] = solar_target
     return targets, solar_targets
+
+
+def _suffixes(
+    hass: HomeAssistant, entry: TarifwachtConfigEntry, ids: Iterable[str]
+) -> dict[str, str]:
+    """Entity id -> unique id without the entry id (`fixed_cost`)."""
+    registry = er.async_get(hass)
+    prefix = f"{entry.entry_id}_"
+    return {
+        entity_id: found.unique_id.removeprefix(prefix)
+        for entity_id in ids
+        if (found := registry.async_get(entity_id)) is not None
+    }
+
+
+def _changed(row: Row, old: tuple[float | None, float] | None) -> bool:
+    """Whether a recalculated row differs from the stored one."""
+    if old is None or old[0] is None:
+        return True
+    _, state, total = row
+    return not (
+        math.isclose(state, old[0], rel_tol=1e-9, abs_tol=ROW_TOLERANCE)
+        and math.isclose(total, old[1], rel_tol=1e-9, abs_tol=ROW_TOLERANCE)
+    )
 
 
 def implausible_summary(hours: Iterable[datetime]) -> dict[str, Any] | None:
@@ -367,6 +399,11 @@ class _Plan:
     latest: tuple[datetime, float | None, float] | None
     # Rows reach back to the sensor's first one (nothing old left before).
     from_first: bool
+    # The stored rows (start -> (state, sum)), to write only changed ones.
+    old_hours: dict[datetime, tuple[float | None, float]]
+    old_short: dict[datetime, tuple[float | None, float]]
+    # Recalculated from this moment on (None: from the first row).
+    covers: datetime | None
 
 
 @dataclass
@@ -396,7 +433,9 @@ def _read_statistics(
     hass: HomeAssistant, ids: set[str], now: datetime
 ) -> tuple[dict[str, list[Any]], dict[str, list[Any]]]:
     """All hourly rows and the short-term rows of the last days."""
-    hours = statistics_during_period(hass, EPOCH, None, ids, "hour", None, {"sum"})
+    hours = statistics_during_period(
+        hass, EPOCH, None, ids, "hour", None, {"state", "sum"}
+    )
     short = statistics_during_period(
         hass,
         period_start(now - SHORT_TERM_PERIOD, HOUR),
@@ -428,9 +467,14 @@ def _merge_savings(
 async def async_recalculate(
     hass: HomeAssistant, entry: TarifwachtConfigEntry, first_day: date | None = None
 ) -> dict[str, Any]:
-    """Recalculate the statistics of every sensor with a sum, from its first
-    row (or from `first_day`, filling the time before the first row like the
-    import) up to the last compiled hour, with the current tariffs.
+    """Recalculate the statistics of the sensors with a sum up to the last
+    compiled hour, with the current tariffs.
+
+    Without `first_day` (the button): the sensors a change made stale, each
+    from its stale moment; if none is known, every sensor from its first
+    row. With `first_day` (the action with `replace`): every sensor from
+    that day, filling the time before its first row like the import. Rows
+    that keep their values are not written.
 
     Raises StatisticsImportError, or SmardError if exchange prices are needed
     and cannot be loaded.
@@ -439,15 +483,38 @@ async def async_recalculate(
     if lock.locked():
         raise StatisticsImportError("busy")
     async with lock:
-        result, from_first = await _async_recalculate(hass, entry, first_day)
-    if from_first:
+        result, up_to_date = await _async_recalculate(hass, entry, first_day)
+    if up_to_date:
         async_clear_outdated(hass, entry.entry_id)
     return result
+
+
+def _clear_stale(
+    engine: Engine, done: Mapping[str, datetime | None], nothing: Iterable[str]
+) -> bool:
+    """Forget the stale sensors now recalculated (`done`: suffix -> covered
+    from, None: from the first row) or without anything to recalculate.
+    True if one was stale before and none is left."""
+    stale: dict[str, datetime | None] = engine.stale_statistics
+    if not stale:
+        return False
+    for suffix in [*nothing, *done]:
+        if suffix not in stale:
+            continue
+        covers, since = done.get(suffix), stale[suffix]
+        if (
+            suffix not in done
+            or covers is None
+            or (since is not None and covers <= since)
+        ):
+            del stale[suffix]
+    return not stale
 
 
 async def _async_recalculate(
     hass: HomeAssistant, entry: TarifwachtConfigEntry, first_day: date | None
 ) -> tuple[dict[str, Any], bool]:
+    """The result, and whether no statistics are stale any more."""
     runtime = entry.runtime_data
     engine = runtime.engine
     if engine.started is None:
@@ -456,6 +523,17 @@ async def _async_recalculate(
     setup_hour = hour_start(started)
     targets, solar_targets = _targets(hass, entry)
     ids = set(targets) | set(solar_targets)
+    suffixes = _suffixes(hass, entry, ids)
+    # The button: only the sensors a change made stale, each from its moment
+    # (outdated.stale_statistics). Unknown: all of them, from the first row.
+    stale = dict(engine.stale_statistics) if first_day is None else {}
+    partial = bool(stale)
+    nothing: set[str] = set()  # stale, but no statistics to recalculate
+    if partial:
+        nothing |= set(stale) - set(suffixes.values())
+        ids = {entity_id for entity_id in ids if suffixes.get(entity_id) in stale}
+        targets = {e: v for e, v in targets.items() if e in ids}
+        solar_targets = {e: v for e, v in solar_targets.items() if e in ids}
     instance = get_instance(hass)
     # Rows still in the recorder's queue or session are written first.
     await instance.async_block_till_done()
@@ -478,12 +556,14 @@ async def _async_recalculate(
     plans: dict[str, _Plan] = {}
     with_rows = False
     for entity_id in sorted(ids):
+        suffix = suffixes.get(entity_id, entity_id)
         old = [
-            (dt_util.utc_from_timestamp(r["start"]), r["sum"])
+            (dt_util.utc_from_timestamp(r["start"]), r.get("state"), r["sum"])
             for r in hours_read.get(entity_id, [])
             if r.get("sum") is not None
         ]
         if not old:
+            nothing.add(suffix)
             continue  # no statistics: left alone
         with_rows = True
         short = [
@@ -492,17 +572,27 @@ async def _async_recalculate(
             if r.get("sum") is not None
         ]
         first = old[0][0]
-        whole = requested is None or requested <= first
-        if whole:
-            start, base = requested or first, 0.0
+        if partial:
+            # Stale from a moment: never before the first row (no filling).
+            since = stale[suffix]
+            whole = since is None or since <= first
+            start = first if whole else since
         else:
-            start = requested
-            base = next(total for moment, total in reversed(old) if moment < start)
+            since = requested
+            whole = requested is None or requested <= first
+            start = (requested or first) if whole else requested
+        assert start is not None
+        base = (
+            0.0
+            if whole
+            else next(total for moment, _, total in reversed(old) if moment < start)
+        )
         if start >= setup_hour:
             # From the setup on: what the sensor counted itself.
             start = max(start, started)
         end = hour_start(short[-1][0]) if short else old[-1][0] + HOUR
         if start >= end:
+            nothing.add(suffix)  # e.g. a bonus still to come
             continue
         keep = {moment for moment, _, _ in short if start <= moment < end}
         plans[entity_id] = _Plan(
@@ -512,12 +602,18 @@ async def _async_recalculate(
             short=keep,
             short_from=max(start, hour_start(min(keep))) if keep else None,
             old_end=next(
-                (total for moment, total in reversed(old) if moment < end), None
+                (total for moment, _, total in reversed(old) if moment < end), None
             ),
             latest=short[-1] if short else None,
             from_first=whole,
+            old_hours={moment: (state, total) for moment, state, total in old},
+            old_short={moment: (state, total) for moment, state, total in short},
+            covers=None if whole else since,
         )
     if not plans:
+        if _clear_stale(engine, {}, nothing):
+            runtime.save_later()
+            async_clear_outdated(hass, entry.entry_id)
         raise StatisticsImportError(
             "nothing_to_recalculate" if with_rows else "no_statistics_yet"
         )
@@ -602,6 +698,8 @@ async def _async_recalculate(
         "skipped": [],
     }
     from_first = True
+    # Stale sensors recalculated: suffix -> from when (None: the first row).
+    done: dict[str, datetime | None] = {}
     started_at = runtime.started_at
     for entity_id, plan in plans.items():
         if entity_id not in metadata:
@@ -687,20 +785,24 @@ async def _async_recalculate(
             elif plan.old_end is not None:
                 delta = new_end - plan.old_end
         meta = metadata[entity_id][1]
-        async_import_statistics(
-            hass,
-            meta,
-            [
-                StatisticData(start=t, state=state, sum=total)
-                for t, state, total in rows
-            ],
-        )
-        if short_rows:
+        # Only rows whose values change: no needless writes (SD cards).
+        hours_written = [r for r in rows if _changed(r, plan.old_hours.get(r[0]))]
+        short_written = [r for r in short_rows if _changed(r, plan.old_short.get(r[0]))]
+        if hours_written:
+            async_import_statistics(
+                hass,
+                meta,
+                [
+                    StatisticData(start=t, state=state, sum=total)
+                    for t, state, total in hours_written
+                ],
+            )
+        if short_written:
             instance.async_import_statistics(
                 meta,
                 [
                     StatisticData(start=t, state=state, sum=total)
-                    for t, state, total in short_rows
+                    for t, state, total in short_written
                 ],
                 StatisticsShortTerm,
             )
@@ -709,11 +811,14 @@ async def _async_recalculate(
                 entity_id, plan.end, delta, meta["unit_of_measurement"] or ""
             )
         from_first &= plan.from_first
+        done[suffixes.get(entity_id, entity_id)] = plan.covers
         result["sensors"][entity_id] = {
             "from": dt_util.as_local(plan.start).isoformat(),
             "until": dt_util.as_local(plan.end).isoformat(),
             "hours": len(rows),
             "short_term": len(short_rows),
+            "hours_written": len(hours_written),
+            "short_term_written": len(short_written),
             "change": None
             if plan.old_end is None
             else round(new_end - plan.old_end, 4),
@@ -726,8 +831,12 @@ async def _async_recalculate(
         result["exchange_prices"] = ATTRIBUTION
     if summary := implausible_summary(implausible):
         result["hours_implausible"] = summary
+    had_stale = bool(engine.stale_statistics)
+    if (none_left := _clear_stale(engine, done, nothing)) or had_stale:
+        runtime.save_later()
     if not result["sensors"]:
         raise StatisticsImportError(
             "prices_missing" if result["skipped"] else "nothing_to_recalculate"
         )
-    return result, from_first and not result["skipped"]
+    up_to_date = not result["skipped"] and (from_first or none_left)
+    return result, up_to_date

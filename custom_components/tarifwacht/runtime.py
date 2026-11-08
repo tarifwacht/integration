@@ -991,6 +991,10 @@ class MeterRuntime:
             "%s: %s readings read from the recorder", self.name, len(readings)
         )
 
+    def save_later(self) -> None:
+        """Write the state with the usual delay (no extra write)."""
+        self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
+
     async def async_stop(self) -> None:
         """Stop listening and write the state."""
         self._stopped = True
