@@ -183,9 +183,11 @@ Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stund
 
 Tarifwacht bringt eine eigene Karte mit, ganz ohne Zusatzkarten aus HACS. Sie zeigt auf einen Blick, **was dein Tarif kostet, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen** – heute, im Monat und im Kalenderjahr. Ausprobieren: [Demo](https://tarifwacht.github.io/integration/?lang=de).
 
+<img alt="Karte „Tarifwacht“ mit drei Tarifen, PV und Speicher und Säulen je Monat (Demo, erfundene Werte)" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/karte.png" width="640">
+
 *Dashboard bearbeiten → Karte hinzufügen* und nach „Tarifwacht“ suchen. Die Dashboard-Ressource trägt Tarifwacht selbst ein (*Einstellungen → Dashboards → ⋮ → Ressourcen*, beim Entfernen des letzten Eintrags wieder ausgetragen; bei Ressourcen im YAML-Modus lädt Home Assistant die Karte stattdessen direkt). Im Editor wählst du nur den Eintrag (seinen Sensor „Günstigster Tarif“); Tarife, deren Sensoren und PV und Speicher findet die Karte selbst, auch nach dem Umbenennen von Entitäten.
 
-- **Kopfzeile:** dein Tarif (der als aktuell markierte) und ob er bisher am günstigsten war – sonst, welcher Tarif wie viel günstiger gewesen wäre. „Bisher“ heißt seit der Einrichtung, wie beim Sensor „Günstigster Tarif“.
+- **Kopfzeile:** dein Tarif (der als aktuell markierte) und ob er dieses Jahr am günstigsten war – sonst, welcher Tarif wie viel günstiger gewesen wäre. Gezählt wird das Kalenderjahr bis jetzt, wie in der Spalte „Jahr“ (der Betrag ist dort der Unterschied dieses Tarifs); im Jahr der Einrichtung ab der Einrichtung, mit [Statistik nachtragen](#statistik-nachtragen) ab dem 1. Januar. Der Sensor „Günstigster Tarif“ zählt dagegen seit der Einrichtung.
 - **Tarife:** Kosten gesamt (mit Grundpreis) je Tarif heute, im Monat und im Jahr, dazu der Durchschnittspreis seit der Einrichtung (Ø). Dein Tarif steht oben und ist hervorgehoben; unter jedem anderen Tarif der **Unterschied** zu deinem, rot wenn er teurer gewesen wäre, grün wenn günstiger.
 - **PV und Speicher** (nur mit [PV und Speicher](#pv-und-speicher)): was PV und Speicher mit deinem Tarif gespart haben, zusammen und einzeln (die Zeile Speicher nur mit Speicherzählern), und darunter, was sie zusammen mit jedem anderen Tarif gespart hätten.
 - **Diagramm:** Säulen der letzten zwölf Monate – Kosten je Tarif und die Ersparnis durch PV und Speicher mit deinem Tarif.

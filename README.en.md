@@ -185,9 +185,11 @@ For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for i
 
 Tarifwacht brings a card of its own, no extra cards from HACS needed. At a glance it shows **what your tariff costs, whether another one would have been cheaper and what PV and battery save** – today, this month and this calendar year. Try it: [demo](https://tarifwacht.github.io/integration/?lang=en).
 
+<img alt="The Tarifwacht card with three tariffs, PV and battery and bars per month (demo, made-up values)" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/karte-en.png" width="640">
+
 *Edit dashboard → Add card* and search for "Tarifwacht". Tarifwacht adds the dashboard resource itself (*Settings → Dashboards → ⋮ → Resources*, removed again with the last entry; with resources in YAML mode Home Assistant loads the card directly instead). In the editor you only choose the entry (its sensor "Cheapest tariff"); the card finds the tariffs, their sensors and PV and battery itself, also after entities were renamed.
 
-- **Headline:** your tariff (the one marked current) and whether it has been the cheapest so far – otherwise which tariff would have been how much cheaper. "So far" means since the setup, as with the sensor "Cheapest tariff".
+- **Headline:** your tariff (the one marked current) and whether it has been the cheapest this year – otherwise which tariff would have been how much cheaper. It counts the calendar year until now, as the column "Year" does (the amount is that tariff's difference there); in the year of the setup from the setup, with [import statistics](#import-statistics) from 1 January. The sensor "Cheapest tariff", by contrast, counts since the setup.
 - **Tariffs:** total cost (base price included) per tariff today, this month and this year, plus the average price since the setup (Ø). Your tariff is on top and highlighted; below every other tariff its **difference** to yours, red if it would have cost more, green if less.
 - **PV and battery** (only with [PV and battery](#pv-and-battery)): what PV and battery saved with your tariff, together and each (the battery row only with battery meters), and below, what they would have saved together with every other tariff.
 - **Chart:** bars of the last twelve months – cost per tariff and the saving by PV and battery with your tariff.

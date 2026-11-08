@@ -34,9 +34,9 @@ const TEXT = {
     describe: "Was dein Tarif kostet, ob ein anderer günstiger wäre und was PV und Speicher sparen – heute, im Monat und im Jahr.",
     noEntry: "Kein Tarifwacht-Eintrag gefunden. Wähle im Editor den Sensor „Günstigster Tarif“ eines Eintrags.",
     yourTariff: "Dein Tarif:",
-    cheapestSoFar: "bisher am günstigsten",
-    cheaper: (name, amount) => `${name} wäre bisher ${amount} günstiger gewesen`,
-    cheapestIs: "Bisher am günstigsten:",
+    cheapestThisYear: "dieses Jahr am günstigsten",
+    cheaper: (name, amount) => `${name} wäre dieses Jahr ${amount} günstiger gewesen`,
+    cheapestIs: "Dieses Jahr am günstigsten:",
     periods: { day: "Heute", month: "Monat", year: "Jahr" },
     average: "Ø",
     averageHint: "Durchschnittspreis seit der Einrichtung, mit Grundpreis",
@@ -65,9 +65,9 @@ const TEXT = {
     describe: "What your tariff costs, whether another one would be cheaper and what PV and battery save – today, this month and this year.",
     noEntry: "No Tarifwacht entry found. Choose an entry's sensor “Cheapest tariff” in the editor.",
     yourTariff: "Your tariff:",
-    cheapestSoFar: "cheapest so far",
-    cheaper: (name, amount) => `${name} would have been ${amount} cheaper so far`,
-    cheapestIs: "Cheapest so far:",
+    cheapestThisYear: "cheapest this year",
+    cheaper: (name, amount) => `${name} would have been ${amount} cheaper this year`,
+    cheapestIs: "Cheapest this year:",
     periods: { day: "Today", month: "Month", year: "Year" },
     average: "Ø",
     averageHint: "Average price since the setup, base price included",
@@ -436,6 +436,8 @@ class TarifwachtCard extends HTMLElement {
       }
     }
     fetchStats(this._hass, [...ids], this._periods());
+    // The summary counts the calendar year, also without the column "Year".
+    if (parts.includes("tariffs")) fetchStats(this._hass, this._summaryIds(tariffs), ["year"]);
     for (const chart of this._charts(info, parts)) {
       const series = this._series(chart, tariffs, this._t());
       if (series.length) monthRows(this._hass, series.map((s) => s.id));
@@ -549,28 +551,47 @@ class TarifwachtCard extends HTMLElement {
       + `<span class="device">${escapeHtml(info.title)}</span></div>`;
   }
 
-  /** "Your tariff: Fixed ✓ cheapest so far" or "… · Dynamic would have been
-   * 52.81 € cheaper so far" (since the setup, from "Cheapest tariff"). */
+  /** The statistics the summary compares in the calendar year: the
+   * difference of every other tariff to the current one; without a current
+   * tariff the cost of each. */
+  _summaryIds(tariffs) {
+    const current = tariffs.some((x) => x.current);
+    return tariffs
+      .map((x) => (current ? !x.current && x.entities.difference : x.entities.cost))
+      .filter(Boolean);
+  }
+
+  /** "Your tariff: Fixed ✓ cheapest this year" or "… · Dynamic would have
+   * been 52.81 € cheaper this year": the calendar year, as the column
+   * "Year" counts it (the change of the differences in the long-term
+   * statistics; within the year of the setup from the setup, with imported
+   * statistics from 1 January). Nothing is claimed while a value is asked. */
   _summary(t, info, tariffs) {
-    const sensor = info.cheapest && this._hass.states[info.cheapest];
     const current = tariffs.find((x) => x.current);
-    const known = sensor && !["unknown", "unavailable"].includes(sensor.state);
-    const ranking = known && Array.isArray(sensor.attributes.ranking) ? sensor.attributes.ranking : [];
+    const key = current ? "difference" : "cost";
+    const values = tariffs
+      .filter((x) => (current ? !x.current : true) && x.entities[key])
+      .map((x) => ({ tariff: x, id: x.entities[key], value: statValue(this._hass, x.entities[key], "year") }));
+    const asking = values.some((v) => v.value === undefined);
+    const known = asking ? [] : values.filter((v) => typeof v.value === "number");
+    const best = known.reduce((a, b) => (a && a.value <= b.value ? a : b), null);
+    let target = info.cheapest;
     let text;
     if (!current) {
-      if (!known) return "";
-      text = `${escapeHtml(t.cheapestIs)} <b>${escapeHtml(sensor.state)}</b>`;
+      if (!best || known.length < values.length) return "";
+      text = `${escapeHtml(t.cheapestIs)} <b>${escapeHtml(best.tariff.title)}</b>`;
+      target = best.id;
     } else {
       text = `${escapeHtml(t.yourTariff)} <b>${escapeHtml(current.title)}</b>`;
-      const mine = ranking.find((r) => r.tariff === current.title);
-      if (known && sensor.state === current.title) {
-        text += ` <span class="good">✓ ${escapeHtml(t.cheapestSoFar)}</span>`;
-      } else if (known && mine && ranking[0] && ranking[0].cost < mine.cost) {
-        text += ` · ${escapeHtml(t.cheaper(ranking[0].tariff, this._eur(mine.cost - ranking[0].cost)))}`;
+      if (best && best.value <= -0.005) {
+        text += ` · ${escapeHtml(t.cheaper(best.tariff.title, this._eur(-best.value)))}`;
+        target = best.id;
+      } else if (!asking && known.length === values.length) {
+        text += ` <span class="good">✓ ${escapeHtml(t.cheapestThisYear)}</span>`;
       }
     }
-    const target = info.cheapest ? ` data-entity="${escapeHtml(info.cheapest)}"` : "";
-    return `<div class="summary"${target}>${text}</div>`;
+    const link = target ? ` data-entity="${escapeHtml(target)}"` : "";
+    return `<div class="summary"${link}>${text}</div>`;
   }
 
   _cell(id, period, sign = false) {
