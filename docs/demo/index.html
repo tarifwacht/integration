@@ -34,6 +34,8 @@
         --series-pv: #f5a623;
         --series-battery: #00897b;
         --usage: rgba(150, 73, 125, 0.28);
+        --error-color: #db4437;
+        --success-color: #43a047;
       }
       :root[data-theme="dark"] {
         color-scheme: dark;
@@ -52,6 +54,7 @@
         --series-fixed: #6aa7d8;
         --series-battery: #26a69a;
         --usage: rgba(201, 131, 177, 0.3);
+        --primary-color: #2196f3;
       }
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--page-bg); color: var(--page-text);
@@ -162,6 +165,18 @@
 
       .below { margin-top: 28px; display: grid; gap: 16px;
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+      /* The real card (custom:tarifwacht-card) */
+      .cardtype { font-size: 12px; color: var(--page-muted); padding: 0 4px; }
+      .cardtype code { font-size: 12px; }
+      dialog#info { max-width: min(92vw, 460px); border: 1px solid var(--divider-color); border-radius: 12px;
+        background: var(--card-background-color); color: var(--primary-text-color); padding: 16px 18px; }
+      dialog#info::backdrop { background: rgba(0, 0, 0, 0.4); }
+      dialog#info h2 { margin: 0 32px 4px 0; font-size: 16px; font-weight: 500; }
+      dialog#info .state { font-size: 26px; }
+      dialog#info button { position: absolute; top: 10px; right: 10px; border: 0; background: none; color: inherit;
+        font-size: 18px; cursor: pointer; }
+      dialog#info pre { max-height: 260px; }
+
       .box { border: 1px solid var(--page-line); border-radius: 10px; padding: 12px 14px; background: var(--control-bg); }
       .box h2 { margin: 0 0 6px; font-size: 14px; }
       .box p, .box li { margin: 0 0 6px; color: var(--page-muted); font-size: 14px; }
@@ -203,13 +218,17 @@
         <div class="box">
           <h2 data-t="build"></h2>
           <p data-t="cards"></p>
+          <p><a href="https://github.com/tarifwacht/integration#karte" data-t="cardReadme"></a></p>
           <p><a href="https://github.com/tarifwacht/integration#dashboard-tarifvergleich" data-t="readme"></a></p>
         </div>
       </div>
     </div>
+    <dialog id="info" aria-labelledby="info-title"></dialog>
 
     <script type="module">
       import { PATHS } from "./icons.js";
+      // The integration's own card, unchanged (frontend/tarifwacht-card.js).
+      import "../../custom_components/tarifwacht/frontend/tarifwacht-card.js";
 
       const HOUSEHOLDS = ["wohnung", "haus"];
       const MOMENTS = ["winter", "summer"];
@@ -238,7 +257,7 @@
           auto: "Auto", light: "Hell", dark: "Dunkel",
           banner: (time) =>
             `Alle Preise, Verbräuche und Tarife sind erfunden – nur zur Vorführung. Demo-Zeit: ${time} Uhr.`,
-          compare: "Tarifvergleich",
+          compare: "Tarifvergleich aus Standardkarten",
           cheapest: "Günstigster Tarif",
           average: (t) => `Ø ${t}`,
           todayOf: (t) => `${t} heute`,
@@ -283,9 +302,12 @@
           modul3Desc: (m) => `Modul 3: Netzentgelt ${ct(m.nt)} ct ${m.nt_windows} Uhr, ${ct(m.ht)} ct ${m.ht_windows} Uhr`,
           build: "Selbst bauen",
           cards:
-            "Der Abschnitt „Tarifvergleich“ besteht aus normalen Dashboard-Karten (Kachel, Statistik, Statistik-Diagramm); " +
+            "Die Karte oben bringt Tarifwacht selbst mit: Dashboard bearbeiten → Karte hinzufügen → „Tarifwacht“. " +
+            "Der Abschnitt „Tarifvergleich aus Standardkarten“ besteht aus normalen Dashboard-Karten (Kachel, Statistik, Statistik-Diagramm); " +
             "die README hat ihn fertig zum Einfügen.",
           readme: "Dashboard in der README →",
+          cardReadme: "Karte in der README →",
+          close: "Schließen",
           stillToday: "bis jetzt",
           solar: "PV und Speicher",
           savingPv: "Ersparnis PV",
@@ -325,7 +347,7 @@
           moments: { winter: "Winter evening", summer: "Summer evening" },
           auto: "Auto", light: "Light", dark: "Dark",
           banner: (time) => `All prices, consumption and tariffs are made up – for demonstration only. Demo time: ${time}.`,
-          compare: "Tariff comparison",
+          compare: "Tariff comparison from standard cards",
           cheapest: "Cheapest tariff",
           average: (t) => `Ø ${t}`,
           todayOf: (t) => `${t} today`,
@@ -370,9 +392,12 @@
           modul3Desc: (m) => `Modul 3: grid fee ${ct(m.nt)} ct ${m.nt_windows}, ${ct(m.ht)} ct ${m.ht_windows}`,
           build: "Build it yourself",
           cards:
-            "The “Tariff comparison” section is made of standard dashboard cards (tile, statistic, statistics graph); " +
+            "Tarifwacht brings the card at the top itself: edit dashboard → add card → “Tarifwacht”. " +
+            "The section “Tariff comparison from standard cards” is made of standard dashboard cards (tile, statistic, statistics graph); " +
             "the README has it ready to paste.",
           readme: "Dashboard in the README →",
+          cardReadme: "Card in the README →",
+          close: "Close",
           stillToday: "so far",
           solar: "PV and battery",
           savingPv: "Saving by PV",
@@ -749,6 +774,171 @@
           </section>`;
       }
 
+      // ---- The real card on a made-up Home Assistant ------------------------------------
+      // What the card uses of Home Assistant: the entity registry, states, two
+      // websocket commands of the recorder, Tarifwacht's own one, ha-card and ha-icon.
+
+      if (!customElements.get("ha-card")) {
+        customElements.define("ha-card", class extends HTMLElement {
+          constructor() {
+            super();
+            this.attachShadow({ mode: "open" }).innerHTML =
+              "<style>:host{display:block;background:var(--card-background-color);border:1px solid var(--divider-color);" +
+              "border-radius:12px;color:var(--primary-text-color)}</style><slot></slot>";
+          }
+        });
+      }
+      if (!customElements.get("ha-icon")) {
+        customElements.define("ha-icon", class extends HTMLElement {
+          connectedCallback() {
+            const path = PATHS[(this.getAttribute("icon") || "").replace("mdi:", "")] ?? "";
+            this.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" style="display:inline-block;width:var(--mdc-icon-size,24px);` +
+              `height:var(--mdc-icon-size,24px);fill:currentColor"><path d="${path}"/></svg>`;
+          }
+        });
+      }
+
+      // Entity id slugs of the sensors (German entity names, as Home Assistant makes them).
+      const SENSOR_SLUGS = {
+        cost: "kosten_gesamt",
+        consumption_cost: "verbrauchskosten",
+        average_price: "durchschnittspreis",
+        difference: "differenz_zum_aktuellen_tarif",
+        saving_pv: "ersparnis_pv",
+        saving_battery: "ersparnis_speicher",
+      };
+      let demo; // the made-up hass of the view shown
+
+      /** A made-up hass for this household and moment: Tarifwacht's sensors with
+       * their states, and what the recorder answers the card at that moment. */
+      function demoHass(data, view, household) {
+        const tx = t();
+        const entities = {};
+        const states = {};
+        const stats = {}; // entity id -> [statistic key, tariff key]
+        const add = (id, key, value, attributes) => {
+          entities[id] = { entity_id: id, platform: "tarifwacht", translation_key: key, device_id: household };
+          states[id] = { entity_id: id, state: value === null || value === undefined ? "unknown" : String(value), attributes };
+        };
+        const current = data.tariffs.find((x) => x.current);
+        const cheapest = `sensor.${household}_gunstigster_tarif`;
+        add(cheapest, "cheapest", view.cheapest, {
+          friendly_name: `${data.device} ${tx.cheapest}`,
+          current: current?.title ?? null,
+          ranking: view.ranking,
+        });
+        const energy = `sensor.${household}_strombezug`;
+        add(energy, "energy", view.energy_kwh, { friendly_name: `${data.device} ${tx.energy}`, unit_of_measurement: "kWh" });
+        const solar = view.solar?.sensors;
+        const names = {
+          cost: tx.cost, consumption_cost: tx.consumptionCost, average_price: tx.averagePrice,
+          difference: tx.difference, saving_pv: tx.savingPv, saving_battery: tx.savingBattery,
+        };
+        const tariffs = data.tariffs.map((tariff) => {
+          const v = view.tariffs[tariff.key];
+          const values = {
+            cost: v.cost, consumption_cost: v.consumption_cost, average_price: v.average_ct,
+            ...(v.difference === null ? {} : { difference: v.difference }),
+            ...(solar ? { saving_pv: solar[tariff.key].saving_pv, saving_battery: solar[tariff.key].saving_battery } : {}),
+          };
+          const ids = {};
+          for (const [key, value] of Object.entries(values)) {
+            const id = `sensor.${household}_${tariff.slug}_${SENSOR_SLUGS[key]}`;
+            ids[key] = id;
+            stats[id] = [key, tariff.key];
+            add(id, key, value, {
+              friendly_name: `${data.device} ${tariff.title} ${names[key]}`,
+              unit_of_measurement: key === "average_price" ? "ct/kWh" : "€",
+            });
+          }
+          return { key: tariff.key, title: tariff.title, current: Boolean(tariff.current), entities: ids };
+        });
+        // The answer of "tarifwacht/tariffs" (cards.py).
+        const info = {
+          title: data.device,
+          cheapest,
+          energy,
+          current: current?.key ?? null,
+          solar: Boolean(solar),
+          battery: Boolean(solar),
+          tariffs,
+        };
+        const statistic = (id, values) => {
+          const [key, tariff] = stats[id] ?? [];
+          const value = values?.[key]?.[tariff];
+          return typeof value === "number" ? value : null;
+        };
+        return {
+          entities,
+          states,
+          connection: {}, // a new one per view: the card keeps no statistics of another moment
+          language: state.lang,
+          locale: { language: state.lang, number_format: "language", time_format: "24", time_zone: "server" },
+          config: { time_zone: "Europe/Berlin" },
+          callWS: async (message) => {
+            if (message.type === "tarifwacht/tariffs") {
+              if (!entities[message.entity_id]) throw { code: "not_found", message: "No Tarifwacht entry" };
+              return info;
+            }
+            if (message.type === "recorder/statistic_during_period") {
+              return { change: statistic(message.statistic_id, view.card.periods[message.calendar.period]) };
+            }
+            if (message.type === "recorder/statistics_during_period") {
+              const rows = {};
+              for (const id of message.statistic_ids) {
+                rows[id] = view.card.months.map((m) => ({
+                  start: new Date(`${m.month}-01T00:00:00${offset(m.month)}`).getTime(),
+                  change: statistic(id, m),
+                }));
+              }
+              return rows;
+            }
+            throw new Error(`not in the demo: ${message.type}`);
+          },
+        };
+      }
+
+      /** UTC offset of Berlin at the start of a month ("+01:00" or "+02:00"). */
+      function offset(month) {
+        const m = Number(month.split("-")[1]);
+        return m > 3 && m < 11 ? "+02:00" : "+01:00"; // whole months: April to October
+      }
+
+      function cardSection() {
+        return `<section class="section double"><div data-card></div>
+          <div class="cardtype"><code>type: custom:tarifwacht-card</code></div></section>`;
+      }
+
+      function mountCard(data, view) {
+        demo = demoHass(data, view, state.household);
+        const slot = document.querySelector("[data-card]");
+        const card = document.createElement("tarifwacht-card");
+        card.setConfig({ type: "custom:tarifwacht-card", entity: `sensor.${state.household}_gunstigster_tarif` });
+        card.hass = demo;
+        slot.replaceWith(card);
+      }
+
+      // A click in the card opens the details, as in Home Assistant.
+      document.addEventListener("hass-more-info", (event) => {
+        const s = demo?.states[event.detail.entityId];
+        if (!s) return;
+        const tx = t();
+        const { friendly_name: title, unit_of_measurement: unit, ...attributes } = s.attributes;
+        const value = Number(s.state);
+        const shown = Number.isNaN(value) ? s.state
+          : unit === "€" ? eur(value) : `${num(value, unit === "kWh" ? 2 : 1)} ${unit ?? ""}`;
+        const dialog = document.getElementById("info");
+        dialog.innerHTML = `<button type="button" aria-label="${escapeHtml(tx.close)}">✕</button>
+          <h2 id="info-title">${escapeHtml(title ?? s.entity_id)}</h2><div class="state">${escapeHtml(shown)}</div>
+          <div class="cardtype"><code>${escapeHtml(s.entity_id)}</code></div>
+          ${Object.keys(attributes).length ? `<pre>${escapeHtml(yaml(attributes).trimStart())}</pre>` : ""}`;
+        dialog.querySelector("button").addEventListener("click", () => dialog.close());
+        dialog.showModal();
+      });
+      document.getElementById("info").addEventListener("click", (event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      });
+
       // ---- Page ----------------------------------------------------------------------
 
       async function render() {
@@ -768,12 +958,14 @@
         });
         document.getElementById("banner").innerHTML = `${icon("information-outline")}<span>${tx.banner(clock)}</span>`;
         document.getElementById("dashboard").innerHTML =
-          compareSection(data, view, keys, labels) +
+          cardSection() +
           curveSection(view, keys, labels) +
+          compareSection(data, view, keys, labels) +
           solarSection(data, view, keys, labels) +
           devicesSection(data, view, keys, labels) +
           notificationSection(view) +
           yearSection(data, keys, labels);
+        mountCard(data, view);
         document.getElementById("tariff-list").innerHTML = data.tariffs
           .map((d) => {
             const text = d.kind === "fixed" ? tx.fixedDesc(d) : tx.dynamicDesc(d) + (d.modul3 ? `; ${tx.modul3Desc(d.modul3)}` : "");

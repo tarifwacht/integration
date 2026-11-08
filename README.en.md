@@ -13,7 +13,7 @@
 
 **What would your electricity have cost with a different tariff?** Tarifwacht ("tariff watch") prices your actual grid consumption in Home Assistant quarter hour by quarter hour against any number of tariffs – fixed price, dynamic, with or without Modul 3 – and shows which one would have been cheaper. Each dynamic tariff gets the price of **exactly that quarter hour**, not the price of whatever moment the meter happens to report.
 
-**Try it without installing:** the [demo](https://tarifwacht.github.io/integration/?lang=en) shows the dashboard, devices, monthly summary and year in review for a flat and a house with PV, battery, an EV and a heat pump, there also the saving by PV and battery – with made-up prices and tariffs, but computed by the integration's own code.
+**Try it without installing:** the [demo](https://tarifwacht.github.io/integration/?lang=en) shows the card, the dashboard, devices, monthly summary and year in review for a flat and a house with PV, battery, an EV and a heat pump, there also the saving by PV and battery – with made-up prices and tariffs, but computed by the integration's own code.
 
 Tarifwacht is built for Germany: quarter-hour day-ahead prices, German price components and the time-variable grid fee under § 14a EnWG. Days and months (base prices) follow German local time.
 
@@ -27,7 +27,7 @@ The user interface is available in German and English and follows the language o
 
 - [Features](#features) · [Notes on the comparison](#notes-on-the-comparison) · [What Tarifwacht does not do](#what-tarifwacht-does-not-do)
 - **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
-- **Using it:** [Entities](#entities) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics)
+- **Using it:** [Entities](#entities) · [Card](#card) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics)
 - **More:** [Privacy](#privacy) · [Troubleshooting](#troubleshooting) · [Removal](#removal) · [Reporting issues](#reporting-issues) · [Thanks](#thanks) · [Sister integrations](#sister-integrations)
 
 ## Features
@@ -38,6 +38,7 @@ The user interface is available in German and English and follows the language o
 - **Any number of tariffs:** fixed price, dynamic with a total-price sensor, or dynamic from exchange price plus grid fee, taxes/levies, supplier surcharge and VAT.
 - **Modul 3** (§ 14a EnWG): time-variable grid fee with low-load and high-load windows per quarter.
 - **Saving by PV and battery** per tariff (€): what the PV system and battery saved against buying all consumption, with feed-in tariff and § 51 EEG – hybrid inverters and batteries with their own inverter, see [PV and battery](#pv-and-battery).
+- **A card of its own for the dashboard:** your tariff, whether another one would have been cheaper and what PV and battery save – today, this month and this year, plus bars per month. No extra cards from HACS, see [Card](#card).
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
 - **Base prices** optional, per month or per year, booked pro rata per day.
 - **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff? On request also [written into the long-term statistics](#import-statistics).
@@ -164,7 +165,7 @@ On the meter's device (e.g. "Home"):
 | Entity | Unit | Meaning |
 |---|---|---|
 | Grid purchase | kWh | energy recorded since setup – to check against your meter |
-| Cheapest tariff | text | tariff with the lowest total cost; attribute `ranking` with all tariffs (missing prices: see below) |
+| Cheapest tariff | text | tariff with the lowest total cost; attribute `ranking` with all tariffs (missing prices: see below), attribute `current` with the name of your current tariff |
 | Report for a bug report | button (under *Diagnostic*) | shows a short report to copy into an issue, see [Reporting issues](#reporting-issues) |
 
 On every tariff (e.g. "Home Fixed price"):
@@ -180,9 +181,41 @@ On every tariff (e.g. "Home Fixed price"):
 
 For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for its price; usually it is known since the day before.
 
+## Card
+
+Tarifwacht brings a card of its own, no extra cards from HACS needed. At a glance it shows **what your tariff costs, whether another one would have been cheaper and what PV and battery save** – today, this month and this calendar year. Try it: [demo](https://tarifwacht.github.io/integration/?lang=en).
+
+*Edit dashboard → Add card* and search for "Tarifwacht". Tarifwacht adds the dashboard resource itself (*Settings → Dashboards → ⋮ → Resources*, removed again with the last entry; with resources in YAML mode Home Assistant loads the card directly instead). In the editor you only choose the entry (its sensor "Cheapest tariff"); the card finds the tariffs, their sensors and PV and battery itself, also after entities were renamed.
+
+- **Headline:** your tariff (the one marked current) and whether it has been the cheapest so far – otherwise which tariff would have been how much cheaper. "So far" means since the setup, as with the sensor "Cheapest tariff".
+- **Tariffs:** total cost (base price included) per tariff today, this month and this year, plus the average price since the setup (Ø). Your tariff is on top and highlighted; below every other tariff its **difference** to yours, red if it would have cost more, green if less.
+- **PV and battery** (only with [PV and battery](#pv-and-battery)): what PV and battery saved with your tariff, together and each (the battery row only with battery meters), and below, what they would have saved together with every other tariff.
+- **Chart:** bars of the last twelve months – cost per tariff and the saving by PV and battery with your tariff.
+
+The values per period come from the long-term statistics, just as in a statistic card with a calendar period: day, month and year in Home Assistant's time zone. Without statistics for a period it shows "–". With [import statistics](#import-statistics), month, year and chart also reach back before the setup. The card asks the statistics again after each five-minute run of the recorder, several cards share the requests, and while the page is in the background it asks nothing. A click on a value opens the details.
+
+```yaml
+type: custom:tarifwacht-card
+entity: sensor.home_cheapest_tariff  # the entry's sensor "Cheapest tariff"
+# parts: [tariffs, solar, chart]     # parts; without: all the entry has
+# periods: [day, month, year]        # periods; without: all three
+# title: Electricity                 # own heading; a single space hides it
+```
+
+| Option | Meaning |
+| --- | --- |
+| `entity` | The entry's sensor "Cheapest tariff" (any other sensor of the entry works too). Without: the first Tarifwacht entry. |
+| `parts` | `tariffs` (headline and tariffs), `solar` (PV and battery), `chart` (bars per month). Without: all; PV and battery only if the entry has them. |
+| `periods` | `day` (today), `month`, `year` (calendar year). Without: all three. |
+| `title` | Own heading; a single space hides it. |
+
+The card may go on the dashboard more than once, say with `parts: [tariffs, chart]` next to your electricity and with `parts: [solar]` next to the battery. With only `chart` it shows both charts.
+
+**The card does not show up in the search, or only spins?** Home Assistant loads it with the integration, so only after the restart and with a Tarifwacht entry set up. It reaches the dashboard when the page loads: reload once (Ctrl+F5), in the Companion app reset the frontend cache. Whether the file is there: `http://<HA address>:8123/tarifwacht/tarifwacht-card.js`.
+
 ## Dashboard: tariff comparison
 
-Daily, monthly and yearly values come from the long-term statistics – no extra meters needed. A ready-made section for a sections view: cheapest tariff, average prices, cost today and this month, the difference and a bar chart per day. Four cards side by side on a desktop, two on a phone. *Edit dashboard → Add section → ⋮ → Edit in code editor*; the entity IDs depend on your names (here meter "Home", tariffs "Fixed price" and "Dynamic"):
+If you would rather build with Home Assistant's standard cards (instead of the [card](#card)): daily, monthly and yearly values come from the long-term statistics – no extra meters needed. A ready-made section for a sections view: your tariff and the cheapest, average prices, the cost per tariff today, this month and this year, the difference and a bar chart per day. *Edit dashboard → Add section → ⋮ → Edit in code editor*; the entity IDs depend on your names (here meter "Home", tariffs "Fixed price" (your current one) and "Dynamic"):
 
 ```yaml
 type: grid
@@ -193,8 +226,13 @@ cards:
     icon: mdi:scale-balance
   - type: tile
     entity: sensor.home_cheapest_tariff
-    name: Cheapest tariff
-    grid_options: {columns: 12}
+    name: Your tariff
+    state_content: current
+    grid_options: {columns: 6}
+  - type: tile
+    entity: sensor.home_cheapest_tariff
+    name: Cheapest so far
+    grid_options: {columns: 6}
   - type: tile
     entity: sensor.home_fixed_price_average_price
     name: Avg. fixed price
@@ -203,45 +241,69 @@ cards:
     entity: sensor.home_dynamic_average_price
     name: Avg. dynamic
     grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.home_fixed_price_total_cost
-    name: Fixed price today
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.home_dynamic_total_cost
-    name: Dynamic today
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.home_fixed_price_total_cost
-    name: Fixed price this month
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.home_dynamic_total_cost
-    name: Dynamic this month
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.home_dynamic_difference_to_current_tariff
-    name: Difference today
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 12}
-  - type: statistic
-    entity: sensor.home_dynamic_difference_to_current_tariff
-    name: Difference this month
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 12}
   - type: heading
     heading_style: subtitle
-    heading: "Positive difference: dynamic would have cost more"
+    heading: Fixed price (your tariff)
+  - type: statistic
+    entity: sensor.home_fixed_price_total_cost
+    name: Today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_fixed_price_total_cost
+    name: Month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_fixed_price_total_cost
+    name: Year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
+  - type: heading
+    heading_style: subtitle
+    heading: Dynamic
+  - type: statistic
+    entity: sensor.home_dynamic_total_cost
+    name: Today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_dynamic_total_cost
+    name: Month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_dynamic_total_cost
+    name: Year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
+  - type: heading
+    heading_style: subtitle
+    heading: "Difference dynamic – positive: would have cost more"
+  - type: statistic
+    entity: sensor.home_dynamic_difference_to_current_tariff
+    name: Today
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_dynamic_difference_to_current_tariff
+    name: Month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.home_dynamic_difference_to_current_tariff
+    name: Year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
   - type: statistics-graph
     title: Cost per day
     chart_type: bar
@@ -256,7 +318,84 @@ cards:
     grid_options: {columns: full}
 ```
 
-For a yearly overview in the chart, use `period: month` and `days_to_show: 365`. With [import statistics](#import-statistics) the cards also show the time before the setup.
+"Year" is the calendar year. "Your tariff" shows the attribute `current` of "Cheapest tariff", so it follows the tariff you mark as current. For a yearly overview in the chart, use `period: month` and `days_to_show: 365`. With [import statistics](#import-statistics) the cards also show the time before the setup.
+
+**PV and battery** with standard cards: what both saved per month and year, with your tariff and with the dynamic one, plus bars per month (entities of [PV and battery](#pv-and-battery); without battery meters leave out the "Battery" rows). The standard cards cannot add up PV and battery – the [card](#card) shows the sum.
+
+```yaml
+type: grid
+column_span: 2
+cards:
+  - type: heading
+    heading: PV and battery save
+    icon: mdi:solar-power-variant
+  - type: heading
+    heading_style: subtitle
+    heading: With fixed price (your tariff)
+  - type: statistic
+    entity: sensor.home_fixed_price_saving_by_pv
+    name: PV month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_fixed_price_saving_by_pv
+    name: PV year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_fixed_price_saving_by_battery
+    name: Battery month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_fixed_price_saving_by_battery
+    name: Battery year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: heading
+    heading_style: subtitle
+    heading: With dynamic
+  - type: statistic
+    entity: sensor.home_dynamic_saving_by_pv
+    name: PV month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_saving_by_pv
+    name: PV year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_saving_by_battery
+    name: Battery month
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.home_dynamic_saving_by_battery
+    name: Battery year
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistics-graph
+    title: Saving per month (fixed price)
+    chart_type: bar
+    period: month
+    days_to_show: 365
+    stat_types: [change]
+    entities:
+      - entity: sensor.home_fixed_price_saving_by_pv
+        name: PV
+      - entity: sensor.home_fixed_price_saving_by_battery
+        name: Battery
+    grid_options: {columns: full}
+```
 
 ## Comparison for a period
 
@@ -347,7 +486,7 @@ The long-term statistics of the deleted sensors stay in Home Assistant until you
 
 ## Reporting issues
 
-Please open an [issue](https://github.com/tarifwacht/integration/issues) with the **report for a bug report**: press *Tarifwacht → entry → the meter's device (e.g. "Home") → Diagnostic → Report for a bug report*. The report shows up as a notification (bell at the bottom left) to copy. It holds the versions, the meter and price sensors by role (integration, unit, state class, state – for the meter only whether it delivers a number), the tariffs by kind and number with prices, base price, Modul 3 windows and price changes, the state of the bookings (start, quarter hours booked, prices per tariff, SMARD.de), sensors without a value and open repair issues. Entity ids, the names of the entry and the tariffs, areas, meter readings and energy or cost totals are not in it. Still read it before sharing and delete what you would rather not show. Please report security issues privately, see [SECURITY.md](SECURITY.md).
+Please open an [issue](https://github.com/tarifwacht/integration/issues) with the **report for a bug report**: press *Tarifwacht → entry → the meter's device (e.g. "Home") → Diagnostic → Report for a bug report*. The report shows up as a notification (bell at the bottom left) to copy. It holds the versions, the meter and price sensors by role (integration, unit, state class, state – for the meter only whether it delivers a number), the tariffs by kind and number with prices, base price, Modul 3 windows and price changes, the state of the bookings (start, quarter hours booked, prices per tariff, SMARD.de), how the card reaches the dashboard, sensors without a value and open repair issues. Entity ids, the names of the entry and the tariffs, areas, meter readings and energy or cost totals are not in it. Still read it before sharing and delete what you would rather not show. Please report security issues privately, see [SECURITY.md](SECURITY.md).
 
 ### What is in the diagnostics file?
 

@@ -13,7 +13,7 @@
 
 **Was hätte dein Strom mit einem anderen Tarif gekostet?** Tarifwacht rechnet deinen tatsächlichen Strombezug in Home Assistant Viertelstunde für Viertelstunde gegen beliebig viele Tarife – Festpreis, dynamisch, mit oder ohne Modul 3 – und zeigt, welcher günstiger gewesen wäre. Jeder dynamische Tarif bekommt dabei den Preis **genau dieser Viertelstunde**, nicht den Preis des Augenblicks, in dem der Zähler zufällig meldet.
 
-**Ausprobieren ohne Installation:** Die [Demo](https://tarifwacht.github.io/integration/?lang=de) zeigt Dashboard, Geräte, Monatsübersicht und Jahresrückblick für eine Wohnung und ein Haus mit PV, Speicher, E-Auto und Wärmepumpe, dort auch die Ersparnis durch PV und Speicher – mit erfundenen Preisen und Tarifen, aber gerechnet vom Code der Integration.
+**Ausprobieren ohne Installation:** Die [Demo](https://tarifwacht.github.io/integration/?lang=de) zeigt die Karte, Dashboard, Geräte, Monatsübersicht und Jahresrückblick für eine Wohnung und ein Haus mit PV, Speicher, E-Auto und Wärmepumpe, dort auch die Ersparnis durch PV und Speicher – mit erfundenen Preisen und Tarifen, aber gerechnet vom Code der Integration.
 
 > **Keine Abrechnungs- oder Tarifberatung.** Die Werte sind eine Orientierung. Maßgeblich ist die Abrechnung deines Stromanbieters.
 
@@ -25,7 +25,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 
 - [Was Tarifwacht kann](#was-tarifwacht-kann) · [Hinweise zum Vergleich](#hinweise-zum-vergleich) · [Was Tarifwacht nicht kann](#was-tarifwacht-nicht-kann)
 - **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
-- **Nutzen:** [Entitäten](#entitäten) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen)
+- **Nutzen:** [Entitäten](#entitäten) · [Karte](#karte) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen)
 - **Mehr:** [Datenschutz](#datenschutz) · [Fehlerbehebung](#fehlerbehebung) · [Entfernen](#entfernen) · [Fehler melden](#fehler-melden) · [Danke](#danke) · [Weitere Wachten](#weitere-wachten)
 
 ## Was Tarifwacht kann
@@ -36,6 +36,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Beliebig viele Tarife:** Festpreis, dynamisch mit einem Gesamtpreis-Sensor oder dynamisch aus Börsenpreis plus Netzentgelt, Steuern/Abgaben, Anbieteraufschlag und Mehrwertsteuer.
 - **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
 - **Ersparnis durch PV und Speicher** je Tarif (€): was PV-Anlage und Speicher gegenüber dem Bezug des ganzen Verbrauchs gespart haben, mit Einspeisevergütung und § 51 EEG – Hybrid-Wechselrichter und eigene Speicher-Wechselrichter, siehe [PV und Speicher](#pv-und-speicher).
+- **Eigene Karte fürs Dashboard:** dein Tarif, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen – heute, im Monat und im Jahr, dazu Säulen je Monat. Ohne Zusatzkarten aus HACS, siehe [Karte](#karte).
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
 - **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet? Auf Wunsch auch [in die Langzeitstatistik nachgetragen](#statistik-nachtragen).
@@ -162,7 +163,7 @@ Am Gerät des Zählers (z. B. „Haus“):
 | Entität | Einheit | Bedeutung |
 |---|---|---|
 | Strombezug | kWh | erfasste Menge seit der Einrichtung – zum Abgleich mit deinem Zähler |
-| Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen (fehlende Preise siehe unten) |
+| Günstigster Tarif | Text | Tarif mit den niedrigsten Kosten gesamt; Attribut `ranking` mit allen Tarifen (fehlende Preise siehe unten), Attribut `current` mit dem Namen deines aktuellen Tarifs |
 | Bericht für Fehlermeldung | Schaltfläche (unter *Diagnose*) | zeigt einen kurzen Bericht zum Kopieren in ein Issue, siehe [Fehler melden](#fehler-melden) |
 
 An jedem Tarif (z. B. „Haus Festpreis“):
@@ -178,9 +179,41 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 
 Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
 
+## Karte
+
+Tarifwacht bringt eine eigene Karte mit, ganz ohne Zusatzkarten aus HACS. Sie zeigt auf einen Blick, **was dein Tarif kostet, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen** – heute, im Monat und im Kalenderjahr. Ausprobieren: [Demo](https://tarifwacht.github.io/integration/?lang=de).
+
+*Dashboard bearbeiten → Karte hinzufügen* und nach „Tarifwacht“ suchen. Die Dashboard-Ressource trägt Tarifwacht selbst ein (*Einstellungen → Dashboards → ⋮ → Ressourcen*, beim Entfernen des letzten Eintrags wieder ausgetragen; bei Ressourcen im YAML-Modus lädt Home Assistant die Karte stattdessen direkt). Im Editor wählst du nur den Eintrag (seinen Sensor „Günstigster Tarif“); Tarife, deren Sensoren und PV und Speicher findet die Karte selbst, auch nach dem Umbenennen von Entitäten.
+
+- **Kopfzeile:** dein Tarif (der als aktuell markierte) und ob er bisher am günstigsten war – sonst, welcher Tarif wie viel günstiger gewesen wäre. „Bisher“ heißt seit der Einrichtung, wie beim Sensor „Günstigster Tarif“.
+- **Tarife:** Kosten gesamt (mit Grundpreis) je Tarif heute, im Monat und im Jahr, dazu der Durchschnittspreis seit der Einrichtung (Ø). Dein Tarif steht oben und ist hervorgehoben; unter jedem anderen Tarif der **Unterschied** zu deinem, rot wenn er teurer gewesen wäre, grün wenn günstiger.
+- **PV und Speicher** (nur mit [PV und Speicher](#pv-und-speicher)): was PV und Speicher mit deinem Tarif gespart haben, zusammen und einzeln (die Zeile Speicher nur mit Speicherzählern), und darunter, was sie zusammen mit jedem anderen Tarif gespart hätten.
+- **Diagramm:** Säulen der letzten zwölf Monate – Kosten je Tarif und die Ersparnis durch PV und Speicher mit deinem Tarif.
+
+Die Werte je Zeitraum kommen aus der Langzeitstatistik, genau wie bei einer Statistik-Karte mit Kalenderzeitraum: Tag, Monat und Jahr in der Zeitzone von Home Assistant. Gibt es für einen Zeitraum keine Statistik, steht „–“. Mit [Statistik nachtragen](#statistik-nachtragen) reichen Monat, Jahr und Diagramm auch vor die Einrichtung zurück. Die Karte fragt die Statistik nach jedem Fünf-Minuten-Lauf des Recorders neu ab, mehrere Karten teilen sich die Abfragen, und solange die Seite im Hintergrund ist, fragt sie nichts. Ein Klick auf einen Wert öffnet die Details.
+
+```yaml
+type: custom:tarifwacht-card
+entity: sensor.haus_gunstigster_tarif  # Sensor „Günstigster Tarif“ des Eintrags
+# parts: [tariffs, solar, chart]       # Teile; ohne: alle, die der Eintrag hat
+# periods: [day, month, year]          # Zeiträume; ohne: alle drei
+# title: Strom                         # eigene Überschrift; ein Leerzeichen blendet sie aus
+```
+
+| Option | Bedeutung |
+| --- | --- |
+| `entity` | Der Sensor „Günstigster Tarif“ des Eintrags (jeder andere Sensor des Eintrags geht auch). Ohne: der erste Tarifwacht-Eintrag. |
+| `parts` | `tariffs` (Kopfzeile und Tarife), `solar` (PV und Speicher), `chart` (Säulen je Monat). Ohne: alle; PV und Speicher nur, wenn der Eintrag sie hat. |
+| `periods` | `day` (heute), `month`, `year` (Kalenderjahr). Ohne: alle drei. |
+| `title` | Eigene Überschrift; ein einzelnes Leerzeichen blendet sie aus. |
+
+Die Karte darf mehrfach ins Dashboard, etwa einmal mit `parts: [tariffs, chart]` beim Strom und einmal mit `parts: [solar]` neben dem Speicher. Mit nur `chart` zeigt sie beide Diagramme.
+
+**Die Karte taucht in der Suche nicht auf oder dreht nur?** Home Assistant lädt sie mit der Integration, also erst nach dem Neustart und mit einem eingerichteten Tarifwacht-Eintrag. Ins Dashboard kommt sie beim Laden der Seite: danach einmal neu laden (Strg+F5), in der Companion-App den Frontend-Cache zurücksetzen. Ob die Datei da ist, zeigt `http://<HA-Adresse>:8123/tarifwacht/tarifwacht-card.js`.
+
 ## Dashboard: Tarifvergleich
 
-Tages-, Monats- und Jahreswerte liefert die Langzeitstatistik – eigene Zähler braucht es nicht. Ein fertiger Abschnitt für eine Sektionen-Ansicht: günstigster Tarif, Durchschnittspreise, Kosten heute und im Monat, die Differenz und ein Balkendiagramm je Tag. Am Desktop stehen vier Karten nebeneinander, am Handy zwei. *Dashboard bearbeiten → Abschnitt hinzufügen → ⋮ → Im Code-Editor bearbeiten*; die Entitäts-IDs hängen von deinen Namen ab (hier Zähler „Haus“, Tarife „Festpreis“ und „Dynamisch“):
+Wer lieber mit den Standardkarten von Home Assistant baut (statt der [Karte](#karte)): Tages-, Monats- und Jahreswerte liefert die Langzeitstatistik – eigene Zähler braucht es nicht. Ein fertiger Abschnitt für eine Sektionen-Ansicht: dein Tarif und der günstigste, Durchschnittspreise, Kosten je Tarif heute, im Monat und im Jahr, die Differenz und ein Balkendiagramm je Tag. *Dashboard bearbeiten → Abschnitt hinzufügen → ⋮ → Im Code-Editor bearbeiten*; die Entitäts-IDs hängen von deinen Namen ab (hier Zähler „Haus“, Tarife „Festpreis“ (dein aktueller) und „Dynamisch“):
 
 ```yaml
 type: grid
@@ -191,8 +224,13 @@ cards:
     icon: mdi:scale-balance
   - type: tile
     entity: sensor.haus_gunstigster_tarif
-    name: Günstigster Tarif
-    grid_options: {columns: 12}
+    name: Dein Tarif
+    state_content: current
+    grid_options: {columns: 6}
+  - type: tile
+    entity: sensor.haus_gunstigster_tarif
+    name: Bisher am günstigsten
+    grid_options: {columns: 6}
   - type: tile
     entity: sensor.haus_festpreis_durchschnittspreis
     name: Ø Festpreis
@@ -201,45 +239,69 @@ cards:
     entity: sensor.haus_dynamisch_durchschnittspreis
     name: Ø Dynamisch
     grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.haus_festpreis_kosten_gesamt
-    name: Festpreis heute
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.haus_dynamisch_kosten_gesamt
-    name: Dynamisch heute
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.haus_festpreis_kosten_gesamt
-    name: Festpreis Monat
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.haus_dynamisch_kosten_gesamt
-    name: Dynamisch Monat
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 6}
-  - type: statistic
-    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
-    name: Differenz heute
-    stat_type: change
-    period: {calendar: {period: day}}
-    grid_options: {columns: 12}
-  - type: statistic
-    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
-    name: Differenz Monat
-    stat_type: change
-    period: {calendar: {period: month}}
-    grid_options: {columns: 12}
   - type: heading
     heading_style: subtitle
-    heading: "Differenz positiv: dynamisch wäre teurer gewesen"
+    heading: Festpreis (dein Tarif)
+  - type: statistic
+    entity: sensor.haus_festpreis_kosten_gesamt
+    name: Heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_festpreis_kosten_gesamt
+    name: Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_festpreis_kosten_gesamt
+    name: Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
+  - type: heading
+    heading_style: subtitle
+    heading: Dynamisch
+  - type: statistic
+    entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_dynamisch_kosten_gesamt
+    name: Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
+  - type: heading
+    heading_style: subtitle
+    heading: "Differenz Dynamisch – positiv: wäre teurer gewesen"
+  - type: statistic
+    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
+    name: Heute
+    stat_type: change
+    period: {calendar: {period: day}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
+    name: Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 4}
+  - type: statistic
+    entity: sensor.haus_dynamisch_differenz_zum_aktuellen_tarif
+    name: Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 4}
   - type: statistics-graph
     title: Kosten je Tag
     chart_type: bar
@@ -254,7 +316,84 @@ cards:
     grid_options: {columns: full}
 ```
 
-Für einen Jahresüberblick im Diagramm `period: month` und `days_to_show: 365`. Mit [Statistik nachtragen](#statistik-nachtragen) zeigen die Karten auch die Zeit vor der Einrichtung.
+„Jahr“ ist das Kalenderjahr. „Dein Tarif“ zeigt das Attribut `current` von „Günstigster Tarif“, folgt also dem Tarif, den du als aktuell markierst. Für einen Jahresüberblick im Diagramm `period: month` und `days_to_show: 365`. Mit [Statistik nachtragen](#statistik-nachtragen) zeigen die Karten auch die Zeit vor der Einrichtung.
+
+**PV und Speicher** mit Standardkarten: was beide je Monat und Jahr gespart haben, mit deinem Tarif und mit dem dynamischen, dazu Säulen je Monat (Entitäten von [PV und Speicher](#pv-und-speicher); ohne Speicherzähler die Zeilen „Speicher“ weglassen). Eine Summe von PV und Speicher können die Standardkarten nicht bilden – die [Karte](#karte) zeigt sie.
+
+```yaml
+type: grid
+column_span: 2
+cards:
+  - type: heading
+    heading: PV und Speicher sparen
+    icon: mdi:solar-power-variant
+  - type: heading
+    heading_style: subtitle
+    heading: Mit Festpreis (dein Tarif)
+  - type: statistic
+    entity: sensor.haus_festpreis_ersparnis_pv
+    name: PV Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_festpreis_ersparnis_pv
+    name: PV Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_festpreis_ersparnis_speicher
+    name: Speicher Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_festpreis_ersparnis_speicher
+    name: Speicher Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: heading
+    heading_style: subtitle
+    heading: Mit Dynamisch
+  - type: statistic
+    entity: sensor.haus_dynamisch_ersparnis_pv
+    name: PV Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_ersparnis_pv
+    name: PV Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_ersparnis_speicher
+    name: Speicher Monat
+    stat_type: change
+    period: {calendar: {period: month}}
+    grid_options: {columns: 6}
+  - type: statistic
+    entity: sensor.haus_dynamisch_ersparnis_speicher
+    name: Speicher Jahr
+    stat_type: change
+    period: {calendar: {period: year}}
+    grid_options: {columns: 6}
+  - type: statistics-graph
+    title: Ersparnis je Monat (Festpreis)
+    chart_type: bar
+    period: month
+    days_to_show: 365
+    stat_types: [change]
+    entities:
+      - entity: sensor.haus_festpreis_ersparnis_pv
+        name: PV
+      - entity: sensor.haus_festpreis_ersparnis_speicher
+        name: Speicher
+    grid_options: {columns: full}
+```
 
 ## Vergleich für einen Zeitraum
 
@@ -345,7 +484,7 @@ Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten
 
 ## Fehler melden
 
-Bitte als [Issue](https://github.com/tarifwacht/integration/issues), mit dem **Bericht für Fehlermeldung**: *Tarifwacht → Eintrag → Gerät des Zählers (z. B. „Haus“) → Diagnose → Bericht für Fehlermeldung* drücken. Der Bericht erscheint als Benachrichtigung (Glocke unten links) zum Kopieren. Er enthält die Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand – beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Grundpreis, Modul-3-Zeitfenstern und Preisänderungen, den Stand der Buchung (Beginn, gebuchte Viertelstunden, Preise je Tarif, SMARD.de), Sensoren ohne Wert und offene Reparaturhinweise. Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen stehen nicht darin. Lies ihn trotzdem vor dem Teilen und lösche, was du nicht zeigen willst. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
+Bitte als [Issue](https://github.com/tarifwacht/integration/issues), mit dem **Bericht für Fehlermeldung**: *Tarifwacht → Eintrag → Gerät des Zählers (z. B. „Haus“) → Diagnose → Bericht für Fehlermeldung* drücken. Der Bericht erscheint als Benachrichtigung (Glocke unten links) zum Kopieren. Er enthält die Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand – beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Grundpreis, Modul-3-Zeitfenstern und Preisänderungen, den Stand der Buchung (Beginn, gebuchte Viertelstunden, Preise je Tarif, SMARD.de), wie die Karte ins Dashboard kommt, Sensoren ohne Wert und offene Reparaturhinweise. Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen stehen nicht darin. Lies ihn trotzdem vor dem Teilen und lösche, was du nicht zeigen willst. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
 
 ### Was steht in der Diagnose-Datei?
 

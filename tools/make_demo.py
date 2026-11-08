@@ -12,7 +12,8 @@ hour, for a year from 1 November 2025, as in Home Assistant.
 
 The page shows two moments (a winter and a summer evening) and the year in
 review; for each moment the files hold what the dashboard, the devices and
-the blueprint "Monatsübersicht" would show then.
+the blueprint "Monatsübersicht" would show then, and what the long-term
+statistics would answer the card (frontend/tarifwacht-card.js) then.
 """
 
 from __future__ import annotations
@@ -491,6 +492,50 @@ def month_notification(result: dict[str, Any], month_start: datetime) -> dict[st
     }
 
 
+def _next_month(start: datetime) -> datetime:
+    return (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+
+def card_statistics(engine: Engine, keys: tuple[str, ...], now: datetime, solar: dict[datetime, HourFlows] | None) -> dict[str, Any]:  # fmt: skip
+    """What the long-term statistics answer the card at this moment: the
+    change of the cumulative sensors in the calendar day, month and year
+    ("recorder/statistic_during_period") and per month since the setup
+    ("recorder/statistics_during_period"). The difference is the tariff's
+    cost minus the current tariff's (as statistics_import.py writes it); the
+    savings come from complete hours, as the sensors recompute them."""
+    utc_now = now.astimezone(UTC)
+    day = now.replace(hour=0, minute=0)
+
+    def values(start: datetime, end: datetime) -> dict[str, dict[str, float]]:
+        part = engine.costs_between(start.astimezone(UTC), end.astimezone(UTC), utc_now)
+        cost = {k: part.totals[k].cost for k in keys}
+        result = {
+            "cost": {k: round(v, 4) for k, v in cost.items()},
+            "difference": {k: round(cost[k] - cost["fixed"], 4) for k in keys if k != "fixed"},
+        }  # fmt: skip
+        if solar is not None:
+            totals = solar_between(engine, solar, start, end).totals
+            result["saving_pv"] = {k: round(totals[k].saving_pv, 4) for k in keys}
+            result["saving_battery"] = {k: round(totals[k].saving_battery, 4) for k in keys}  # fmt: skip
+        return result
+
+    starts = {
+        "day": day,
+        "month": day.replace(day=1),
+        "year": max(day.replace(month=1, day=1), SETUP),
+    }
+    months = []
+    start = SETUP
+    while start < now:
+        end = min(_next_month(start), now)
+        months.append({"month": start.strftime("%Y-%m")} | values(start, end))
+        start = _next_month(start)
+    return {
+        "periods": {period: values(start, now) for period, start in starts.items()},
+        "months": months,
+    }
+
+
 def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[datetime, float], solar: dict[datetime, HourFlows] | None) -> dict[str, Any]:  # fmt: skip
     """What Home Assistant shows at this moment."""
     utc_now = now.astimezone(UTC)
@@ -554,6 +599,7 @@ def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[
         "days": days,
         "curve": today,
         "notification": notification | {"at": month.replace(hour=8).isoformat()},
+        "card": card_statistics(engine, keys, now, solar),
     }  # fmt: skip
 
 

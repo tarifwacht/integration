@@ -1,7 +1,7 @@
 name: Demo
 
 # Publishes docs/demo/ to GitHub Pages (https://tarifwacht.github.io/integration/).
-# Runs for main. The page references the brand icon as
+# Runs for main. The page references the brand icon and the card as
 # ../../custom_components/…; on Pages everything sits at the root.
 
 on:
@@ -10,6 +10,7 @@ on:
     paths:
       - docs/demo/**
       - custom_components/tarifwacht/brand/icon.png
+      - custom_components/tarifwacht/frontend/**
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -35,6 +36,8 @@ jobs:
           mkdir -p _site/brand
           cp -r docs/demo/. _site/
           cp custom_components/tarifwacht/brand/icon.png _site/brand/
+          # The integration's own card, shown unchanged on a made-up hass.
+          cp -r custom_components/tarifwacht/frontend _site/
           # "./", not "": a path without it would be read as a package name by import()
           sed -i 's#\.\./\.\./custom_components/tarifwacht/#./#g' _site/index.html
           if grep -n '\.\./' _site/index.html; then
