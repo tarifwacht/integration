@@ -144,6 +144,7 @@ async def test_booking_and_restart(
     )
     assert "tariff 2: dynamic_total, base_price 0, base_period month" in message
     assert "comparison leaves energy out: no" in message
+    assert "card: no frontend" in message
     assert "open: none" in message
     for private in (METER, PRICE, "Haus", "Fixed price", "Dynamic", "1002000"):
         assert private not in message, private

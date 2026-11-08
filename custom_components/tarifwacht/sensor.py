@@ -28,10 +28,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import TarifwachtConfigEntry
-from .const import CONF_CHARGED_ENTITY, CONF_DISCHARGED_ENTITY, DOMAIN, VERSION
+from .const import DOMAIN, VERSION
 from .entity import MeterEntity
 from .lookback import hour_start
-from .runtime import MeterRuntime, TariffInfo
+from .runtime import MeterRuntime, TariffInfo, has_battery
 from .solar import SolarTotals
 from .tariffs import TariffTotals
 
@@ -216,9 +216,7 @@ async def async_setup_entry(
     async_add_entities([EnergySensor(entry, ENERGY), CheapestSensor(entry)])
     current = runtime.current
     solar = runtime.solar_data
-    battery = solar is not None and bool(
-        solar.get(CONF_CHARGED_ENTITY) and solar.get(CONF_DISCHARGED_ENTITY)
-    )
+    battery = has_battery(solar)
     for tariff in runtime.tariffs.values():
         descriptions = list(TARIFF_SENSORS)
         if current is not None and tariff.key != current.key:
@@ -278,7 +276,11 @@ class CheapestSensor(MeterEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        # "current": the title of the current tariff ("your tariff" in a
+        # dashboard), None without one.
+        current = self.runtime.current
         return {
+            "current": None if current is None else current.title,
             "ranking": [
                 {"tariff": tariff.title, "cost": round(cost, 2)}
                 for tariff, cost in self._ranking()

@@ -40,6 +40,7 @@ from .const import (
     VERSION,
 )
 from .entity import MeterEntity
+from .frontend_resource import card_status
 from .issue_report import Lines, build, show
 from .modul3 import WindowError, parse_windows
 from .runtime import MeterRuntime, tariff_subentries
@@ -300,6 +301,7 @@ def entry_lines(
         )
     if runtime.past_prices_error:
         lines.append(("past prices error", scrub(runtime.past_prices_error, mapping)))
+    lines.append(("card", card_status(hass)))
     if runtime.own_entities:
         own = {entity: role for role, entity in mapping.items()}
         lines.append(

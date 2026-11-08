@@ -2,7 +2,11 @@
   "domain": "tarifwacht",
   "name": "Tarifwacht",
   "after_dependencies": [
-    "recorder"
+    "frontend",
+    "http",
+    "lovelace",
+    "recorder",
+    "websocket_api"
   ],
   "categories": [
     "energy.energy_prices",

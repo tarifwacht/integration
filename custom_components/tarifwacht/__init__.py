@@ -21,7 +21,9 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.hass_dict import HassKey
 
+from .cards import async_setup_cards
 from .const import CONF_KEY, DOMAIN, SUBENTRY_TARIFF, TARIFF_DYNAMIC
+from .frontend_resource import async_register_card, async_unregister_card
 from .rename import renamed_data, renamed_tariff, renamed_unique_id, sources
 from .runtime import MeterRuntime, tariff_subentries
 from .services import async_setup_services
@@ -51,9 +53,11 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the actions and follow renamed sources (once, for all entries)."""
+    """Register the actions, the card and follow renamed sources (once, for
+    all entries)."""
     async_setup_services(hass)
     _async_follow_renames(hass)
+    await async_setup_cards(hass)
     return True
 
 
@@ -136,6 +140,10 @@ def _async_follow_renames(hass: HomeAssistant) -> None:
 
 async def async_setup_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) -> bool:
     """Set up one meter with its tariffs."""
+    # Here rather than in async_setup: after removing and adding the
+    # integration again, async_setup does not run before the next restart.
+    if getattr(hass, "http", None) is not None:
+        await async_register_card(hass)
     runtime = MeterRuntime(hass, entry)
     await runtime.async_start()
     entry.runtime_data = runtime
@@ -170,7 +178,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) 
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: TarifwachtConfigEntry) -> None:
-    """Delete the stored bookings."""
+    """Delete the stored bookings; with the last entry the card resource, too."""
+    if not any(
+        other.entry_id != entry.entry_id
+        for other in hass.config_entries.async_entries(DOMAIN)
+    ):
+        await async_unregister_card(hass)
     await MeterRuntime(hass, entry).async_remove()
 
 

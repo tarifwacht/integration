@@ -216,6 +216,14 @@ def solar_subentry(entry: ConfigEntry) -> ConfigSubentry | None:
     )
 
 
+def has_battery(data: Mapping[str, Any] | None) -> bool:
+    """Whether the PV and battery subentry has both battery meters (only then
+    the tariffs get "Saving by battery")."""
+    return data is not None and bool(
+        data.get(CONF_CHARGED_ENTITY) and data.get(CONF_DISCHARGED_ENTITY)
+    )
+
+
 def solar_settings(data: Mapping[str, Any]) -> SolarSettings:
     return SolarSettings(
         same_inverter=bool(data.get(CONF_SAME_INVERTER)),
