@@ -51,6 +51,7 @@ from .conftest import (
     METER_ATTRIBUTES,
     PRICE,
     entry_data,
+    nest_sections,
     price_attributes,
     subentries_data,
 )
@@ -261,7 +262,9 @@ async def add_tariff(
     )
     result = await flows.async_configure(result["flow_id"], {"next_step_id": kind})
     base = {"base_period": "month", "current": False}
-    await flows.async_configure(result["flow_id"], {**user_input, **base})
+    await flows.async_configure(
+        result["flow_id"], nest_sections(result, {**user_input, **base})
+    )
     await hass.async_block_till_done(wait_background_tasks=True)
     added = next(s for s in entry.subentries.values() if s.title == user_input["name"])
     return added.subentry_id
@@ -375,7 +378,9 @@ async def test_added_exchange_price_tariff_without_consent(
         "base_period": "month",
         "current": False,
     }
-    await flows.async_configure(result["flow_id"], {**form, "smard_fill": False})
+    await flows.async_configure(
+        result["flow_id"], nest_sections(result, {**form, "smard_fill": False})
+    )
     await hass.async_block_till_done(wait_background_tasks=True)
     added = next(s for s in entry.subentries.values() if s.title == "Börse")
     key = added.subentry_id

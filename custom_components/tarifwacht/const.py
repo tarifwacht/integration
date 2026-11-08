@@ -47,6 +47,10 @@ CONF_MODUL3: Final = "modul3"  # time-variable grid fee (§ 14a EnWG Modul 3)
 CONF_BONUS: Final = "bonus"
 CONF_BONUS_DATE: Final = "bonus_date"
 SECTION_BONUS: Final = "bonus_section"
+# Form sections only (nothing stored under these keys): VAT and base price
+# period ("More"), Modul 3 in a price change.
+SECTION_DETAILS: Final = "details_section"
+SECTION_MODUL3: Final = "modul3_section"
 # Exchange price tariff added later: the user agreed to fill the time since
 # the setup that its sensor does not know with prices from SMARD.de.
 CONF_SMARD_FILL: Final = "smard_fill"
@@ -69,6 +73,8 @@ CONF_PV_SINCE: Final = "pv_since"
 CONF_BATTERY_COST: Final = "battery_cost"
 CONF_BATTERY_SINCE: Final = "battery_since"
 SECTION_PURCHASE: Final = "purchase_section"
+# Form section only: the exchange price sensor for section 51.
+SECTION_MARKET: Final = "market_section"
 # They change no past hour: no repair issue, no stale statistics.
 PURCHASE_KEYS: Final = (
     CONF_PV_COST,

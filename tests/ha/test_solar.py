@@ -27,7 +27,15 @@ from custom_components.tarifwacht.const import (
 from custom_components.tarifwacht.lookback import Lookback
 from custom_components.tarifwacht.runtime import MeterRuntime
 
-from .conftest import METER, METER_ATTRIBUTES, PRICE, mock_entry, price_attributes
+from .conftest import (
+    METER,
+    METER_ATTRIBUTES,
+    PRICE,
+    mock_entry,
+    nest_sections,
+    price_attributes,
+    shown_values,
+)
 
 FEED_IN = "sensor.grid_export"
 PV = "sensor.inverter_energy"
@@ -51,7 +59,7 @@ async def start_solar(hass: HomeAssistant, entry: MockConfigEntry) -> dict:
 
 async def configure(hass: HomeAssistant, result: dict, user_input: dict) -> dict:
     return await hass.config_entries.subentries.async_configure(
-        result["flow_id"], user_input
+        result["flow_id"], nest_sections(result, user_input)
     )
 
 
@@ -66,10 +74,7 @@ def solar_input(**changes: Any) -> dict[str, Any]:
 
 
 def suggested(result: dict, key: str) -> Any:
-    for marker in result["data_schema"].schema:
-        if str(marker) == key:
-            return (marker.description or {}).get("suggested_value")
-    raise KeyError(key)
+    return shown_values(result)[key]
 
 
 async def test_add_pv_without_battery(hass: HomeAssistant) -> None:
@@ -110,7 +115,8 @@ async def test_battery_step_and_errors(hass: HomeAssistant) -> None:
         result = await configure(
             hass, result, solar_input(**{CONF_NEGATIVE_UNPAID: True})
         )
-        assert result["errors"] == {"market_entity": "market_required"}
+        # The sensor is in a collapsed section: the error on top.
+        assert result["errors"] == {"base": "market_required"}
         result = await configure(
             hass,
             result,

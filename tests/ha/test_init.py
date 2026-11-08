@@ -32,6 +32,7 @@ from .conftest import (
     dynamic_tariff,
     entry_data,
     mock_entry,
+    nest_sections,
     price_attributes,
     subentries_data,
 )
@@ -199,7 +200,15 @@ async def test_added_tariff_covers_whole_period(
     )
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"],
-        {"name": "Günstig", "price": 25.0, "base_period": "month", "current": False},
+        nest_sections(
+            result,
+            {
+                "name": "Günstig",
+                "price": 25.0,
+                "base_period": "month",
+                "current": False,
+            },
+        ),
     )
     await hass.async_block_till_done()
     added = next(s for s in entry.subentries.values() if s.title == "Günstig")

@@ -5,8 +5,10 @@ one (feed-in meter, rate, the negative price rule, exchange price sensor) and
 from a Speicherwacht entry (battery meters); copied once, no dependency at
 runtime. The form names the entries, or links the sisters if there is none.
 Whether the battery sits behind the PV inverter is asked in plain words,
-with the answer the data suggest. Purchase cost and commissioning of PV and
-battery (payback.py) go in a collapsed section.
+with the answer the data suggest. Rarely needed fields sit in collapsed
+sections: the exchange price sensor for section 51 (the exchange price
+tariff's sensor does without it) and the purchase of PV and battery
+(payback.py). Stored flat, as before.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from .const import (
     CONF_PV_SINCE,
     CONF_SAME_INVERTER,
     PURCHASE_KEYS,
+    SECTION_MARKET,
     SECTION_PURCHASE,
     SUBENTRY_SOLAR,
 )
@@ -253,6 +256,9 @@ def _schema(values: dict[str, Any]) -> vol.Schema:
 
     shown = values.get(SECTION_PURCHASE)
     purchase = purchase_values(values) if shown is None else shown
+    market = values.get(SECTION_MARKET)
+    if market is None:
+        market = {CONF_MARKET_ENTITY: values.get(CONF_MARKET_ENTITY)}
 
     return vol.Schema(
         {
@@ -275,13 +281,21 @@ def _schema(values: dict[str, Any]) -> vol.Schema:
                 CONF_NEGATIVE_UNPAID,
                 default=bool(values.get(CONF_NEGATIVE_UNPAID, False)),
             ): selector.BooleanSelector(),
-            vol.Optional(
-                CONF_MARKET_ENTITY, description=suggested(CONF_MARKET_ENTITY)
-            ): PRICE_SENSOR,
-            # Collapsed, the form stays short. Optional and without a
-            # default: the frontend takes a section's default over the
-            # suggested values of its fields (Wärmewacht 9c7e722); missing
-            # input keeps the stored values.
+            # Collapsed sections: optional and without a default, the
+            # frontend takes a section's default over the suggested values
+            # of its fields (Wärmewacht 9c7e722); missing input keeps the
+            # stored (or suggested) values.
+            vol.Optional(SECTION_MARKET): section(
+                vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_MARKET_ENTITY,
+                            description=suggested(CONF_MARKET_ENTITY, market),
+                        ): PRICE_SENSOR
+                    }
+                ),
+                {"collapsed": True},
+            ),
             vol.Optional(SECTION_PURCHASE): section(
                 vol.Schema(
                     {
@@ -315,6 +329,9 @@ class SolarSubentryFlow(ConfigSubentryFlow):
         self._data: dict[str, Any] = {}
         self._detected: bool | None = None
         self._placeholders: dict[str, str] = {}
+        # Values suggested from the sisters: kept if a section does not
+        # come back with the input.
+        self._suggested: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -325,6 +342,7 @@ class SolarSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             return await self._async_meters("user", user_input, {})
         values, sources = from_sisters(self.hass)
+        self._suggested = values
         self._placeholders = {**SISTER_URLS, **sources}
         return await self._async_meters(suggestion_step(sources), None, values)
 
@@ -358,8 +376,18 @@ class SolarSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             values = dict(user_input)
+            before = (
+                self._get_reconfigure_subentry().data
+                if self.source == "reconfigure"
+                else self._suggested
+            )
             if SECTION_PURCHASE not in values and self.source == "reconfigure":
-                values |= purchase_values(self._get_reconfigure_subentry().data)
+                values |= purchase_values(before)
+            if SECTION_MARKET in user_input:
+                market_entity = user_input[SECTION_MARKET].get(CONF_MARKET_ENTITY)
+            else:
+                market_entity = before.get(CONF_MARKET_ENTITY)
+                values[SECTION_MARKET] = {CONF_MARKET_ENTITY: market_entity}
             purchase = self._get_entry().data[CONF_METER]
             for key in METERS:
                 if (entity := user_input.get(key)) and (
@@ -371,17 +399,21 @@ class SolarSubentryFlow(ConfigSubentryFlow):
             if bool(charged) != bool(discharged):
                 errors["base"] = "battery_both"
             if user_input[CONF_NEGATIVE_UNPAID] and not (
-                user_input.get(CONF_MARKET_ENTITY) or self._has_market_tariff()
+                market_entity or self._has_market_tariff()
             ):
-                errors[CONF_MARKET_ENTITY] = "market_required"
+                # The field is in a collapsed section: the error on top.
+                errors.setdefault("base", "market_required")
             if "base" not in errors and (error := purchase_error(user_input)):
                 errors["base"] = error
             if not errors:
                 self._data = {
                     k: v
                     for k, v in user_input.items()
-                    if v not in (None, "") and k != SECTION_PURCHASE
+                    if v not in (None, "")
+                    and k not in (SECTION_PURCHASE, SECTION_MARKET)
                 }
+                if market_entity:
+                    self._data[CONF_MARKET_ENTITY] = market_entity
                 if SECTION_PURCHASE in user_input:
                     self._data |= purchase_data(user_input[SECTION_PURCHASE])
                 elif self.source == "reconfigure":

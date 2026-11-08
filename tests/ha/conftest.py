@@ -134,3 +134,40 @@ else:
     @pytest.fixture(autouse=True)
     def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
         """Allow loading custom_components/tarifwacht in every test."""
+
+
+def nest_sections(result: dict[str, Any], user_input: dict[str, Any]) -> dict[str, Any]:
+    """The input as the form takes it: flat fields that belong to a section
+    of the shown form moved into it (the tests write them flat). A section
+    given explicitly stays as it is."""
+    from homeassistant.data_entry_flow import section
+
+    nested = dict(user_input)
+    schema = result.get("data_schema")
+    if schema is None:
+        return nested
+    for key, value in schema.schema.items():
+        name = str(key)
+        if not isinstance(value, section) or name in user_input:
+            continue
+        inner = {str(k) for k in value.schema.schema}
+        moved = {k: nested.pop(k) for k in list(nested) if k in inner}
+        if moved:
+            nested[name] = moved
+    return nested
+
+
+def shown_values(result: dict[str, Any]) -> dict[str, Any]:
+    """The suggested values of a form, those inside sections included."""
+    from homeassistant.data_entry_flow import section
+
+    values: dict[str, Any] = {}
+    for key, value in result["data_schema"].schema.items():
+        if isinstance(value, section):
+            for inner in value.schema.schema:
+                values[str(inner)] = (inner.description or {}).get("suggested_value")
+        else:
+            values[str(key)] = (getattr(key, "description", None) or {}).get(
+                "suggested_value"
+            )
+    return values

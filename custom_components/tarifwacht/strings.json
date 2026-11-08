@@ -53,7 +53,6 @@
           "grid_fee": "Grid fee",
           "levies": "Taxes, levies and concession fee",
           "margin": "Supplier surcharge",
-          "vat": "VAT",
           "base_price": "Base price per month"
         },
         "data_description": {
@@ -62,6 +61,18 @@
           "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
           "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
           "base_price": "Optional, incl. VAT. Booked pro rata per day."
+        },
+        "sections": {
+          "details_section": {
+            "name": "More (optional)",
+            "description": "VAT (19 % unless your contract says otherwise).",
+            "data": {
+              "vat": "VAT"
+            },
+            "data_description": {
+              "vat": "Usually 19 %."
+            }
+          }
         }
       },
       "dynamic_total": {
@@ -116,15 +127,24 @@
             "name": "Name",
             "price": "Energy price",
             "base_price": "Base price",
-            "base_period": "Base price per",
             "current": "My current tariff"
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
-            "base_price": "Optional. Booked pro rata per day.",
+            "base_price": "Optional, gross. Per month; per year under “More”. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
           },
           "sections": {
+            "details_section": {
+              "name": "More (optional)",
+              "description": "Base price per month or per year.",
+              "data": {
+                "base_period": "Base price per"
+              },
+              "data_description": {
+                "base_period": "Per year: the yearly price is spread over the 365 or 366 days."
+              }
+            },
             "bonus_section": {
               "name": "Bonus (optional)",
               "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
@@ -146,16 +166,25 @@
             "name": "Name",
             "price_entity": "Total price sensor",
             "base_price": "Base price",
-            "base_period": "Base price per",
             "current": "My current tariff"
           },
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
             "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, (experimental) Nord Pool or ENTSO-E from HACS, or any other sensor in €/kWh, e.g. a template with your own tariff.",
-            "base_price": "Optional, incl. VAT. Booked pro rata per day.",
+            "base_price": "Optional, gross. Per month; per year under “More”. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
           },
           "sections": {
+            "details_section": {
+              "name": "More (optional)",
+              "description": "Base price per month or per year.",
+              "data": {
+                "base_period": "Base price per"
+              },
+              "data_description": {
+                "base_period": "Per year: the yearly price is spread over the 365 or 366 days."
+              }
+            },
             "bonus_section": {
               "name": "Bonus (optional)",
               "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
@@ -179,9 +208,7 @@
             "grid_fee": "Grid fee",
             "levies": "Taxes, levies and concession fee",
             "margin": "Supplier surcharge",
-            "vat": "VAT",
             "base_price": "Base price",
-            "base_period": "Base price per",
             "current": "My current tariff",
             "smard_fill": "Fill the time since the setup with exchange prices from SMARD.de"
           },
@@ -191,11 +218,23 @@
             "grid_fee": "Energy-related grid fee of your grid operator, net.",
             "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
             "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
-            "base_price": "Optional, incl. VAT. Booked pro rata per day.",
+            "base_price": "Optional, gross. Per month; per year under “More”. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one.",
             "smard_fill": "Fetches public exchange prices from SMARD.de (Bundesnetzagentur) once for the time since the setup that the sensor does not know, so the tariff counts from the setup like the others. Nothing about you is transmitted. Without it, the comparison leaves that time out."
           },
           "sections": {
+            "details_section": {
+              "name": "More (optional)",
+              "description": "VAT and whether the base price is per month or per year.",
+              "data": {
+                "vat": "VAT",
+                "base_period": "Base price per"
+              },
+              "data_description": {
+                "vat": "Usually 19 %.",
+                "base_period": "Per year: the yearly price is spread over the 365 or 366 days."
+              }
+            },
             "bonus_section": {
               "name": "Bonus (optional)",
               "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
@@ -228,21 +267,41 @@
             "grid_fee": "Grid fee",
             "levies": "Taxes, levies and concession fee",
             "margin": "Supplier surcharge",
-            "vat": "VAT",
-            "base_price": "Base price",
-            "base_period": "Base price per",
-            "modul3_active": "Modul 3 active",
-            "nt": "Grid fee low-load level (NT)",
-            "ht": "Grid fee high-load level (HT)",
-            "quarters": "Quarters in which the windows apply",
-            "nt_windows": "Low-load windows (NT)",
-            "ht_windows": "High-load windows (HT)",
-            "standard_fee": "Grid fee contained in the fixed price"
+            "base_price": "Base price"
           },
-          "data_description": {
-            "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
-            "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies.",
-            "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet."
+          "data_description": {},
+          "sections": {
+            "details_section": {
+              "name": "More (optional)",
+              "description": "VAT and whether the base price is per month or per year.",
+              "data": {
+                "vat": "VAT",
+                "base_period": "Base price per"
+              },
+              "data_description": {
+                "vat": "Usually 19 %.",
+                "base_period": "Per year: the yearly price is spread over the 365 or 366 days."
+              }
+            },
+            "modul3_section": {
+              "name": "Modul 3 (optional)",
+              "description": "Time-variable grid fee (§ 14a EnWG) from this date on. Open when the tariff uses it today.",
+              "data": {
+                "modul3_active": "Modul 3 active",
+                "standard_fee": "Grid fee contained in the fixed price",
+                "nt": "Grid fee low-load level (NT)",
+                "ht": "Grid fee high-load level (HT)",
+                "quarters": "Quarters in which the windows apply",
+                "nt_windows": "Low-load windows (NT)",
+                "ht_windows": "High-load windows (HT)",
+                "vat": "VAT"
+              },
+              "data_description": {
+                "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
+                "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
+                "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
+              }
+            }
           }
         },
         "remove_change": {
@@ -309,7 +368,8 @@
         "window_overlap": "The windows overlap.",
         "window_required": "Each level needs at least one window a day.",
         "quarters_required": "Please choose at least one quarter.",
-        "bonus_date_required": "Please enter the date the bonus is credited on."
+        "bonus_date_required": "Please enter the date the bonus is credited on.",
+        "modul3_price_required": "Modul 3: please enter the grid fees of the low and high load level (for a fixed price also the grid fee contained in it)."
       }
     },
     "solar": {
@@ -327,8 +387,7 @@
             "charged_entity": "Battery charged",
             "discharged_entity": "Battery discharged",
             "feed_in_rate": "Feed-in tariff",
-            "negative_unpaid": "No payment at negative prices",
-            "market_entity": "Exchange price sensor"
+            "negative_unpaid": "No payment at negative prices"
           },
           "data_description": {
             "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
@@ -336,10 +395,19 @@
             "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
             "discharged_entity": "Optional: energy out of the battery (kWh counter).",
             "feed_in_rate": "What you get per kWh fed in.",
-            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
-            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price."
           },
           "sections": {
+            "market_section": {
+              "name": "Exchange price for § 51 (optional)",
+              "description": "Only needed for “No payment at negative prices” if there is no exchange price tariff.",
+              "data": {
+                "market_entity": "Exchange price sensor"
+              },
+              "data_description": {
+                "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+              }
+            },
             "purchase_section": {
               "name": "Purchase (optional)",
               "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
@@ -367,8 +435,7 @@
             "charged_entity": "Battery charged",
             "discharged_entity": "Battery discharged",
             "feed_in_rate": "Feed-in tariff",
-            "negative_unpaid": "No payment at negative prices",
-            "market_entity": "Exchange price sensor"
+            "negative_unpaid": "No payment at negative prices"
           },
           "data_description": {
             "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
@@ -376,10 +443,19 @@
             "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
             "discharged_entity": "Optional: energy out of the battery (kWh counter).",
             "feed_in_rate": "What you get per kWh fed in.",
-            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
-            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price."
           },
           "sections": {
+            "market_section": {
+              "name": "Exchange price for § 51 (optional)",
+              "description": "Only needed for “No payment at negative prices” if there is no exchange price tariff.",
+              "data": {
+                "market_entity": "Exchange price sensor"
+              },
+              "data_description": {
+                "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+              }
+            },
             "purchase_section": {
               "name": "Purchase (optional)",
               "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
@@ -407,8 +483,7 @@
             "charged_entity": "Battery charged",
             "discharged_entity": "Battery discharged",
             "feed_in_rate": "Feed-in tariff",
-            "negative_unpaid": "No payment at negative prices",
-            "market_entity": "Exchange price sensor"
+            "negative_unpaid": "No payment at negative prices"
           },
           "data_description": {
             "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
@@ -416,10 +491,19 @@
             "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
             "discharged_entity": "Optional: energy out of the battery (kWh counter).",
             "feed_in_rate": "What you get per kWh fed in.",
-            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
-            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price."
           },
           "sections": {
+            "market_section": {
+              "name": "Exchange price for § 51 (optional)",
+              "description": "Only needed for “No payment at negative prices” if there is no exchange price tariff.",
+              "data": {
+                "market_entity": "Exchange price sensor"
+              },
+              "data_description": {
+                "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+              }
+            },
             "purchase_section": {
               "name": "Purchase (optional)",
               "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
@@ -447,8 +531,7 @@
             "charged_entity": "Battery charged",
             "discharged_entity": "Battery discharged",
             "feed_in_rate": "Feed-in tariff",
-            "negative_unpaid": "No payment at negative prices",
-            "market_entity": "Exchange price sensor"
+            "negative_unpaid": "No payment at negative prices"
           },
           "data_description": {
             "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
@@ -456,10 +539,19 @@
             "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
             "discharged_entity": "Optional: energy out of the battery (kWh counter).",
             "feed_in_rate": "What you get per kWh fed in.",
-            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
-            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price."
           },
           "sections": {
+            "market_section": {
+              "name": "Exchange price for § 51 (optional)",
+              "description": "Only needed for “No payment at negative prices” if there is no exchange price tariff.",
+              "data": {
+                "market_entity": "Exchange price sensor"
+              },
+              "data_description": {
+                "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+              }
+            },
             "purchase_section": {
               "name": "Purchase (optional)",
               "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
@@ -487,8 +579,7 @@
             "charged_entity": "Battery charged",
             "discharged_entity": "Battery discharged",
             "feed_in_rate": "Feed-in tariff",
-            "negative_unpaid": "No payment at negative prices",
-            "market_entity": "Exchange price sensor"
+            "negative_unpaid": "No payment at negative prices"
           },
           "data_description": {
             "feed_in_entity": "Energy fed into the grid (kWh counter), e.g. of the smart meter.",
@@ -496,10 +587,19 @@
             "charged_entity": "Optional, together with “Battery discharged”: energy into the battery (kWh counter).",
             "discharged_entity": "Optional: energy out of the battery (kWh counter).",
             "feed_in_rate": "What you get per kWh fed in.",
-            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
-            "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+            "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price."
           },
           "sections": {
+            "market_section": {
+              "name": "Exchange price for § 51 (optional)",
+              "description": "Only needed for “No payment at negative prices” if there is no exchange price tariff.",
+              "data": {
+                "market_entity": "Exchange price sensor"
+              },
+              "data_description": {
+                "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+              }
+            },
             "purchase_section": {
               "name": "Purchase (optional)",
               "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
@@ -556,7 +656,7 @@
         "meter_unit": "The meter must count energy in Wh, kWh or MWh.",
         "meter_state_class": "The meter needs a state class total or total_increasing (long-term statistics).",
         "battery_both": "Please choose both battery meters, or neither.",
-        "market_required": "For no payment at negative prices an exchange price is needed: choose a sensor or add an exchange price tariff.",
+        "market_required": "For no payment at negative prices an exchange price is needed: add an exchange price tariff or choose a sensor under “Exchange price for § 51”.",
         "purchase_date_required": "Please enter the commissioning day for the purchase cost.",
         "battery_cost_without_meters": "A battery purchase cost needs the two battery meters."
       },

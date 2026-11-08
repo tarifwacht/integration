@@ -25,7 +25,9 @@ from .conftest import (
     entry_data,
     fixed_tariff,
     mock_entry,
+    nest_sections,
     price_attributes,
+    shown_values,
 )
 
 METER_STEP = {"name": "Haus", "meter_entity": METER}
@@ -56,7 +58,9 @@ async def start(hass: HomeAssistant) -> dict:
 
 
 async def configure(hass: HomeAssistant, result: dict, user_input: dict) -> dict:
-    return await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], nest_sections(result, user_input)
+    )
 
 
 def added_entry(hass: HomeAssistant) -> MockConfigEntry:
@@ -77,7 +81,7 @@ async def start_tariff(hass: HomeAssistant, entry: MockConfigEntry, kind: str) -
 
 async def configure_tariff(hass: HomeAssistant, result: dict, user_input: dict) -> dict:
     return await hass.config_entries.subentries.async_configure(
-        result["flow_id"], user_input
+        result["flow_id"], nest_sections(result, user_input)
     )
 
 
@@ -120,15 +124,16 @@ async def test_setup_with_exchange_price(hass: HomeAssistant) -> None:
     result = await dynamic_step(hass, "dynamic_market")
     assert result["step_id"] == "dynamic_market"
     fields = {str(key): key for key in result["data_schema"].schema}
+    # VAT in the collapsed section "More".
     assert set(fields) == {
         "price_entity",
         "grid_fee",
         "levies",
         "margin",
-        "vat",
         "base_price",
+        "details_section",
     }
-    assert fields["vat"].description == {"suggested_value": 19.0}
+    assert shown_values(result)["vat"] == 19.0
     result = await configure(
         hass, result, {"price_entity": MARKET, "margin": 15.0, "vat": 19.0}
     )
@@ -490,12 +495,13 @@ async def test_modul3_of_a_fixed_price(hass: HomeAssistant) -> None:
     result = await flows.async_configure(
         result["flow_id"], {"next_step_id": "add_change"}
     )
-    suggested = {
-        str(key): (key.description or {}).get("suggested_value")
-        for key in result["data_schema"].schema
-    }
+    suggested = shown_values(result)
     assert suggested["standard_fee"] == 7.91
     assert suggested["modul3_active"] is True
+    # Modul 3 in use: its section opens.
+    schema = result["data_schema"].schema
+    (key,) = [k for k in schema if str(k) == "modul3_section"]
+    assert schema[key].options == {"collapsed": False}
     change = {
         "from": "2027-01-01",
         "price": 32.0,
@@ -720,3 +726,131 @@ async def test_bonus_in_a_collapsed_section(hass: HomeAssistant) -> None:
     )
     data = entry.subentries[FIXED_SUBENTRY].data
     assert "bonus" not in data and "bonus_date" not in data
+
+
+async def test_rare_fields_in_collapsed_sections(hass: HomeAssistant) -> None:
+    """VAT and base price period sit in the collapsed section "More": no
+    section default, the stored values inside it, kept when the section does
+    not come back; adding without it takes the defaults."""
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+    result = await start_tariff(hass, entry, "dynamic_market")
+    schema = result["data_schema"].schema
+    assert {str(k) for k in schema} == {
+        "name",
+        "price_entity",
+        "grid_fee",
+        "levies",
+        "margin",
+        "base_price",
+        "current",
+        "smard_fill",
+        "details_section",
+        "bonus_section",
+    }
+    (key,) = [k for k in schema if str(k) == "details_section"]
+    assert schema[key].options == {"collapsed": True}
+    assert isinstance(key, vol.Optional) and key.default is vol.UNDEFINED
+    assert shown_values(result)["vat"] == 19.0
+    assert shown_values(result)["base_period"] == "month"
+    # Without the section: VAT 19 %, per month.
+    result = await flows.async_configure(
+        result["flow_id"],
+        {"name": "Börse", "price_entity": MARKET, "margin": 2.0, "current": False},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    added = next(s for s in entry.subentries.values() if s.title == "Börse")
+    assert added.data["vat"] == 19.0 and added.data["base_period"] == "month"
+
+    async def edit() -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, added.subentry_id)
+        return await flows.async_configure(result["flow_id"], {"next_step_id": "edit"})
+
+    shown = {"name": "Börse", "price_entity": MARKET, "margin": 2.0, "current": False}
+    result = await edit()
+    await flows.async_configure(
+        result["flow_id"],
+        {**shown, "details_section": {"vat": 7.0, "base_period": "year"}},
+    )
+    data = entry.subentries[added.subentry_id].data
+    assert data["vat"] == 7.0 and data["base_period"] == "year"
+    # Reconfigure shows them in the section; saved without it, they stay.
+    result = await edit()
+    assert shown_values(result)["vat"] == 7.0
+    assert shown_values(result)["base_period"] == "year"
+    await flows.async_configure(result["flow_id"], shown)
+    data = entry.subentries[added.subentry_id].data
+    assert data["vat"] == 7.0 and data["base_period"] == "year"
+
+
+async def test_price_change_without_modul3(hass: HomeAssistant) -> None:
+    """A price change shows the prices; VAT, base price period and Modul 3
+    in collapsed sections (Modul 3 closed while the tariff does not use it).
+    Without the Modul 3 section the values before stay; its errors show on
+    top."""
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+    result = await start_tariff(hass, entry, "dynamic_market")
+    await configure_tariff(
+        hass,
+        result,
+        {
+            "name": "Börse",
+            "price_entity": MARKET,
+            "grid_fee": 7.57,
+            "vat": 19.0,
+            "base_period": "month",
+            "current": False,
+        },
+    )
+    subentry = next(s for s in entry.subentries.values() if s.title == "Börse")
+
+    async def add_change() -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, subentry.subentry_id)
+        return await flows.async_configure(
+            result["flow_id"], {"next_step_id": "add_change"}
+        )
+
+    result = await add_change()
+    schema = result["data_schema"].schema
+    assert {str(k) for k in schema} == {
+        "from",
+        "grid_fee",
+        "levies",
+        "margin",
+        "base_price",
+        "details_section",
+        "modul3_section",
+    }
+    (key,) = [k for k in schema if str(k) == "modul3_section"]
+    assert schema[key].options == {"collapsed": True}
+    assert shown_values(result)["vat"] == 19.0
+    # Modul 3 switched on without windows: the error on top.
+    result = await flows.async_configure(
+        result["flow_id"],
+        {
+            "from": "2027-01-01",
+            "grid_fee": 8.0,
+            "modul3_section": {"modul3_active": True, "nt": 3.0, "ht": 11.0},
+        },
+    )
+    assert result["errors"] == {"base": "window_required"}
+    result = await flows.async_configure(
+        result["flow_id"],
+        {
+            "from": "2027-01-01",
+            "grid_fee": 8.0,
+            "modul3_section": {"modul3_active": True, "ht": 11.0},
+        },
+    )
+    assert result["errors"]["base"] in ("window_required", "modul3_price_required")
+    # Without the sections: VAT and period as today, no Modul 3 key.
+    result = await add_change()
+    result = await flows.async_configure(
+        result["flow_id"], {"from": "2027-01-01", "grid_fee": 8.0}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    (change,) = entry.subentries[subentry.subentry_id].data["changes"]
+    assert change["grid_fee"] == 8.0
+    assert change["vat"] == 19.0 and change["base_period"] == "month"
+    assert "modul3" not in change

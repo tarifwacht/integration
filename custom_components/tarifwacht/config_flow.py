@@ -6,10 +6,15 @@ look back before the setup) or a total-price sensor; both tariffs become
 subentries. "Add tariff" offers the same three kinds. Reconfiguring the entry changes
 name and meter; reconfiguring a tariff shows its form again. Every change
 reloads the entry (update listener), which recomputes the whole period.
+
+Forms show the prices at first glance; what is rarely changed (VAT, base
+price per year, bonus, Modul 3 in a price change) sits in collapsed
+sections. Sections only shape the form: the stored keys stay flat.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
@@ -61,6 +66,8 @@ from .const import (
     KIND_FIXED,
     KINDS,
     SECTION_BONUS,
+    SECTION_DETAILS,
+    SECTION_MODUL3,
     SUBENTRY_SOLAR,
     SUBENTRY_TARIFF,
     TARIFF_DYNAMIC,
@@ -295,33 +302,18 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                     _tariff_data(
                         kind,
                         {
-                            **user_input,
+                            **flatten_details(user_input, {CONF_VAT: DEFAULT_VAT}),
                             CONF_BASE_PERIOD: BasePeriod.MONTH.value,
                             CONF_CURRENT: False,
                         },
                     )
                 )
 
-        # At the setup there is no earlier time to fill from SMARD.de; a
-        # bonus can be added in the tariff's settings later.
-        hidden = (
-            CONF_NAME,
-            CONF_BASE_PERIOD,
-            CONF_CURRENT,
-            CONF_SMARD_FILL,
-            SECTION_BONUS,
-        )
-        schema = vol.Schema(
-            {
-                key: value
-                for key, value in _tariff_schema(kind).schema.items()
-                if key.schema not in hidden
-            }
-        )
         return self.async_show_form(
             step_id=kind,
             data_schema=self.add_suggested_values_to_schema(
-                schema, user_input or {CONF_VAT: DEFAULT_VAT}
+                _tariff_schema(kind, setup=True),
+                user_input or {SECTION_DETAILS: {CONF_VAT: DEFAULT_VAT}},
             ),
             errors=errors,
         )
@@ -350,8 +342,56 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-def _tariff_schema(kind: str) -> vol.Schema:
-    fields: dict[Any, Any] = {vol.Required(CONF_NAME): selector.TextSelector()}
+def _collapsed(fields: dict[Any, Any], collapsed: bool = True) -> section:
+    """A form section. Put it under vol.Optional without a default: the
+    frontend takes a section's default over the suggested values of its
+    fields (Wärmewacht 9c7e722); a missing section keeps what is stored."""
+    return section(vol.Schema(fields), {"collapsed": collapsed})
+
+
+# Rarely changed fields of a tariff and a price change (section "More"):
+# VAT (exchange price only) and whether the base price is per month or year.
+DETAILS = (CONF_VAT, CONF_BASE_PERIOD)
+
+
+def _details_fields(kind: str, *, base_period: bool = True) -> dict[Any, Any]:
+    fields: dict[Any, Any] = {}
+    if kind == KIND_DYNAMIC_MARKET:
+        fields[vol.Optional(CONF_VAT)] = VAT_NUMBER
+    if base_period:
+        fields[vol.Optional(CONF_BASE_PERIOD)] = BASE_PERIOD
+    return fields
+
+
+def flatten_details(
+    user_input: dict[str, Any], fallback: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The input with the fields of the section "More" at the top level, as
+    stored. A field missing (or the section) takes the `fallback` value:
+    the stored one when editing, the default when adding."""
+    flat = {k: v for k, v in user_input.items() if k != SECTION_DETAILS}
+    details = user_input.get(SECTION_DETAILS) or {}
+    for key in DETAILS:
+        if details.get(key) not in (None, ""):
+            flat[key] = details[key]
+        elif key in fallback:
+            flat[key] = fallback[key]
+    return flat
+
+
+def details_suggested(values: Mapping[str, Any]) -> dict[str, Any]:
+    """The section "More" filled from flat values."""
+    return {key: values[key] for key in DETAILS if key in values}
+
+
+def _tariff_schema(kind: str, *, setup: bool = False) -> vol.Schema:
+    """The form of a tariff: name, prices and "my current tariff" at first
+    glance. At the setup without name, current, SMARD.de and bonus (no time
+    before to fill; a bonus is added in the tariff later), the base price
+    per month."""
+    fields: dict[Any, Any] = {}
+    if not setup:
+        fields[vol.Required(CONF_NAME)] = selector.TextSelector()
     if kind == KIND_FIXED:
         # Optional: a required number field shows its minimum (0) instead of
         # staying empty; the step reports a missing price itself.
@@ -361,16 +401,16 @@ def _tariff_schema(kind: str) -> vol.Schema:
     if kind == KIND_DYNAMIC_MARKET:
         for key in (CONF_GRID_FEE, CONF_LEVIES, CONF_MARGIN):
             fields[vol.Optional(key)] = PRICE_NUMBER
-        fields[vol.Required(CONF_VAT)] = VAT_NUMBER
     fields[vol.Optional(CONF_BASE_PRICE)] = BASE_NUMBER
-    fields[vol.Required(CONF_BASE_PERIOD)] = BASE_PERIOD
-    fields[vol.Required(CONF_CURRENT)] = selector.BooleanSelector()
-    if kind == KIND_DYNAMIC_MARKET:
-        # Missing means no consent.
+    if not setup:
+        fields[vol.Required(CONF_CURRENT)] = selector.BooleanSelector()
+    if kind == KIND_DYNAMIC_MARKET and not setup:
+        # Missing means no consent. Visible: the owner's decision of 30.10.
         fields[vol.Optional(CONF_SMARD_FILL)] = selector.BooleanSelector()
-    # Collapsed, the form stays short. Optional and without a default: the
-    # frontend takes a section's default over the suggested values of its
-    # fields (Wärmewacht 9c7e722); missing input keeps the stored bonus.
+    if details := _details_fields(kind, base_period=not setup):
+        fields[vol.Optional(SECTION_DETAILS)] = _collapsed(details)
+    if setup:
+        return vol.Schema(fields)
     fields[vol.Optional(SECTION_BONUS)] = section(
         vol.Schema(
             {
@@ -434,9 +474,11 @@ QUARTERS = selector.SelectSelector(
 )
 
 
-def _modul3_fields(kind: str) -> dict[Any, Any]:
-    if kind != KIND_FIXED:
+def _modul3_fields(kind: str, *, in_section: bool = False) -> dict[Any, Any]:
+    if kind != KIND_FIXED and not in_section:
         fields: dict[Any, Any] = {vol.Required(M3_ACTIVE): selector.BooleanSelector()}
+    elif kind != KIND_FIXED:
+        fields = {vol.Optional(M3_ACTIVE): selector.BooleanSelector()}
     else:
         # Optional: a price change of a fixed tariff without the Modul 3
         # fields (as before) keeps the Modul 3 values valid until then.
@@ -515,6 +557,14 @@ def _modul3_from_input(
     if not modul3["quarters"]:
         errors[M3_QUARTERS] = "quarters_required"
     return modul3, errors
+
+
+def modul3_base_error(errors: Mapping[str, str]) -> str:
+    """An error of a Modul 3 field in the price change's section, shown on
+    top of the form (errors of fields inside a section have no place of
+    their own)."""
+    key = next(iter(errors.values()))
+    return "modul3_price_required" if key == "price_required" else key
 
 
 class TariffSubentryFlow(ConfigSubentryFlow):
@@ -615,8 +665,13 @@ class TariffSubentryFlow(ConfigSubentryFlow):
         kind = subentry.data[CONF_KIND]
         changes: list[dict[str, Any]] = list(subentry.data.get(CONF_CHANGES, []))
         errors: dict[str, str] = {}
+        # Prefilled with the values valid today; changes start at midnight
+        # German time.
+        today = state_at(subentry.data, dt_util.now(BERLIN).date())
         if user_input is not None:
             valid_from = user_input[CONF_FROM]
+            flat = flatten_details(user_input, today)
+            modul3_input = user_input.get(SECTION_MODUL3)
             if any(c[CONF_FROM] == valid_from for c in changes):
                 errors[CONF_FROM] = "change_exists"
             elif kind == KIND_FIXED and not user_input.get(CONF_PRICE):
@@ -625,13 +680,21 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 change: dict[str, Any] = {CONF_FROM: valid_from}
                 for key in change_fields(kind):
                     if key == CONF_MODUL3:
-                        if kind == KIND_FIXED and M3_ACTIVE not in user_input:
+                        # Without the section (or, for a fixed price, its
+                        # switch) the Modul 3 values before stay valid.
+                        if modul3_input is None or (
+                            kind == KIND_FIXED and M3_ACTIVE not in modul3_input
+                        ):
                             continue
-                        change[key], errors = _modul3_from_input(user_input, kind)
+                        change[key], modul3_errors = _modul3_from_input(
+                            modul3_input, kind
+                        )
+                        if modul3_errors:
+                            errors["base"] = modul3_base_error(modul3_errors)
                     elif key == CONF_BASE_PERIOD:
-                        change[key] = user_input[key]
+                        change[key] = flat[key]
                     else:
-                        change[key] = float(user_input.get(key) or 0)
+                        change[key] = float(flat.get(key) or 0)
                 if not errors:
                     changes = sorted([*changes, change], key=lambda c: c[CONF_FROM])
                     return self.async_update_and_abort(
@@ -640,26 +703,30 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                         data={**subentry.data, CONF_CHANGES: changes},
                     )
 
+        # At first glance the prices; VAT, base price period and Modul 3 in
+        # collapsed sections - Modul 3 open if the tariff uses it today.
         fields: dict[Any, Any] = {vol.Required(CONF_FROM): selector.DateSelector()}
         for key in change_fields(kind):
-            if key == CONF_MODUL3:
-                fields.update(_modul3_fields(kind))
-            elif key == CONF_BASE_PERIOD:
-                fields[vol.Required(key)] = BASE_PERIOD
-            elif key == CONF_VAT:
-                fields[vol.Required(key)] = VAT_NUMBER
-            elif key == CONF_BASE_PRICE:
-                fields[vol.Optional(key)] = BASE_NUMBER
-            elif key == CONF_PRICE:
-                fields[vol.Optional(key)] = PRICE_NUMBER
-            else:
-                fields[vol.Optional(key)] = PRICE_NUMBER
-        # Prefilled with the values valid today; changes start at midnight German time.
+            if key in (CONF_MODUL3, *DETAILS):
+                continue
+            fields[vol.Optional(key)] = (
+                BASE_NUMBER if key == CONF_BASE_PRICE else PRICE_NUMBER
+            )
+        fields[vol.Optional(SECTION_DETAILS)] = _collapsed(_details_fields(kind))
+        modul3_today = today.get(CONF_MODUL3) or {}
+        if CONF_MODUL3 in change_fields(kind):
+            fields[vol.Optional(SECTION_MODUL3)] = _collapsed(
+                _modul3_fields(kind, in_section=True),
+                collapsed=not modul3_today.get("active"),
+            )
         if user_input is not None:
             suggested = user_input
         else:
-            today = state_at(subentry.data, dt_util.now(BERLIN).date())
-            suggested = {**today, **_modul3_suggested(today.get(CONF_MODUL3), kind)}
+            suggested = {
+                **today,
+                SECTION_DETAILS: details_suggested(today),
+                SECTION_MODUL3: _modul3_suggested(modul3_today, kind),
+            }
         return self.async_show_form(
             step_id="add_change",
             data_schema=self.add_suggested_values_to_schema(
@@ -717,6 +784,15 @@ class TariffSubentryFlow(ConfigSubentryFlow):
         )
         errors: dict[str, str] = {}
         if user_input is not None:
+            # VAT and base price period: from the section "More"; missing,
+            # the stored values (edit) or the defaults (add).
+            raw = user_input
+            user_input = flatten_details(
+                user_input,
+                subentry.data
+                if subentry is not None
+                else {CONF_VAT: DEFAULT_VAT, CONF_BASE_PERIOD: BasePeriod.MONTH.value},
+            )
             name = user_input[CONF_NAME].strip()
             if not name:
                 errors[CONF_NAME] = "name_required"
@@ -750,7 +826,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                     # the edit form does not show them. The bonus too if
                     # its section did not come back.
                     keeps = [CONF_KEY, CONF_CHANGES, CONF_MODUL3]
-                    if SECTION_BONUS not in user_input:
+                    if SECTION_BONUS not in raw:
                         keeps += [CONF_BONUS, CONF_BONUS_DATE]
                     for keep in keeps:
                         if subentry.data.get(keep):
@@ -764,13 +840,14 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 return self.async_create_entry(title=name, data=data)
 
         if user_input is not None:
-            suggested = user_input
+            suggested = raw
         elif subentry is not None:
             # SMARD.de only with consent: unticked unless agreed before.
             suggested = {
                 CONF_NAME: subentry.title,
                 CONF_SMARD_FILL: False,
                 **subentry.data,
+                SECTION_DETAILS: details_suggested(subentry.data),
                 SECTION_BONUS: {
                     key: subentry.data[key]
                     for key in (CONF_BONUS, CONF_BONUS_DATE)
@@ -780,8 +857,10 @@ class TariffSubentryFlow(ConfigSubentryFlow):
             self._shown_price = subentry.data.get(CONF_PRICE_ENTITY)
         else:
             suggested = {
-                CONF_VAT: DEFAULT_VAT,
-                CONF_BASE_PERIOD: BasePeriod.MONTH.value,
+                SECTION_DETAILS: {
+                    CONF_VAT: DEFAULT_VAT,
+                    CONF_BASE_PERIOD: BasePeriod.MONTH.value,
+                },
                 CONF_CURRENT: False,
                 CONF_SMARD_FILL: True,
             }
