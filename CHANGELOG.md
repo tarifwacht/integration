@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.2 – 2026-11-08
 
 - **Karte: Diagramme passen zur Spalte „Jahr“.** Die Säulen „Kosten je Monat“ und „Ersparnis je Monat“ zeigen genau die letzten zwölf Monate (den laufenden und die elf davor); bisher waren es dreizehn, im November also zwei Novembers nebeneinander. Monate des Vorjahres sind blasser, eine dünne Linie vor dem Januar mit den beiden Jahreszahlen trennt die Jahre – kräftig ist so genau das Kalenderjahr, das die Spalte „Jahr“ und die Kopfzeile zählen. Im Dezember liegen alle zwölf Monate im laufenden Jahr, dann gibt es keine Linie. Die Überschriften sagen jetzt „(letzte 12 Monate)“. Bild in der README neu.
 - **Demo:** Die Uhr der Karte läuft ab dem gezeigten Zeitpunkt (Winter- oder Sommerabend), damit die letzten zwölf Monate und das Kalenderjahr dazu passen.
