@@ -161,6 +161,35 @@ def test_a_wrong_reading_lasting_hours_is_still_caught() -> None:
     assert kept == [(hour + HOUR, 0.0), (hour + 3 * HOUR, 1.914)]
 
 
+def test_the_first_row_after_home_assistant_was_off_stays() -> None:
+    """No rows while Home Assistant was off (48 hours): the first row
+    afterwards holds the whole gap, the bound grows with the hours since the
+    previous row. One hour later the bound is 150 kWh again."""
+    hour = utc(2026, 1, 10)
+    rows = [
+        (hour, 0.5, 100.0),
+        (hour + 48 * HOUR, 160.0, 260.0),
+        (hour + 49 * HOUR, 160.0, 420.0),
+        (hour + 50 * HOUR, -1.0, 419.0),
+        (hour + 51 * HOUR, 0.4, 419.4),
+    ]
+    kept, left_out = plausible_hours(rows)
+    assert left_out == [hour + 49 * HOUR, hour + 50 * HOUR]
+    assert kept == [(hour, 0.5), (hour + 48 * HOUR, 160.0), (hour + 51 * HOUR, 0.4)]
+    # The first row of the series counts as one hour.
+    assert plausible_hours(rows[1:2])[1] == [hour + 48 * HOUR]
+    # The glitch and its fall back right after a gap are still left out.
+    rows = [
+        (hour, 0.5, 107.0),
+        (hour + 48 * HOUR, 109744.5, 109851.5),
+        (hour + 49 * HOUR, 110.131, 110.131),
+        (hour + 50 * HOUR, 0.4, 110.531),
+    ]
+    kept, left_out = plausible_hours(rows)
+    assert left_out == [hour + 48 * HOUR, hour + 49 * HOUR]
+    assert kept == [(hour, 0.5), (hour + 50 * HOUR, 0.4)]
+
+
 def test_a_new_cycle_without_a_jump_stays() -> None:
     """A state that falls without a jump before (meter reset to 0): the
     hour's change is the new reading and stays."""

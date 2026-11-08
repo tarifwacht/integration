@@ -23,9 +23,10 @@ from .timeslots import QUARTER, slot_start
 HOUR = timedelta(hours=1)
 FIVE_MINUTES = timedelta(minutes=5)
 
-# The largest plausible change of an energy meter in one hour of the
-# long-term statistics: the same bound the live meter applies to every
-# reading (meter.py, MeterEvent.JUMP), 100 kW x 1.5 = 150 kWh.
+# The largest plausible change of an energy meter per hour of the long-term
+# statistics (per hour since the previous row, plausible_hours): the same
+# bound the live meter applies to every reading (meter.py, MeterEvent.JUMP),
+# 100 kW x 1.5 = 150 kWh.
 MAX_HOURLY_KWH = MAX_GRID_POWER_KW * POWER_MARGIN
 
 
@@ -46,25 +47,41 @@ def plausible_hours(
     rows: Iterable[tuple[datetime, float, float | None]],
     max_kwh: float = MAX_HOURLY_KWH,
 ) -> tuple[list[tuple[datetime, float]], list[datetime]]:
-    """Hourly changes of a meter (start, change, state of the row) split into
-    plausible ones and the hours left out.
+    """Hourly changes of a meter (start, change in kWh, state of the row;
+    in order) split into the plausible ones and the hours left out.
 
-    Left out: more than `max_kwh` (a unit glitch, e.g. Wh reported as kWh:
-    107 -> 109851.5), less than 0 (meter replaced or reset in the
-    statistics), and the hour after a jump in which the state falls again
-    (109851.5 -> 110.131): Home Assistant takes that for a new cycle and adds
-    the whole reading (110 kWh) to the sum. Also when the wrong reading lasted a few
-    hours: until the state falls below the jump's, the fall back is expected
-    (same rule as Wärmewacht's plausible.py).
+    The bound is `max_kwh` per hour since the previous row: while Home
+    Assistant was off, the recorder writes no rows, and the first row
+    afterwards holds the whole gap (the first row of the series: one hour).
+    Left out:
+
+    - more than the bound: a unit glitch of the source, e.g. Wh reported as
+      kWh for a moment (state 107 -> 109851.5);
+    - less than 0: the sum restarted (meter replaced or reset in the
+      statistics);
+    - the fall back after such a jump (109851.5 -> 110.131): Home Assistant
+      takes the fall for a new meter cycle and adds the whole reading to the
+      sum, which can stay under the bound. Also when the wrong reading lasted
+      a few hours: until the state falls below the jump's, the fall back is
+      still expected (a row without a state ends the wait).
+
+    A state that falls without a jump before (meter reset to 0) stays. Same
+    rule in Tarifwacht (lookback.plausible_hours), Wärmewacht
+    (plausible.plausible_hours) and Einspeisewacht (report.plausible_hours);
+    only the bound per hour differs.
     """
     kept: list[tuple[datetime, float]] = []
     left_out: list[datetime] = []
     jump_state: float | None = None
+    previous: datetime | None = None
     for hour, change, state in rows:
+        hours = 1.0 if previous is None else (hour - previous) / HOUR
+        previous = hour
+        bound = max_kwh * max(hours, 1.0)
         back = jump_state is not None and state is not None and state < jump_state
-        if change < 0 or change > max_kwh or back:
+        if change < 0 or change > bound or back:
             left_out.append(hour)
-            jump_state = state if change > max_kwh else None
+            jump_state = state if change > bound else None
         else:
             kept.append((hour, change))
             # A wrong reading may last a few hours: the fall back comes later.

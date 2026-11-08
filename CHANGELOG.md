@@ -2,6 +2,7 @@
 
 ## Unveröffentlicht
 
+- **Plausibilitätsprüfung nach einer Pause von Home Assistant.** War Home Assistant aus, schreibt die Statistik für diese Stunden keine Zeilen, und die erste Zeile danach enthält den ganzen Verbrauch der Pause. Nach zwei Tagen Pause liegt der schnell über 150 kWh und fiel als unplausibel heraus. Jetzt gilt die Grenze von 150 kWh je Stunde seit der vorigen Zeile, wie in der Einspeisewacht.
 - **Plausibilitätsprüfung: Fehlwert über mehrere Stunden.** Stand ein falscher Zählerwert (z. B. Wh als kWh) länger als eine Stunde an, wurde das Zurückfallen danach als neuer Zählerzyklus gebucht, solange er unter 150 kWh blieb. Jetzt fällt es auch dann heraus.
 
 ## 0.2.4 – 2026-11-08
