@@ -274,3 +274,65 @@ async def test_import_statistics_of_the_saving(hass: HomeAssistant) -> None:
         (LIVE_HOUR, pytest.approx(0.5 + 0.50)),
     ]
     assert (await sums(hass, dynamic_pv)) == [(LIVE_HOUR, 0.5)]
+
+
+async def recalculate(
+    hass: HomeAssistant, entry: MockConfigEntry, start: str
+) -> dict[str, Any]:
+    """The action with "Replace existing statistics"."""
+    result = await hass.services.async_call(
+        DOMAIN,
+        "import_statistics",
+        {"config_entry": entry.entry_id, "start": start, "replace": True},
+        blocking=True,
+        return_response=True,
+    )
+    await async_wait_recording_done(hass)
+    return result
+
+
+@pytest.mark.freeze_time(NOW)
+async def test_import_earlier_after_an_import_and_a_recalculation(
+    hass: HomeAssistant,
+) -> None:
+    """Import, recalculate, then import from an earlier day: the first old
+    row (written by the first import, before the setup) keeps its own
+    change. Before, the import added the whole time from that row to the
+    setup once more (owner's instance: +4,738 kWh at the boundary)."""
+    entry = await setup_entry(hass, market=False)
+    await import_meter_statistics(hass)
+    ids = {key: entity_id(hass, entry, key) for key in ("energy", "fixed_cost")}
+    await live_statistics(
+        hass, {sid: "kWh" if key == "energy" else "EUR" for key, sid in ids.items()}
+    )
+    # 25.10. 00:00 CEST = 24.10. 22:00 UTC up to the setup.
+    await import_statistics(hass, entry, "2026-10-25")
+    await async_wait_recording_done(hass)
+    await recalculate(hass, entry, "2026-10-25")
+    before = dict(await sums(hass, ids["fixed_cost"]))
+
+    result = await import_statistics(hass, entry, "2026-10-24")
+    await async_wait_recording_done(hass)
+    # 24.10. 14:00-24:00 CEST: 4 kWh at 30 ct, base price 40 of 96 quarters.
+    assert result["sensors"][ids["energy"]]["added"] == pytest.approx(4.0)
+    assert result["sensors"][ids["fixed_cost"]]["added"] == pytest.approx(
+        1.2 + 40 / 96, abs=1e-4
+    )
+    boundary = datetime(2026, 10, 24, 22, tzinfo=UTC)
+    for key, own in (("energy", 0.0), ("fixed_cost", 0.04)):
+        rows = dict(await sums(hass, ids[key]))
+        # The first old row: its own hour only (no meter values after 24.10.
+        # 16:00 UTC; base price 4 of the 100 quarter hours of 25.10.).
+        assert rows[boundary] - rows[boundary - HOUR] == pytest.approx(own, abs=1e-4)
+    # The rows from there on keep their changes.
+    after = dict(await sums(hass, ids["fixed_cost"]))
+    shift = 1.2 + 40 / 96
+    for hour, total in before.items():
+        assert after[hour] == pytest.approx(total + shift, abs=1e-4), hour
+
+    # Recalculating everything again changes nothing.
+    again = await recalculate(hass, entry, "2026-10-24")
+    for statistic_id in ids.values():
+        assert again["sensors"][statistic_id]["change"] == pytest.approx(0, abs=1e-4), (
+            statistic_id
+        )

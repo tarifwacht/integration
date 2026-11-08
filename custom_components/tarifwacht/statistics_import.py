@@ -4,10 +4,14 @@ Import (action tarifwacht.import_statistics): the sensors only have
 long-term statistics since they exist. This fills the hours before each
 sensor's first statistic: before the setup from the lookback (hourly meter
 statistics, prices as in the compare action), after it from the stored
-quarter hours (a tariff added later). The later sums are shifted by the
-imported total so the series stays continuous - the same adjustment Home
-Assistant's own "fix statistics" uses (pattern of Einspeisewacht). A second
-call finds nothing left.
+quarter hours (a tariff added later). The later sums are shifted so the
+series stays continuous - the same adjustment Home Assistant's own "fix
+statistics" uses (pattern of Einspeisewacht): the first old row's new sum is
+the imported total plus that row's own change. A row Home Assistant compiled
+first starts its sum at 0, so its sum is its change; a row before the setup
+was written by an earlier import or a recalculation, its sum may carry
+anything before it - its change is the value of its hour, computed like the
+import. A second call finds nothing left.
 
 Recalculation (button "Recalculate statistics", the action with `replace`):
 a changed tariff applies to the whole period, the sensors show the new sums
@@ -237,6 +241,7 @@ async def _async_import_history(
     if engine.started is None:
         raise StatisticsImportError("no_statistics_yet")
     started = engine.started
+    setup_hour = hour_start(started)
     start = dt_util.as_utc(dt_util.start_of_local_day(first_day))
     # Before the setup the sensors have no statistics, so the imported sums can
     # start at 0; a later start could fall into a gap after existing rows.
@@ -259,6 +264,10 @@ async def _async_import_history(
         entity_id: dt_util.utc_from_timestamp(rows[0]["start"])
         for entity_id in (*targets, *solar_targets)
         if (rows := existing.get(entity_id))
+    }
+    # The sum of each first row (the shift depends on it, see above).
+    first_sums = {
+        entity_id: float(existing[entity_id][0].get("sum") or 0) for entity_id in firsts
     }
     if not firsts:
         raise StatisticsImportError("no_statistics_yet")
@@ -290,7 +299,9 @@ async def _async_import_history(
         "sensors": {},
         "skipped": [],
     }
-    by_first: dict[datetime, tuple[HourlyCosts, HourlyCosts | None]] = {}
+    by_first: dict[
+        datetime, tuple[HourlyCosts, HourlyCosts | None, HourlyCosts | None]
+    ] = {}
     # Some sensor already reaches back to the start (a repeated call).
     done_before = False
     for entity_id, first in sorted(firsts.items()):
@@ -300,15 +311,23 @@ async def _async_import_history(
         if entity_id not in metadata or entity_id not in targets:
             continue
         if first not in by_first:
-            # The quarter hours of the first statistics hour before the setup:
-            # not counted by the sensor, added to that hour's change.
-            extra = costs(first, started) if first < started else None
-            by_first[first] = (costs(start, first), extra)
-        before, extra = by_first[first]
+            extra = own = None
+            if first < setup_hour:
+                # A row before the setup (imported or recalculated before):
+                # its own change is the value of its hour.
+                own = costs(first, first + HOUR)
+            elif first < started:
+                # The sensor's first compiled hour, the setup hour: its
+                # quarter hours before the setup were not counted by the
+                # sensor, they are added to that hour's change.
+                extra = costs(first, started)
+            by_first[first] = (costs(start, first), extra, own)
+        before, extra, own = by_first[first]
         value, tariff_title = targets[entity_id]
         values = value(before)
         extra_values = value(extra) if extra is not None else {}
-        if values is None or extra_values is None:
+        own_values = value(own) if own is not None else {}
+        if values is None or extra_values is None or own_values is None:
             if tariff_title not in result["skipped"]:
                 result["skipped"].append(tariff_title)
             continue
@@ -317,7 +336,10 @@ async def _async_import_history(
             continue
         meta = metadata[entity_id][1]
         async_import_statistics(hass, meta, rows)
+        # New sum of the first old row: total + its own change.
         shift = total + sum(extra_values.values())
+        if own is not None:
+            shift += sum(own_values.values()) - first_sums[entity_id]
         # Shift every later sum (short- and long-term) by what was added before.
         instance.async_adjust_statistics(
             entity_id, first, shift, meta["unit_of_measurement"] or ""
@@ -340,8 +362,11 @@ async def _async_import_history(
             or entity_id not in metadata
         ):
             continue
+        # Before the setup also the first old row's own hour (see above).
+        own_hour = first < setup_hour
         if first not in solar_by_first:
-            computed = await runtime.async_solar_hourly(start, first, lookback)
+            end = first + HOUR if own_hour else first
+            computed = await runtime.async_solar_hourly(start, end, lookback)
             if computed is None:
                 break
             solar_by_first[first], smard, solar_implausible = computed
@@ -353,17 +378,22 @@ async def _async_import_history(
             if tariff_title not in result["skipped"]:
                 result["skipped"].append(tariff_title)
             continue
-        rows, total = _rows([(hour, v[index]) for hour, v in sorted(hourly.items())])
+        rows, total = _rows(
+            [(hour, v[index]) for hour, v in sorted(hourly.items()) if hour < first]
+        )
         if not rows:
             continue
         meta = metadata[entity_id][1]
         async_import_statistics(hass, meta, rows)
+        shift = total
+        if own_hour:
+            shift += hourly.get(first, (0.0, 0.0))[index] - first_sums[entity_id]
         instance.async_adjust_statistics(
-            entity_id, first, total, meta["unit_of_measurement"] or ""
+            entity_id, first, shift, meta["unit_of_measurement"] or ""
         )
         result["sensors"][entity_id] = {
             "hours": len(rows),
-            "added": round(total, 4),
+            "added": round(shift, 4),
             "until": dt_util.as_local(first - HOUR).isoformat(),
         }
     if used_smard:
