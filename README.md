@@ -173,7 +173,7 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 | Kosten gesamt | € | Verbrauchskosten plus Grundpreis |
 | Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug |
 | Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst; fehlende Preise siehe unten) |
-| Ersparnis PV | € | nur mit [PV und Speicher](#pv-und-speicher): was die PV seit der Einrichtung gespart hat; Attribute `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, Energiemengen (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
+| Ersparnis PV | € | nur mit [PV und Speicher](#pv-und-speicher): was die PV seit der Einrichtung gespart hat; Attribute `since` (Beginn), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, Energiemengen (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Ersparnis Speicher | € | nur mit Speicherzählern: was der Speicher zusätzlich gespart hat; Attribute `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (Ersparnis je entladener kWh) |
 
 Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stunden auf seinen Preis; meist ist er schon seit dem Vortag bekannt.
@@ -300,6 +300,7 @@ data:
 ```
 
 - Sie rechnet wie der [Rückblick](#rückblick-vor-der-einrichtung) und schreibt die Stunden **vor** dem ersten vorhandenen Statistikwert in die Langzeitstatistik von Strombezug, Verbrauchskosten, Kosten gesamt und Differenz; die späteren Summen werden passend verschoben. Ein später hinzugefügter Tarif bekommt so auch die Zeit seit der Einrichtung.
+- Mit [PV und Speicher](#pv-und-speicher) auch **Ersparnis PV** und **Ersparnis Speicher**: alle Stunden vor ihrem ersten Statistikwert, also auch die Zeit zwischen Einrichtung und Hinzufügen von PV und Speicher. Danach zeigen Statistik-Karten mit Monat oder Jahr und das Diagramm „Ersparnis je Monat“ die ganze Zeit. Mit „keine Vergütung bei negativen Preisen“ kommen die Börsenpreise vor der Einrichtung von SMARD.de.
 - Der Beginn muss vor der Einrichtung liegen; früher als die Langzeitstatistik deines Zählers geht es nicht (die Antwort nennt den tatsächlichen Beginn).
 - Ein Tarif, dem im Zeitraum Preise fehlen – etwa ein **Sensor mit Gesamtpreis** –, wird ganz übersprungen und unter `skipped` genannt: lieber keine Vergangenheit als eine mit Lücken.
 - Nachgetragene Stunden bleiben, wie sie geschrieben wurden: Korrigierst du später Preise eines Tarifs, rechnen Sensoren und Aktion neu, die nachgetragene Statistik nicht. Dafür die Statistik der Sensoren dieses Tarifs löschen (*Werkzeuge → Statistik*) und erneut nachtragen.

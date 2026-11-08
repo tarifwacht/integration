@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from homeassistant.components.recorder import Recorder, get_instance
@@ -24,11 +25,32 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
 )
 
-from custom_components.tarifwacht.const import DOMAIN
+from custom_components.tarifwacht.const import (
+    CONF_CHARGED_ENTITY,
+    CONF_DISCHARGED_ENTITY,
+    CONF_FEED_IN_ENTITY,
+    CONF_FEED_IN_RATE,
+    CONF_NEGATIVE_UNPAID,
+    CONF_PV_ENTITY,
+    CONF_SAME_INVERTER,
+    DOMAIN,
+    SUBENTRY_SOLAR,
+)
+from custom_components.tarifwacht.runtime import MeterRuntime
 from custom_components.tarifwacht.smard import INDEX_URL, week_url
 from tests.conftest import load_fixture
 
+from .conftest import (
+    METER,
+    METER_ATTRIBUTES,
+    PRICE,
+    entry_data,
+    price_attributes,
+    subentries_data,
+)
 from .test_lookback import WEEK_MS, import_meter_statistics, setup_entry
+
+HOUR = timedelta(hours=1)
 
 # Set up at 25.10.2026 17:20:30 CET: the period starts at 16:15 UTC, Home
 # Assistant's first statistics hour of the sensors is 16:00 UTC.
@@ -176,3 +198,75 @@ async def test_import_statistics(
     with pytest.raises(ServiceValidationError) as err:
         await import_statistics(hass, entry, "2026-10-24")
     assert err.value.translation_key == "import_nothing_to_import"
+
+
+def solar_subentry() -> dict[str, Any]:
+    return {
+        "data": {
+            CONF_FEED_IN_ENTITY: "sensor.grid_export",
+            CONF_PV_ENTITY: "sensor.inverter_energy",
+            CONF_CHARGED_ENTITY: "sensor.battery_charged",
+            CONF_DISCHARGED_ENTITY: "sensor.battery_discharged",
+            CONF_FEED_IN_RATE: 8.0,
+            CONF_NEGATIVE_UNPAID: False,
+            CONF_SAME_INVERTER: True,
+        },
+        "subentry_id": "01SOLARSUBENTRY00000000000",
+        "subentry_type": SUBENTRY_SOLAR,
+        "title": "PV",
+        "unique_id": None,
+    }
+
+
+@pytest.mark.freeze_time(NOW)
+async def test_import_statistics_of_the_saving(hass: HomeAssistant) -> None:
+    """The saving sensors get the hours before their first statistic; a
+    tariff with a gap is skipped (here the total price sensor)."""
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    hass.states.async_set(PRICE, "0.04577", price_attributes())
+    hass.states.async_set(METER, "1000000", METER_ATTRIBUTES)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=METER,
+        title="Haus",
+        data=entry_data(),
+        version=2,
+        subentries_data=[*subentries_data(), solar_subentry()],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await import_meter_statistics(hass)
+    pv = entity_id(hass, entry, "fixed_saving_pv")
+    battery = entity_id(hass, entry, "fixed_saving_battery")
+    dynamic_pv = entity_id(hass, entry, "dynamic_saving_pv")
+    await live_statistics(hass, {pv: "EUR", battery: "EUR", dynamic_pv: "EUR"})
+
+    hour = datetime(2026, 10, 24, 13, tzinfo=UTC)
+    calls: list[tuple[datetime, datetime]] = []
+
+    async def fake_hourly(
+        self: MeterRuntime, start: datetime, end: datetime, lookback: Any
+    ) -> tuple[dict[str, Any], bool]:
+        calls.append((start, end))
+        return {
+            "fixed": {hour: (0.30, 0.10), hour + HOUR: (0.20, 0.05)},
+            "dynamic": None,
+        }, False
+
+    with patch.object(MeterRuntime, "async_solar_hourly", fake_hourly):
+        result = await import_statistics(hass, entry, "2026-10-24")
+    await async_wait_recording_done(hass)
+    # One computation for all sensors with the same first statistic.
+    assert calls == [(FIRST_METER_HOUR, LIVE_HOUR)]
+    assert result["sensors"][pv]["added"] == pytest.approx(0.50)
+    assert result["sensors"][battery]["added"] == pytest.approx(0.15)
+    assert result["skipped"] == ["Dynamic"]
+    assert dynamic_pv not in result["sensors"]
+    rows = await sums(hass, pv)
+    assert rows == [
+        (hour, pytest.approx(0.30)),
+        (hour + HOUR, pytest.approx(0.50)),
+        (LIVE_HOUR, pytest.approx(0.5 + 0.50)),
+    ]
+    assert (await sums(hass, dynamic_pv)) == [(LIVE_HOUR, 0.5)]

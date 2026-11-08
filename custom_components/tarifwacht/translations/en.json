@@ -410,7 +410,7 @@
     },
     "import_statistics": {
       "name": "Import statistics",
-      "description": "Writes the hours before the sensors' first long-term statistics (energy, costs, difference) so statistics cards and graphs also show the time before the setup. Changes the statistics database – create a backup first.",
+      "description": "Writes the hours before the sensors' first long-term statistics (energy, costs, difference, saving by PV and battery) so statistics cards and graphs also show the time before the setup. Changes the statistics database – create a backup first.",
       "fields": {
         "config_entry": {
           "name": "Meter",

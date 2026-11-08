@@ -25,10 +25,12 @@ from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from . import TarifwachtConfigEntry
 from .const import CONF_CHARGED_ENTITY, CONF_DISCHARGED_ENTITY, DOMAIN, VERSION
 from .entity import MeterEntity
+from .lookback import hour_start
 from .runtime import MeterRuntime, TariffInfo
 from .solar import SolarTotals
 from .tariffs import TariffTotals
@@ -102,11 +104,20 @@ def _r(value: float | None, digits: int = 2) -> float | None:
     return None if value is None else round(value, digits)
 
 
+def _since(runtime: MeterRuntime) -> str | None:
+    """Start of the hours the saving covers (the setup, local time)."""
+    started = runtime.engine.started
+    return (
+        None if started is None else dt_util.as_local(hour_start(started)).isoformat()
+    )
+
+
 def _saving_pv_attributes(runtime: MeterRuntime, tariff: TariffInfo) -> dict[str, Any]:
     totals = _solar(runtime, tariff)
     if totals is None:
         return {}
     return {
+        "since": _since(runtime),
         "cost_without_pv_and_battery": _r(totals.without),
         "cost_pv_without_battery": _r(totals.pv_only),
         "cost_actual": _r(totals.actual),
@@ -128,6 +139,7 @@ def _saving_battery_attributes(
         return {}
     value = totals.battery_value
     return {
+        "since": _since(runtime),
         "charged_kwh": _r(totals.charged, 1),
         "discharged_kwh": _r(totals.discharged, 1),
         "value_per_kwh_ct": None if value is None else round(value * 100, 1),

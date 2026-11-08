@@ -1,5 +1,10 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Ersparnis durch PV und Speicher nachtragen:** Die Aktion **„Statistik nachtragen“** schreibt jetzt auch die Vergangenheit von „Ersparnis PV“ und „Ersparnis Speicher“ in die Langzeitstatistik – alle Stunden vor dem ersten Statistikwert dieser Sensoren, also auch die Zeit zwischen der Einrichtung des Eintrags und dem Hinzufügen von PV und Speicher. Bisher zählten Statistik-Karten mit Monat oder Jahr und Monatsdiagramme erst ab dem Hinzufügen; jetzt reichen sie so weit zurück wie die Statistik der Zähler. Ein Tarif, dem im Zeitraum Preise fehlen, wird wie bisher übersprungen.
+- **Neues Attribut `since`** an „Ersparnis PV“ und „Ersparnis Speicher“: ab wann die Sensoren zählen (die Einrichtung des Eintrags), etwa für eine Markdown-Karte „seit …“.
+
 ## 0.2.0 – 2026-11-08
 
 - **Neu: Ersparnis durch PV und Speicher.** Unter *Tarifwacht → Hinzufügen → PV und Speicher* trägst du Einspeisezähler, PV-Zähler und (optional) die Zähler „Speicher geladen/entladen“ ein, dazu die Einspeisevergütung und ob es bei negativen Börsenpreisen nichts gibt (§ 51 EEG). Jeder Tarif bekommt dann die Sensoren **„Ersparnis PV“** und **„Ersparnis Speicher“**: was PV und Speicher seit der Einrichtung gespart haben, verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz, mit dem Preis jeder Viertelstunde. So zeigt sich auch, was PV und Speicher mit einem dynamischen Tarif wert wären: Mittags ist der Strom dort billig, abends teuer. Gerechnet wird stündlich aus der Langzeitstatistik der Zähler; Hybrid-Wechselrichter (Speicher am selben Wechselrichter wie die PV) und Speicher mit eigenem Wechselrichter werden unterschieden, die Einrichtung schlägt die passende Antwort aus den Daten vor. Ist Einspeisewacht eingerichtet, sind Einspeisezähler, Vergütung und Börsenpreis vorausgefüllt (einmalig übernommen, keine Abhängigkeit). Die Aktion **„Tarife vergleichen“** liefert die Ersparnis unter `pv_battery` mit, je Monat und auch für die Zeit vor der Einrichtung. Anlass: Home-Assistant-Wunsch #1065.

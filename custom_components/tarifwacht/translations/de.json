@@ -410,7 +410,7 @@
     },
     "import_statistics": {
       "name": "Statistik nachtragen",
-      "description": "Schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren (Strombezug, Kosten, Differenz), damit Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.",
+      "description": "Schreibt die Stunden vor der ersten Langzeitstatistik der Sensoren (Strombezug, Kosten, Differenz, Ersparnis PV und Speicher), damit Statistik-Karten und Diagramme auch die Zeit vor der Einrichtung zeigen. Greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.",
       "fields": {
         "config_entry": {
           "name": "Zähler",

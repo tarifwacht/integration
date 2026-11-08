@@ -175,7 +175,7 @@ On every tariff (e.g. "Home Fixed price"):
 | Total cost | € | consumption cost plus base price |
 | Average price | ct/kWh | total cost ÷ grid purchase |
 | Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself; missing prices: see below) |
-| Saving by PV | € | only with [PV and battery](#pv-and-battery): what the PV saved since the setup; attributes `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, energies (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
+| Saving by PV | € | only with [PV and battery](#pv-and-battery): what the PV saved since the setup; attributes `since` (start), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, energies (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Saving by battery | € | only with battery meters: what the battery saved on top; attributes `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (saving per kWh discharged) |
 
 For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for its price; usually it is known since the day before.
@@ -302,6 +302,7 @@ data:
 ```
 
 - It calculates like [looking back](#looking-back-before-the-setup) and writes the hours **before** the first existing statistic into the long-term statistics of grid purchase, consumption cost, total cost and difference; the later sums are shifted to match. A tariff added later thus also gets the time since setup.
+- With [PV and battery](#pv-and-battery) also **Saving by PV** and **Saving by battery**: all hours before their first statistic, including the time between the setup and adding PV and battery. Statistics cards per month or year and the graph “saving per month” then show the whole time. With “no payment at negative prices” the exchange prices before the setup come from SMARD.de.
 - The start must be before the setup; it cannot go back further than your meter's long-term statistics (the response names the actual start).
 - A tariff lacking prices in the period – such as a **sensor with the total price** – is skipped entirely and listed under `skipped`: better no history than one with gaps.
 - Imported hours stay as written: if you later correct a tariff's prices, sensors and the action recalculate, the imported statistics do not. To redo them, delete the statistics of that tariff's sensors (*Tools → Statistics*) and import again.

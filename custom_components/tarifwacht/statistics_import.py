@@ -89,6 +89,27 @@ def _series(entry: TarifwachtConfigEntry) -> dict[str, tuple[Series, str | None]
     return series
 
 
+def _solar_series(entry: TarifwachtConfigEntry) -> dict[str, tuple[str, int, str]]:
+    """Unique id -> (tariff key, 0 PV / 1 battery, tariff title) of the
+    saving sensors of PV and battery."""
+    prefix = entry.entry_id
+    series: dict[str, tuple[str, int, str]] = {}
+    for tariff in entry.runtime_data.tariffs.values():
+        for index, name in enumerate(("saving_pv", "saving_battery")):
+            series[f"{prefix}_{tariff.key}_{name}"] = (tariff.key, index, tariff.title)
+    return series
+
+
+def _rows(values: list[tuple[datetime, float]]) -> tuple[list[StatisticData], float]:
+    """Running sums of hourly values, and their total."""
+    rows: list[StatisticData] = []
+    total = 0.0
+    for hour, value in values:
+        total += value
+        rows.append(StatisticData(start=hour, state=total, sum=total))
+    return rows, total
+
+
 async def async_import_history(
     hass: HomeAssistant, entry: TarifwachtConfigEntry, first_day: date
 ) -> dict[str, Any]:
@@ -112,6 +133,10 @@ async def async_import_history(
     for unique_id, target in _series(entry).items():
         if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
             targets[entity_id] = target
+    solar_targets: dict[str, tuple[str, int, str]] = {}
+    for unique_id, solar_target in _solar_series(entry).items():
+        if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
+            solar_targets[entity_id] = solar_target
 
     instance = get_instance(hass)
     existing = await instance.async_add_executor_job(
@@ -119,14 +144,14 @@ async def async_import_history(
         hass,
         start,
         None,
-        set(targets),
+        set(targets) | set(solar_targets),
         "hour",
         None,
         {"sum"},
     )
     firsts = {
         entity_id: dt_util.utc_from_timestamp(rows[0]["start"])
-        for entity_id in targets
+        for entity_id in (*targets, *solar_targets)
         if (rows := existing.get(entity_id))
     }
     if not firsts:
@@ -166,7 +191,7 @@ async def async_import_history(
         if first <= start:
             done_before = True
             continue
-        if entity_id not in metadata:
+        if entity_id not in metadata or entity_id not in targets:
             continue
         if first not in by_first:
             # The quarter hours of the first statistics hour before the setup:
@@ -181,11 +206,7 @@ async def async_import_history(
             if tariff_title not in result["skipped"]:
                 result["skipped"].append(tariff_title)
             continue
-        rows: list[StatisticData] = []
-        total = 0.0
-        for hour in sorted(values):
-            total += values[hour]
-            rows.append(StatisticData(start=hour, state=total, sum=total))
+        rows, total = _rows(sorted(values.items()))
         if not rows:
             continue
         meta = metadata[entity_id][1]
@@ -200,7 +221,44 @@ async def async_import_history(
             "added": round(shift, 4),
             "until": dt_util.as_local(first - HOUR).isoformat(),
         }
-    if lookback.uses_smard:
+
+    # Saving by PV and battery. Each hour's state holds the complete hours
+    # before it (hourly update), so [start, first) is exactly what is missing.
+    used_smard = lookback.uses_smard
+    solar_by_first: dict[datetime, dict[str, Any]] = {}
+    for entity_id, first in sorted(firsts.items()):
+        if (
+            first <= start
+            or entity_id not in solar_targets
+            or entity_id not in metadata
+        ):
+            continue
+        if first not in solar_by_first:
+            computed = await runtime.async_solar_hourly(start, first, lookback)
+            if computed is None:
+                break
+            solar_by_first[first], smard = computed
+            used_smard |= smard
+        key, index, tariff_title = solar_targets[entity_id]
+        hourly = solar_by_first[first].get(key)
+        if hourly is None:
+            if tariff_title not in result["skipped"]:
+                result["skipped"].append(tariff_title)
+            continue
+        rows, total = _rows([(hour, v[index]) for hour, v in sorted(hourly.items())])
+        if not rows:
+            continue
+        meta = metadata[entity_id][1]
+        async_import_statistics(hass, meta, rows)
+        instance.async_adjust_statistics(
+            entity_id, first, total, meta["unit_of_measurement"] or ""
+        )
+        result["sensors"][entity_id] = {
+            "hours": len(rows),
+            "added": round(total, 4),
+            "until": dt_util.as_local(first - HOUR).isoformat(),
+        }
+    if used_smard:
         result["exchange_prices"] = ATTRIBUTION
     if not result["sensors"]:
         raise StatisticsImportError(

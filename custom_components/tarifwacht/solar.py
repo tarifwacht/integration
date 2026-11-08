@@ -136,6 +136,17 @@ def _hour_prices(source: PriceSource | Tariff, hour: datetime) -> list[float] | 
     return prices  # type: ignore[return-value]
 
 
+def _paid_share(
+    settings: SolarSettings, market: PriceSource | None, hour: datetime
+) -> float | None:
+    """Share of the hour's quarter hours that pay for feed-in (None: the
+    market prices needed for § 51 are missing)."""
+    if not settings.negative_unpaid:
+        return 1.0
+    prices = _hour_prices(market, hour) if market else None
+    return None if prices is None else sum(1 for p in prices if p >= 0) / 4
+
+
 def book_hour(
     totals: SolarTotals,
     hour: HourFlows,
@@ -183,14 +194,7 @@ def solar_totals(
         per_month = result.months.setdefault(
             month, {key: SolarTotals() for key in tariffs}
         )
-        paid_share: float | None = 1.0
-        if settings.negative_unpaid:
-            market_prices = _hour_prices(market, start) if market else None
-            paid_share = (
-                None
-                if market_prices is None
-                else sum(1 for p in market_prices if p >= 0) / 4
-            )
+        paid_share = _paid_share(settings, market, start)
         for key, tariff in tariffs.items():
             prices = _hour_prices(tariff, start)
             for totals in (result.totals[key], per_month[key]):
@@ -198,6 +202,34 @@ def solar_totals(
                     totals.hours_left_out += 1
                 else:
                     book_hour(totals, flows, prices, paid_share, settings)
+    return result
+
+
+def hourly_savings(
+    hours: Mapping[datetime, HourFlows],
+    tariffs: Mapping[str, Tariff],
+    settings: SolarSettings,
+    market: PriceSource | None = None,
+) -> dict[str, dict[datetime, tuple[float, float]] | None]:
+    """Saving by PV and by the battery per hour (EUR), per tariff, for the
+    statistics import. None for a tariff with an hour left out (no price of
+    the tariff, or of the market under § 51): no gaps in the statistics."""
+    result: dict[str, dict[datetime, tuple[float, float]] | None] = {
+        key: {} for key in tariffs
+    }
+    for start, flows in sorted(hours.items()):
+        paid_share = _paid_share(settings, market, start)
+        for key, tariff in tariffs.items():
+            series = result[key]
+            if series is None:
+                continue
+            prices = _hour_prices(tariff, start)
+            if prices is None or paid_share is None:
+                result[key] = None
+                continue
+            totals = SolarTotals()
+            book_hour(totals, flows, prices, paid_share, settings)
+            series[start] = (totals.saving_pv, totals.saving_battery)
     return result
 
 

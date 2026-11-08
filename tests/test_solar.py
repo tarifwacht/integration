@@ -11,6 +11,7 @@ from custom_components.tarifwacht.solar import (
     HourFlows,
     SolarSettings,
     detect_same_inverter,
+    hourly_savings,
     solar_totals,
 )
 from custom_components.tarifwacht.tariffs import FixedPrice, Tariff
@@ -135,3 +136,26 @@ def test_detect_same_inverter() -> None:
     assert detect_same_inverter(hybrid) is True
     assert detect_same_inverter(separate) is False
     assert detect_same_inverter(dict(list(hybrid.items())[:3])) is None
+
+
+def test_hourly_savings_add_up_to_the_totals() -> None:
+    hours = {
+        NOON: HourFlows(feed_in=1.0, pv=3.0, charged=1.0),
+        NOON + 8 * HOUR: HourFlows(purchase=0.5, discharged=0.9),
+    }
+    tariffs = {"fix": FIXED}
+    series = hourly_savings(hours, tariffs, AC)["fix"]
+    totals = solar_totals(hours, tariffs, AC, BERLIN).totals["fix"]
+    assert series is not None
+    assert sorted(series) == sorted(hours)
+    assert sum(pv for pv, _ in series.values()) == pytest.approx(totals.saving_pv)
+    assert sum(b for _, b in series.values()) == pytest.approx(totals.saving_battery)
+
+
+def test_hourly_savings_skip_a_tariff_with_a_gap() -> None:
+    """No statistics with holes: a tariff missing one hour gets none."""
+    dynamic = Tariff(Prices(quarters(NOON, 0.2, 0.2, 0.2, 0.2)))
+    hours = {NOON: HourFlows(purchase=1.0), NOON + HOUR: HourFlows(purchase=1.0)}
+    result = hourly_savings(hours, {"dyn": dynamic, "fix": FIXED}, AC)
+    assert result["dyn"] is None
+    assert result["fix"] is not None and len(result["fix"]) == 2

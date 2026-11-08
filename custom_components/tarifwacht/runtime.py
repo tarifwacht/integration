@@ -78,7 +78,13 @@ from .prices import (
 )
 from .rename import renamed_storage
 from .smard_cache import SmardError, smard_cache
-from .solar import HourFlows, SolarResult, SolarSettings, solar_totals
+from .solar import (
+    HourFlows,
+    SolarResult,
+    SolarSettings,
+    hourly_savings,
+    solar_totals,
+)
 from .tariff_config import price_entity, tariff_from_data, tariff_key
 from .tariffs import PriceSource, Tariff
 from .timeslots import slot_start
@@ -216,6 +222,17 @@ def solar_settings(data: Mapping[str, Any]) -> SolarSettings:
         feed_in_rate=float(data.get(CONF_FEED_IN_RATE) or 0) / 100,
         negative_unpaid=bool(data.get(CONF_NEGATIVE_UNPAID)),
     )
+
+
+@dataclass(frozen=True)
+class SolarInputs:
+    """What the saving by PV and battery over a period is computed from."""
+
+    flows: dict[datetime, HourFlows]
+    tariffs: Mapping[str, Tariff]
+    settings: SolarSettings
+    market: PriceSource | None
+    used_smard: bool
 
 
 def tariff_subentries(entry: ConfigEntry) -> list[ConfigSubentry]:
@@ -598,13 +615,13 @@ class MeterRuntime:
         self.solar_error = None
         self._notify()
 
-    async def async_solar_between(
+    async def _async_solar_inputs(
         self, start: datetime, end: datetime, lookback: Lookback | None
-    ) -> tuple[SolarResult, bool] | None:
-        """The saving by PV and battery in [start, end) for the compare
-        action, also before the setup (the tariffs of `lookback`). With the
-        negative price rule, exchange prices before the setup come from
-        SMARD.de (raises SmardError). Second value: SMARD.de was used."""
+    ) -> SolarInputs | None:
+        """Hourly flows in [start, end) with tariffs and market prices, also
+        before the setup (the tariffs of `lookback`). With the negative price
+        rule, exchange prices before the setup come from SMARD.de (raises
+        SmardError). None without PV and battery."""
         if self.solar_data is None or self.meter_own:
             return None
         hourly = await self._async_hourly(self.solar_entities(), hour_start(start), end)
@@ -628,10 +645,36 @@ class MeterRuntime:
             for hour, flow in self.solar_flows(hourly).items()
             if start <= hour < end
         }
-        result = solar_totals(
-            flows, tariffs, solar_settings(self.solar_data), BERLIN, market
+        return SolarInputs(
+            flows, tariffs, solar_settings(self.solar_data), market, used_smard
         )
-        return result, used_smard
+
+    async def async_solar_between(
+        self, start: datetime, end: datetime, lookback: Lookback | None
+    ) -> tuple[SolarResult, bool] | None:
+        """The saving by PV and battery in [start, end) for the compare
+        action. Second value: SMARD.de was used."""
+        inputs = await self._async_solar_inputs(start, end, lookback)
+        if inputs is None:
+            return None
+        result = solar_totals(
+            inputs.flows, inputs.tariffs, inputs.settings, BERLIN, inputs.market
+        )
+        return result, inputs.used_smard
+
+    async def async_solar_hourly(
+        self, start: datetime, end: datetime, lookback: Lookback | None
+    ) -> tuple[dict[str, dict[datetime, tuple[float, float]] | None], bool] | None:
+        """Saving by PV and battery per hour and tariff in [start, end), for
+        the statistics import (solar.hourly_savings). Second value: SMARD.de
+        was used."""
+        inputs = await self._async_solar_inputs(start, end, lookback)
+        if inputs is None:
+            return None
+        savings = hourly_savings(
+            inputs.flows, inputs.tariffs, inputs.settings, inputs.market
+        )
+        return savings, inputs.used_smard
 
     @callback
     def _on_solar_tick(self, now: datetime) -> None:
