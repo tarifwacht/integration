@@ -123,6 +123,20 @@
             "name": "For example the supplier. Used in entity names.",
             "base_price": "Optional. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "data": {
+                "bonus": "One-off bonus",
+                "bonus_date": "Bonus credited on"
+              },
+              "data_description": {
+                "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
+                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+              }
+            }
           }
         },
         "dynamic_total": {
@@ -140,6 +154,20 @@
             "price_entity": "In €/kWh, ideally with a price forecast per quarter hour or hour: the total price of the EPEX Spot integration, (experimental) Nord Pool or ENTSO-E from HACS, or any other sensor in €/kWh, e.g. a template with your own tariff.",
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "data": {
+                "bonus": "One-off bonus",
+                "bonus_date": "Bonus credited on"
+              },
+              "data_description": {
+                "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
+                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+              }
+            }
           }
         },
         "dynamic_market": {
@@ -166,6 +194,20 @@
             "base_price": "Optional, incl. VAT. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one.",
             "smard_fill": "Fetches public exchange prices from SMARD.de (Bundesnetzagentur) once for the time since the setup that the sensor does not know, so the tariff counts from the setup like the others. Nothing about you is transmitted. Without it, the comparison leaves that time out."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "data": {
+                "bonus": "One-off bonus",
+                "bonus_date": "Bonus credited on"
+              },
+              "data_description": {
+                "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
+                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+              }
+            }
           }
         },
         "reconfigure": {
@@ -266,7 +308,8 @@
         "window_grid": "Windows must start and end on a quarter hour (:00, :15, :30, :45).",
         "window_overlap": "The windows overlap.",
         "window_required": "Each level needs at least one window a day.",
-        "quarters_required": "Please choose at least one quarter."
+        "quarters_required": "Please choose at least one quarter.",
+        "bonus_date_required": "Please enter the date the bonus is credited on."
       }
     },
     "solar": {

@@ -73,6 +73,9 @@ def _tariff_rows(
 ) -> list[dict[str, Any]]:
     """One row per tariff: complete ones (every kWh priced) by cost, then the rest.
 
+    `cost` is consumption cost plus base price less a one-off bonus whose
+    date lies in the period (`bonus`).
+
     The difference to the current tariff only if both priced every kWh: a
     tariff with energy without price would look cheaper than it is.
     """
@@ -93,10 +96,14 @@ def _tariff_rows(
                 "current": tariff.current,
                 "consumption_cost": round(totals.consumption_cost, 4),
                 "base_cost": round(totals.base_cost, 4),
+                "bonus": round(totals.bonus, 4),
                 "average_price_ct": None
                 if average is None
                 else round(average * 100, 3),
             }
+        elif totals.bonus:
+            # Per month only in the month the bonus falls in.
+            row["bonus"] = round(totals.bonus, 4)
         row |= {
             "cost": round(totals.cost, 4),
             "difference_to_current": difference,

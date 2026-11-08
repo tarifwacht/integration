@@ -664,3 +664,59 @@ async def test_own_sensor_as_price_is_refused_in_tariff(hass: HomeAssistant) -> 
     )
     assert result["errors"] == {"price_entity": "own_entity"}
     assert dict(entry.subentries[DYNAMIC_SUBENTRY].data) == dynamic_tariff()
+
+
+async def test_bonus_in_a_collapsed_section(hass: HomeAssistant) -> None:
+    """The bonus is entered in a collapsed section; reconfigure shows the
+    stored values inside it, and saving without the section keeps them."""
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+
+    async def edit() -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+        return await flows.async_configure(result["flow_id"], {"next_step_id": "edit"})
+
+    fields = {"name": "Fixed price", "price": 30.0, "base_period": "month"}
+    result = await edit()
+    schema = result["data_schema"].schema
+    (key,) = [k for k in schema if str(k) == "bonus_section"]
+    assert schema[key].options == {"collapsed": True}
+    # A bonus without its date is refused.
+    result = await configure_tariff(
+        hass, result, {**fields, "current": True, "bonus_section": {"bonus": 250}}
+    )
+    assert result["errors"] == {"base": "bonus_date_required"}
+    result = await configure_tariff(
+        hass,
+        result,
+        {
+            **fields,
+            "current": True,
+            "bonus_section": {"bonus": 250, "bonus_date": "2027-02-01"},
+        },
+    )
+    assert result["type"] is FlowResultType.ABORT
+    data = entry.subentries[FIXED_SUBENTRY].data
+    assert data["bonus"] == 250.0 and data["bonus_date"] == "2027-02-01"
+
+    # Reconfigure: the stored values inside the section, no section default.
+    result = await edit()
+    schema = result["data_schema"].schema
+    (key,) = [k for k in schema if str(k) == "bonus_section"]
+    assert isinstance(key, vol.Optional) and key.default is vol.UNDEFINED
+    suggested = {
+        str(k): (k.description or {}).get("suggested_value")
+        for k in schema[key].schema.schema
+    }
+    assert suggested == {"bonus": 250.0, "bonus_date": "2027-02-01"}
+    # Saved without opening the section: the bonus stays.
+    result = await configure_tariff(hass, result, {**fields, "current": True})
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[FIXED_SUBENTRY].data["bonus"] == 250.0
+    # The section emptied: the bonus is gone.
+    result = await edit()
+    result = await configure_tariff(
+        hass, result, {**fields, "current": True, "bonus_section": {}}
+    )
+    data = entry.subentries[FIXED_SUBENTRY].data
+    assert "bonus" not in data and "bonus_date" not in data

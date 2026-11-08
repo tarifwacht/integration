@@ -6,6 +6,8 @@ import json
 import tomllib
 from pathlib import Path
 
+from homeassistant.data_entry_flow import section
+
 from custom_components.tarifwacht.config_flow import (
     _modul3_fields,
     _tariff_data,
@@ -82,8 +84,16 @@ def test_tariff_kinds_translated() -> None:
     tariff = load(INTEGRATION / "strings.json")["config_subentries"]["tariff"]
     assert set(tariff["step"]["user"]["menu_options"]) == set(KINDS)
     for kind in KINDS:
-        fields = {str(key) for key in _tariff_schema(kind).schema}
-        assert set(tariff["step"][kind]["data"]) == fields, kind
+        schema = _tariff_schema(kind).schema
+        sections = {str(k): v for k, v in schema.items() if isinstance(v, section)}
+        fields = {str(key) for key in schema} - set(sections)
+        step = tariff["step"][kind]
+        assert set(step["data"]) == fields, kind
+        assert set(step.get("sections", {})) == set(sections), kind
+        for name, part in sections.items():
+            keys = {str(key) for key in part.schema.schema}
+            assert set(step["sections"][name]["data"]) == keys, (kind, name)
+            assert set(step["sections"][name]["data_description"]) <= keys
 
 
 def test_base_periods_translated() -> None:

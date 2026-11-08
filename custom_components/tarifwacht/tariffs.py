@@ -82,13 +82,17 @@ class Tariff:
     """Energy price per quarter hour plus an optional base price.
 
     `changes` are later price states, each valid from its UTC instant on, in
-    chronological order (e.g. new grid fees from 1 January).
+    chronological order (e.g. new grid fees from 1 January). `bonus` is a
+    one-off credit in EUR (new-customer or switching bonus) at the instant
+    `bonus_at`; it belongs to the tariff, not to a price state.
     """
 
     prices: PriceSource
     base_price: float = 0.0
     base_period: BasePeriod = BasePeriod.MONTH
     changes: tuple[tuple[datetime, Tariff], ...] = ()
+    bonus: float = 0.0
+    bonus_at: datetime | None = None
 
     def at(self, moment: datetime) -> Tariff:
         """The price state valid at `moment`."""
@@ -101,6 +105,18 @@ class Tariff:
 
     def price(self, slot: datetime) -> float | None:
         return self.at(slot).prices.get(slot)
+
+    def bonus_between(self, start: datetime, end: datetime) -> float:
+        """The bonus if its instant lies in [start, end), else 0.
+
+        Like a base price it counts for the quarter hours of the period
+        (the quarter hour starting at its instant); before or after the
+        period it does not.
+        """
+        at = self.bonus_at
+        if not self.bonus or at is None or not start <= at < end:
+            return 0.0
+        return self.bonus
 
     def base_between(self, start: datetime, end: datetime, tz: tzinfo) -> float:
         """Base price of [start, end), split at every change."""
@@ -126,6 +142,8 @@ class TariffTotals:
     energy: float = 0.0
     consumption_cost: float = 0.0
     base_cost: float = 0.0
+    # One-off bonus credited in the period (EUR, positive; lowers the cost).
+    bonus: float = 0.0
     # Energy whose price never came: counted, not costed (never free).
     energy_without_price: float = 0.0
     # slot -> energy waiting for its price
@@ -133,7 +151,7 @@ class TariffTotals:
 
     @property
     def cost(self) -> float:
-        return self.consumption_cost + self.base_cost
+        return self.consumption_cost + self.base_cost - self.bonus
 
     @property
     def average_price(self) -> float | None:

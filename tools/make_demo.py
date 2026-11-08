@@ -335,6 +335,7 @@ def _rows(costs: PeriodCosts, keys: tuple[str, ...]) -> list[dict[str, Any]]:
                 "current": key == "fixed",
                 "consumption_cost": round(totals.consumption_cost, 4),
                 "base_cost": round(totals.base_cost, 4),
+                "bonus": round(totals.bonus, 4),
                 "average_price_ct": None
                 if average is None
                 else round(average * 100, 3),

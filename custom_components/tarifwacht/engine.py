@@ -180,17 +180,19 @@ class Engine:
                     part.estimated_quarter_hours += 1
                 for key, totals in part.totals.items():
                     _book(tariffs[key], totals, slot, energy, booked_at)
-        # Base prices of the quarter hours that have ended.
+        # Base prices and bonuses of the quarter hours that have ended.
         base_end = min(last, slot_start(now))
         for month in months.values():
             if month.start >= base_end:
                 continue
             for key, tariff in tariffs.items():
-                base = tariff.base_between(
-                    month.start, min(month.end, base_end), self.tz
-                )
+                month_end = min(month.end, base_end)
+                base = tariff.base_between(month.start, month_end, self.tz)
+                bonus = tariff.bonus_between(month.start, month_end)
                 month.totals[key].base_cost = base
+                month.totals[key].bonus = bonus
                 result.totals[key].base_cost += base
+                result.totals[key].bonus += bonus
         return result
 
     def backfill(
@@ -297,7 +299,10 @@ class Engine:
         comparison = self.comparison
         if comparison.energy_left_out and not comparison.energy:
             return None
-        return comparison.consumption_cost.get(key, 0.0) + self.totals[key].base_cost
+        totals = self.totals[key]
+        return (
+            comparison.consumption_cost.get(key, 0.0) + totals.base_cost - totals.bonus
+        )
 
     def _book(self, pieces: Iterable[tuple[datetime, float]], now: datetime) -> None:
         for slot, energy in pieces:
@@ -336,18 +341,19 @@ class Engine:
         _book(self.tariffs[key], totals, slot, energy, now)
 
     def _book_base_prices(self, now: datetime) -> None:
-        """Base prices of every quarter hour that ended by `now`.
+        """Base prices and bonuses of every quarter hour that ended by `now`.
 
         The base price is owed while Home Assistant is off, too: gaps are
-        caught up.
+        caught up. A bonus counts once its quarter hour has ended, never one
+        from before `started`.
         """
         current = slot_start(now)
         if self._base_until is None or self._base_until >= current:
             return
         for key, tariff in self.tariffs.items():
-            self.totals[key].base_cost += tariff.base_between(
-                self._base_until, current, self.tz
-            )
+            totals = self.totals[key]
+            totals.base_cost += tariff.base_between(self._base_until, current, self.tz)
+            totals.bonus += tariff.bonus_between(self._base_until, current)
         self._base_until = current
 
     def years(self) -> set[int]:

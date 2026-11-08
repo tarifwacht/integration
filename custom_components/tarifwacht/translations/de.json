@@ -123,6 +123,20 @@
             "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
             "base_price": "Optional. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "data": {
+                "bonus": "Einmaliger Bonus",
+                "bonus_date": "Bonus gutgeschrieben am"
+              },
+              "data_description": {
+                "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+              }
+            }
           }
         },
         "dynamic_total": {
@@ -140,6 +154,20 @@
             "price_entity": "In €/kWh, am besten mit Preisprognose je Viertelstunde oder Stunde: der Gesamtpreis der Integration EPEX Spot, (experimentell) Nord Pool bzw. ENTSO-E aus HACS, oder jeder andere Sensor in €/kWh, etwa ein Template mit deinem eigenen Tarif.",
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "data": {
+                "bonus": "Einmaliger Bonus",
+                "bonus_date": "Bonus gutgeschrieben am"
+              },
+              "data_description": {
+                "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+              }
+            }
           }
         },
         "dynamic_market": {
@@ -166,6 +194,20 @@
             "base_price": "Optional, brutto. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem.",
             "smard_fill": "Lädt einmalig öffentliche Börsenpreise von SMARD.de (Bundesnetzagentur) für die Zeit seit der Einrichtung, die der Sensor nicht kennt – so rechnet der Tarif wie die anderen ab der Einrichtung. Über dich wird nichts übertragen. Ohne Haken lässt der Vergleich diese Zeit aus."
+          },
+          "sections": {
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "data": {
+                "bonus": "Einmaliger Bonus",
+                "bonus_date": "Bonus gutgeschrieben am"
+              },
+              "data_description": {
+                "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+              }
+            }
           }
         },
         "reconfigure": {
@@ -266,7 +308,8 @@
         "window_grid": "Zeitfenster müssen auf einer Viertelstunde beginnen und enden (:00, :15, :30, :45).",
         "window_overlap": "Die Zeitfenster überschneiden sich.",
         "window_required": "Jede Stufe braucht mindestens ein Zeitfenster am Tag.",
-        "quarters_required": "Bitte mindestens ein Quartal wählen."
+        "quarters_required": "Bitte mindestens ein Quartal wählen.",
+        "bonus_date_required": "Bitte das Datum der Gutschrift eingeben."
       }
     },
     "solar": {

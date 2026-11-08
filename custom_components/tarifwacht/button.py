@@ -29,6 +29,8 @@ from . import TarifwachtConfigEntry
 from .const import (
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
+    CONF_BONUS,
+    CONF_BONUS_DATE,
     CONF_CHANGES,
     CONF_CURRENT,
     CONF_FROM,
@@ -276,7 +278,8 @@ def _modul3(data: Mapping[str, Any]) -> str:
 
 
 def tariff_settings(tariffs: Sequence[Mapping[str, Any]]) -> Lines:
-    """Each tariff by number: kind, prices, Modul 3, SMARD.de, price changes.
+    """Each tariff by number: kind, prices, bonus, Modul 3, SMARD.de, price
+    changes.
 
     Fields from a positive list only (`PRICE_FIELDS` and the switches); the
     tariff's name and price sensor are left out.
@@ -288,6 +291,10 @@ def tariff_settings(tariffs: Sequence[Mapping[str, Any]]) -> Lines:
         if data.get(CONF_CURRENT):
             parts.append("current")
         parts += _prices(data)
+        if data.get(CONF_BONUS):
+            parts.append(
+                f"bonus {_num(data[CONF_BONUS])} EUR on {data.get(CONF_BONUS_DATE)}"
+            )
         if data.get(CONF_KIND) == KIND_DYNAMIC_MARKET:
             parts.append(
                 f"SMARD.de fill {'on' if data.get(CONF_SMARD_FILL) else 'off'}"

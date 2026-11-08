@@ -16,6 +16,8 @@ from .const import (
     BERLIN,
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
+    CONF_BONUS,
+    CONF_BONUS_DATE,
     CONF_CHANGES,
     CONF_CURRENT,
     CONF_DYNAMIC_BASE,
@@ -89,6 +91,16 @@ def change_start(change: Mapping[str, Any]) -> datetime:
     return datetime.combine(day, time(), BERLIN).astimezone(UTC)
 
 
+def bonus_of(data: Mapping[str, Any]) -> tuple[float, datetime | None]:
+    """The tariff's one-off bonus (EUR) and its instant: local midnight of
+    its date, like a price change. (0, None) without one."""
+    amount = float(data.get(CONF_BONUS) or 0)
+    day = data.get(CONF_BONUS_DATE)
+    if amount <= 0 or not day:
+        return 0.0, None
+    return amount, change_start({CONF_FROM: day})
+
+
 def state_at(data: Mapping[str, Any], day: date) -> dict[str, Any]:
     """The tariff's values valid on `day`: the start values plus all changes
     from before or on that day."""
@@ -104,13 +116,17 @@ def tariff_from_data(
     price_table: Callable[[str], PriceSource],
     market_table: Callable[[str], PriceSource] | None = None,
 ) -> Tariff:
-    """The engine's tariff with its later price states (`changes`).
+    """The engine's tariff with its later price states (`changes`) and its
+    one-off bonus.
 
     `price_table` returns the prices of a price sensor; `market_table`, if
     given, those of an exchange price sensor (e.g. completed from SMARD.de).
     """
     tables = (price_table, market_table or price_table)
     tariff = _single_tariff(data, *tables)
+    bonus, bonus_at = bonus_of(data)
+    if bonus_at is not None:
+        tariff = replace(tariff, bonus=bonus, bonus_at=bonus_at)
     changes = sorted(data.get(CONF_CHANGES, []), key=lambda c: c[CONF_FROM])
     if not changes:
         return tariff

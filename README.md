@@ -38,6 +38,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Ersparnis durch PV und Speicher** je Tarif (€): was PV-Anlage und Speicher gegenüber dem Bezug des ganzen Verbrauchs gespart haben, mit Einspeisevergütung und § 51 EEG – Hybrid-Wechselrichter und eigene Speicher-Wechselrichter, siehe [PV und Speicher](#pv-und-speicher).
 - **Eigene Karte fürs Dashboard:** dein Tarif, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen – heute, im Monat und im Jahr, dazu Säulen je Monat. Ohne Zusatzkarten aus HACS, siehe [Karte](#karte).
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
+- **Einmaliger Bonus** je Tarif, z. B. 250 € Wechselbonus – senkt die Kosten gesamt einmal, am Tag der Gutschrift.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
 - **Vergleich für einen beliebigen Zeitraum** per Aktion, je Monat aufgeschlüsselt – auch **vor der Einrichtung**, so weit die Langzeitstatistik deines Zählers zurückreicht: Was hätte dich das letzte Jahr mit jedem Tarif gekostet? Auf Wunsch auch [in die Langzeitstatistik nachgetragen](#statistik-nachtragen).
 - **Rechnet jeden Tarif ab der Einrichtung:** Verbrauch und Preise werden je Viertelstunde gespeichert. Ein später hinzugefügter oder korrigierter Tarif gilt deshalb für den ganzen Zeitraum; kennt der Preissensor eines neuen Tarifs die Zeit davor nicht, holt Tarifwacht die Preise aus dem Recorder bzw. – nur mit deinem Haken im Tarif – von SMARD.de.
@@ -100,6 +101,8 @@ Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0 mit eine
 
 Jeder Tarif hat einen optionalen Grundpreis (pro Monat oder pro Jahr) und den Schalter **Mein aktueller Tarif** – die anderen Tarife zeigen ihre Differenz zu diesem.
 
+Unter **Bonus (optional)** (eingeklappt) kommt ein **einmaliger Bonus** hin, etwa ein Neukunden- oder Wechselbonus: **Einmaliger Bonus** (€, brutto) und **Bonus gutgeschrieben am**. Beispiel: 250 € Wechselbonus, gutgeschrieben am 1. Februar → Kosten gesamt, Differenz, Günstigster Tarif und die Statistik dieses Tarifs fallen am 1. Februar um 0:00 Uhr (deutsche Ortszeit) einmal um 250 €; die Verbrauchskosten bleiben. Gibt es den Bonus erst nach dem ersten Vertragsjahr, als Datum das Ende des ersten Jahres eintragen. Ein Datum in der Zukunft zählt, sobald es erreicht ist. Liegt es vor der Einrichtung, zählt der Bonus nur im [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) und beim [Nachtragen](#statistik-nachtragen), wenn der Zeitraum das Datum enthält und die Statistik des Zählers so weit zurückreicht. Je Tarif gibt es einen Bonus.
+
 ### Dynamischen Tarif anlegen
 
 Nimm **Börsenpreis plus Aufschläge**. Nur damit kann Tarifwacht auch die Zeit vor der Einrichtung rechnen ([Rückblick](#rückblick-vor-der-einrichtung), [Statistik nachtragen](#statistik-nachtragen)) – die Börsenpreise von damals kommen von SMARD.de. Ein Sensor mit Gesamtpreis kennt nur die Zeit seit der Einrichtung – und fügst du ihn später hinzu, nur so weit, wie der Recorder seinen Verlauf aufbewahrt (meist 10 Tage).
@@ -118,7 +121,7 @@ Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufs
 
 Beim Tarif auf das Zahnrad (*Konfigurieren*):
 
-- **Tarif bearbeiten:** Name, aktueller Tarif und Preise **ab Beginn** – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu.
+- **Tarif bearbeiten:** Name, aktueller Tarif, Bonus und Preise **ab Beginn** – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu.
 - **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt.
 - **Preisänderung entfernen:** danach gelten wieder die Preise davor.
 - **Modul 3** (bei „Börsenpreis plus Aufschläge“ und beim Festpreis), siehe unten.
@@ -174,8 +177,8 @@ An jedem Tarif (z. B. „Haus Festpreis“):
 | Entität | Einheit | Bedeutung |
 |---|---|---|
 | Verbrauchskosten | € | Strombezug × Preis der jeweiligen Viertelstunde |
-| Kosten gesamt | € | Verbrauchskosten plus Grundpreis |
-| Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug |
+| Kosten gesamt | € | Verbrauchskosten plus Grundpreis, abzüglich eines Bonus ab seinem Datum |
+| Durchschnittspreis | ct/kWh | Kosten gesamt ÷ Strombezug (mit Bonus: kurz nach einem großen Bonus auch unter 0) |
 | Differenz zum aktuellen Tarif | € | Kosten gesamt minus Kosten des aktuellen Tarifs (fehlt beim aktuellen Tarif selbst; fehlende Preise siehe unten) |
 | Ersparnis PV | € | nur mit [PV und Speicher](#pv-und-speicher): was die PV seit der Einrichtung gespart hat; Attribute `since` (Beginn), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, Energiemengen (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Ersparnis Speicher | € | nur mit Speicherzählern: was der Speicher zusätzlich gespart hat; Attribute `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (Ersparnis je entladener kWh) |
@@ -414,7 +417,7 @@ data:
 
 <img alt="Antwort der Aktion „Tarife vergleichen“" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat. Mit [PV und Speicher](#pv-und-speicher) kommt `pv_battery` dazu: je Tarif Ersparnis PV und Speicher, die drei Fälle und die Energiemengen, auch je Monat (vor der Einrichtung mit Börsenpreisen von SMARD.de, falls § 51 gilt). Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
+Die Antwort enthält Strombezug und Anzahl der Viertelstunden im Zeitraum, den günstigsten Tarif und je Tarif – günstigster zuerst – die Kosten gesamt, Verbrauchs- und Grundpreiskosten, den Bonus (`bonus`, wenn sein Datum im Zeitraum liegt), den Durchschnittspreis und die Differenz zum aktuellen Tarif; unter `months` dasselbe kürzer je Kalendermonat (`bonus` nur im Monat der Gutschrift). Mit [PV und Speicher](#pv-und-speicher) kommt `pv_battery` dazu: je Tarif Ersparnis PV und Speicher, die drei Fälle und die Energiemengen, auch je Monat (vor der Einrichtung mit Börsenpreisen von SMARD.de, falls § 51 gilt). Ohne Beginn bzw. Ende: seit der Einrichtung bzw. bis jetzt. Zeiten ohne Zeitzone gelten als Ortszeit deines Home Assistant.
 
 ### Rückblick vor der Einrichtung
 
@@ -452,7 +455,7 @@ data:
 
 ### Statistik neu berechnen
 
-Korrigierst du einen Tarif (Preise, Grundpreis, Preisänderung ab einem Datum, Modul 3, aktueller Tarif) oder PV und Speicher, rechnet Tarifwacht den ganzen Zeitraum neu – Sensoren und die Aktion „Tarife vergleichen“ stimmen sofort. Die Langzeitstatistik vergangener Stunden, aus der Statistik-Diagramme, Werte je Tag und Monat und die [Karte](#karte) kommen, behält dagegen die alten Werte, auch nachgetragene. Dafür gibt es am Gerät des Zählers die Schaltfläche **Statistik neu berechnen** (unter *Konfiguration*):
+Korrigierst du einen Tarif (Preise, Grundpreis, Bonus, Preisänderung ab einem Datum, Modul 3, aktueller Tarif) oder PV und Speicher, rechnet Tarifwacht den ganzen Zeitraum neu – Sensoren und die Aktion „Tarife vergleichen“ stimmen sofort. Die Langzeitstatistik vergangener Stunden, aus der Statistik-Diagramme, Werte je Tag und Monat und die [Karte](#karte) kommen, behält dagegen die alten Werte, auch nachgetragene. Dafür gibt es am Gerät des Zählers die Schaltfläche **Statistik neu berechnen** (unter *Konfiguration*):
 
 - Sie berechnet die Statistik aller Tarifwacht-Sensoren mit Summe (Strombezug, Verbrauchskosten, Kosten gesamt, Differenz, Ersparnis PV/Speicher) von deren erstem Statistikwert bis zur letzten vollen Stunde mit den heutigen Tarifen neu – vor der Einrichtung wie beim Nachtragen, danach aus den gespeicherten Viertelstunden. Die Statistik danach schließt ohne Sprung an; Home Assistant zählt von dort weiter.
 - Das Ergebnis erscheint als Benachrichtigung: welcher Zeitraum, um wie viel sich die Summe jedes Sensors geändert hat, welche Tarife wegen fehlender Preise ausgelassen wurden und welche Stunden unplausibel waren. Der Reparaturhinweis nach der Tarifänderung verschwindet danach.
@@ -500,14 +503,14 @@ Die Langzeitstatistik der gelöschten Sensoren bleibt in Home Assistant erhalten
 
 ## Fehler melden
 
-Bitte als [Issue](https://github.com/tarifwacht/integration/issues), mit dem **Bericht für Fehlermeldung**: *Tarifwacht → Eintrag → Gerät des Zählers (z. B. „Haus“) → Diagnose → Bericht für Fehlermeldung* drücken. Der Bericht erscheint als Benachrichtigung (Glocke unten links) zum Kopieren. Er enthält die Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand – beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Grundpreis, Modul-3-Zeitfenstern und Preisänderungen, den Stand der Buchung (Beginn, gebuchte Viertelstunden, Preise je Tarif, SMARD.de), wie die Karte ins Dashboard kommt, Sensoren ohne Wert und offene Reparaturhinweise. Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen stehen nicht darin. Lies ihn trotzdem vor dem Teilen und lösche, was du nicht zeigen willst. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
+Bitte als [Issue](https://github.com/tarifwacht/integration/issues), mit dem **Bericht für Fehlermeldung**: *Tarifwacht → Eintrag → Gerät des Zählers (z. B. „Haus“) → Diagnose → Bericht für Fehlermeldung* drücken. Der Bericht erscheint als Benachrichtigung (Glocke unten links) zum Kopieren. Er enthält die Versionen, Zähler und Preissensoren nach Rolle (Integration, Einheit, Zustandsklasse, Zustand – beim Zähler nur, ob er eine Zahl liefert), die Tarife nach Art und Nummer mit Preisen, Grundpreis, Bonus, Modul-3-Zeitfenstern und Preisänderungen, den Stand der Buchung (Beginn, gebuchte Viertelstunden, Preise je Tarif, SMARD.de), wie die Karte ins Dashboard kommt, Sensoren ohne Wert und offene Reparaturhinweise. Entity-IDs, die Namen von Eintrag und Tarifen, Bereiche, Zählerstände sowie Energie- und Kostensummen stehen nicht darin. Lies ihn trotzdem vor dem Teilen und lösche, was du nicht zeigen willst. Sicherheitslücken bitte vertraulich, siehe [SECURITY.md](SECURITY.md).
 
 ### Was steht in der Diagnose-Datei?
 
 Reicht der Bericht nicht, kommt im Issue die Bitte um die Diagnose-Datei (*⋮ → Diagnosedaten herunterladen*). Sie ist ausführlicher, und nicht alles darin kommt von Tarifwacht:
 
 - **Von Home Assistant** (jede Integration hat diesen Kopf, Tarifwacht kann ihn nicht ändern): Version und Installationsart, Betriebssystem, Zeitzone und unter `custom_components` die Liste **aller** installierten benutzerdefinierten Integrationen mit Versionen. Diese Blöcke darfst du vor dem Hochladen löschen, sie werden nicht gebraucht. Unter `issues` stehen die IDs der Reparaturhinweise; sie enthalten die ID des Eintrags, beim Hinweis zur Einheit eines Preissensors auch dessen Entity-ID.
-- **Von Tarifwacht** (unter `data`): die Entity-IDs von Zähler und Preissensoren, die Einstellungen jedes Tarifs (Art, Preise, Grundpreis, Modul 3, Preisänderungen, Haken für SMARD.de – ohne den Namen des Tarifs), Beginn und Umfang der Buchung (Zahl der Viertelstunden, erste und letzte), je Preissensor Format, Auflösung und den Aufbau seiner Attribute (nur Schlüssel und Typen, keine Werte), Zählerereignisse, die Zeit der letzten Ablesung und Fehlermeldungen. Der Name des Eintrags, Zählerstände sowie Energie- und Kostensummen fehlen.
+- **Von Tarifwacht** (unter `data`): die Entity-IDs von Zähler und Preissensoren, die Einstellungen jedes Tarifs (Art, Preise, Grundpreis, Bonus, Modul 3, Preisänderungen, Haken für SMARD.de – ohne den Namen des Tarifs), Beginn und Umfang der Buchung (Zahl der Viertelstunden, erste und letzte), je Preissensor Format, Auflösung und den Aufbau seiner Attribute (nur Schlüssel und Typen, keine Werte), Zählerereignisse, die Zeit der letzten Ablesung und Fehlermeldungen. Der Name des Eintrags, Zählerstände sowie Energie- und Kostensummen fehlen.
 
 Willst du die Datei nicht öffentlich teilen, ist das in Ordnung: Dann reichen meist der Bericht und gezielte Angaben, nach denen im Issue gefragt wird.
 

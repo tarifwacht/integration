@@ -26,6 +26,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
@@ -33,6 +34,8 @@ from .const import (
     BERLIN,
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
+    CONF_BONUS,
+    CONF_BONUS_DATE,
     CONF_CHANGES,
     CONF_CURRENT,
     CONF_FIXED_BASE,
@@ -57,6 +60,7 @@ from .const import (
     KIND_DYNAMIC_TOTAL,
     KIND_FIXED,
     KINDS,
+    SECTION_BONUS,
     SUBENTRY_SOLAR,
     SUBENTRY_TARIFF,
     TARIFF_DYNAMIC,
@@ -298,8 +302,15 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 )
 
-        # At the setup there is no earlier time to fill from SMARD.de.
-        hidden = (CONF_NAME, CONF_BASE_PERIOD, CONF_CURRENT, CONF_SMARD_FILL)
+        # At the setup there is no earlier time to fill from SMARD.de; a
+        # bonus can be added in the tariff's settings later.
+        hidden = (
+            CONF_NAME,
+            CONF_BASE_PERIOD,
+            CONF_CURRENT,
+            CONF_SMARD_FILL,
+            SECTION_BONUS,
+        )
         schema = vol.Schema(
             {
                 key: value
@@ -357,7 +368,27 @@ def _tariff_schema(kind: str) -> vol.Schema:
     if kind == KIND_DYNAMIC_MARKET:
         # Missing means no consent.
         fields[vol.Optional(CONF_SMARD_FILL)] = selector.BooleanSelector()
+    # Collapsed, the form stays short. Optional and without a default: the
+    # frontend takes a section's default over the suggested values of its
+    # fields (Wärmewacht 9c7e722); missing input keeps the stored bonus.
+    fields[vol.Optional(SECTION_BONUS)] = section(
+        vol.Schema(
+            {
+                vol.Optional(CONF_BONUS): BASE_NUMBER,
+                vol.Optional(CONF_BONUS_DATE): selector.DateSelector(),
+            }
+        ),
+        {"collapsed": True},
+    )
     return vol.Schema(fields)
+
+
+def bonus_error(user_input: dict[str, Any]) -> str | None:
+    """A bonus needs the date it is credited on."""
+    bonus = user_input.get(SECTION_BONUS) or {}
+    if bonus.get(CONF_BONUS) and not bonus.get(CONF_BONUS_DATE):
+        return "bonus_date_required"
+    return None
 
 
 def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
@@ -376,6 +407,10 @@ def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_CURRENT] = bool(user_input[CONF_CURRENT])
     if kind == KIND_DYNAMIC_MARKET and CONF_SMARD_FILL in user_input:
         data[CONF_SMARD_FILL] = bool(user_input[CONF_SMARD_FILL])
+    bonus = user_input.get(SECTION_BONUS) or {}
+    if float(bonus.get(CONF_BONUS) or 0) > 0 and bonus.get(CONF_BONUS_DATE):
+        data[CONF_BONUS] = float(bonus[CONF_BONUS])
+        data[CONF_BONUS_DATE] = str(bonus[CONF_BONUS_DATE])
     return data
 
 
@@ -706,12 +741,18 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 error := validate_price_entity(self.hass, user_input[CONF_PRICE_ENTITY])
             ):
                 errors[CONF_PRICE_ENTITY] = error
+            if error := bonus_error(user_input):
+                errors["base"] = error
             if not errors:
                 data = _tariff_data(kind, user_input)
                 if subentry is not None:
                     # Keep the stable key, the price changes and Modul 3:
-                    # the edit form does not show them.
-                    for keep in (CONF_KEY, CONF_CHANGES, CONF_MODUL3):
+                    # the edit form does not show them. The bonus too if
+                    # its section did not come back.
+                    keeps = [CONF_KEY, CONF_CHANGES, CONF_MODUL3]
+                    if SECTION_BONUS not in user_input:
+                        keeps += [CONF_BONUS, CONF_BONUS_DATE]
+                    for keep in keeps:
                         if subentry.data.get(keep):
                             data[keep] = subentry.data[keep]
                 if data[CONF_CURRENT]:
@@ -730,6 +771,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 CONF_NAME: subentry.title,
                 CONF_SMARD_FILL: False,
                 **subentry.data,
+                SECTION_BONUS: {
+                    key: subentry.data[key]
+                    for key in (CONF_BONUS, CONF_BONUS_DATE)
+                    if key in subentry.data
+                },
             }
             self._shown_price = subentry.data.get(CONF_PRICE_ENTITY)
         else:

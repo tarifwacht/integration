@@ -40,6 +40,7 @@ The user interface is available in German and English and follows the language o
 - **Saving by PV and battery** per tariff (€): what the PV system and battery saved against buying all consumption, with feed-in tariff and § 51 EEG – hybrid inverters and batteries with their own inverter, see [PV and battery](#pv-and-battery).
 - **A card of its own for the dashboard:** your tariff, whether another one would have been cheaper and what PV and battery save – today, this month and this year, plus bars per month. No extra cards from HACS, see [Card](#card).
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
+- **One-off bonus** per tariff, e.g. a 250 € switching bonus – lowers the total cost once, on the day it is credited.
 - **Base prices** optional, per month or per year, booked pro rata per day.
 - **Comparison for any period** via an action, broken down by month – also **before the setup**, as far back as your meter's long-term statistics go: what would last year have cost with each tariff? On request also [written into the long-term statistics](#import-statistics).
 - **Prices every tariff from the setup on:** consumption and prices are stored per quarter hour. A tariff added or corrected later therefore applies to the whole period.
@@ -102,6 +103,8 @@ This creates the first two tariffs. If you set up Tarifwacht before 0.1.0 with a
 
 Every tariff has an optional base price (per month or per year) and the switch **My current tariff** – the other tariffs show their difference to this one.
 
+Under **Bonus (optional)** (collapsed) goes a **one-off bonus**, such as a new-customer or switching bonus: **One-off bonus** (€, gross) and **Bonus credited on**. Example: a 250 € switching bonus credited on 1 February → total cost, difference, cheapest tariff and the statistics of this tariff drop once by 250 € on 1 February at 0:00 (German local time); the consumption cost stays. If the bonus comes only after the first contract year, enter the end of that year as the date. A date in the future counts once it is reached. If it lies before the setup, the bonus counts only in the [comparison for a period](#comparison-for-a-period) and when [importing statistics](#import-statistics), if the period contains the date and the meter's statistics reach back that far. Each tariff has one bonus.
+
 ### Adding a dynamic tariff
 
 Choose **exchange price plus surcharges**. Only then can Tarifwacht also calculate the time before the setup ([looking back](#looking-back-before-the-setup), [import statistics](#import-statistics)) – the exchange prices of that time come from SMARD.de. A sensor with the total price only knows the time since setup.
@@ -120,7 +123,7 @@ Leave grid fee and taxes/levies empty – they are already in the surcharge. Che
 
 Click the cog (*Configure*) on the tariff:
 
-- **Edit tariff:** name, current tariff and prices **from the start** – for typos and corrections. Tarifwacht recalculates the whole period.
+- **Edit tariff:** name, current tariff, bonus and prices **from the start** – for typos and corrections. Tarifwacht recalculates the whole period.
 - **Add a price change from a date:** new prices from midnight of that day (German local time), e.g. a price increase by your supplier or new grid fees. The previous prices still apply before that. The form is pre-filled with today's prices.
 - **Remove a price change:** the prices before it apply again.
 - **Modul 3** (for "exchange price plus surcharges" and for the fixed price), see below.
@@ -176,8 +179,8 @@ On every tariff (e.g. "Home Fixed price"):
 | Entity | Unit | Meaning |
 |---|---|---|
 | Consumption cost | € | grid purchase × price of the respective quarter hour |
-| Total cost | € | consumption cost plus base price |
-| Average price | ct/kWh | total cost ÷ grid purchase |
+| Total cost | € | consumption cost plus base price, less a bonus from its date on |
+| Average price | ct/kWh | total cost ÷ grid purchase (with the bonus: shortly after a large bonus even below 0) |
 | Difference to current tariff | € | total cost minus the current tariff's cost (not on the current tariff itself; missing prices: see below) |
 | Saving by PV | € | only with [PV and battery](#pv-and-battery): what the PV saved since the setup; attributes `since` (start), `cost_without_pv_and_battery`, `cost_pv_without_battery`, `cost_actual`, energies (`consumption_kwh`, `pv_kwh`, `purchase_kwh`, `feed_in_kwh`, `feed_in_unpaid_kwh`), `hours`, `hours_left_out` |
 | Saving by battery | € | only with battery meters: what the battery saved on top; attributes `charged_kwh`, `discharged_kwh`, `value_per_kwh_ct` (saving per kWh discharged) |
@@ -416,7 +419,7 @@ data:
 
 <img alt="Response of the action Compare tariffs" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/vergleich.png" width="640">
 
-The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the average price and the difference to the current tariff; under `months` the same in short per calendar month. With [PV and battery](#pv-and-battery) there is also `pv_battery`: per tariff the saving by PV and battery, the three cases and the energies, also per month (before the setup with exchange prices from SMARD.de if § 51 applies). Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
+The response contains the grid purchase and number of quarter hours in the period, the cheapest tariff and per tariff – cheapest first – the total cost, consumption and base-price cost, the bonus (`bonus`, if its date lies in the period), the average price and the difference to the current tariff; under `months` the same in short per calendar month (`bonus` only in the month it is credited). With [PV and battery](#pv-and-battery) there is also `pv_battery`: per tariff the saving by PV and battery, the three cases and the energies, also per month (before the setup with exchange prices from SMARD.de if § 51 applies). Without start or end: since setup or until now. Times without a time zone are taken as your Home Assistant's local time.
 
 ### Looking back before the setup
 
@@ -454,7 +457,7 @@ data:
 
 ### Recalculate statistics
 
-If you correct a tariff (prices, base price, a price change from a date, Modul 3, the current tariff) or PV and battery, Tarifwacht recalculates the whole period – sensors and the action “Compare tariffs” are right at once. The long-term statistics of past hours, which statistics graphs, values per day and month and the [card](#card) use, keep the old values, imported ones too. For this the meter's device has the button **Recalculate statistics** (under *Configuration*):
+If you correct a tariff (prices, base price, bonus, a price change from a date, Modul 3, the current tariff) or PV and battery, Tarifwacht recalculates the whole period – sensors and the action “Compare tariffs” are right at once. The long-term statistics of past hours, which statistics graphs, values per day and month and the [card](#card) use, keep the old values, imported ones too. For this the meter's device has the button **Recalculate statistics** (under *Configuration*):
 
 - It recalculates the statistics of all Tarifwacht sensors with a sum (grid purchase, consumption cost, total cost, difference, saving by PV/battery) from their first statistic up to the last full hour with today's tariffs – before the setup as when importing, after it from the stored quarter hours. The statistics after it continue without a jump; Home Assistant counts on from there.
 - The result is shown as a notification: the period, how much each sensor's total changed, which tariffs were left out for missing prices and which hours were implausible. The repair notice after the tariff change disappears.
@@ -502,14 +505,14 @@ The long-term statistics of the deleted sensors stay in Home Assistant until you
 
 ## Reporting issues
 
-Please open an [issue](https://github.com/tarifwacht/integration/issues) with the **report for a bug report**: press *Tarifwacht → entry → the meter's device (e.g. "Home") → Diagnostic → Report for a bug report*. The report shows up as a notification (bell at the bottom left) to copy. It holds the versions, the meter and price sensors by role (integration, unit, state class, state – for the meter only whether it delivers a number), the tariffs by kind and number with prices, base price, Modul 3 windows and price changes, the state of the bookings (start, quarter hours booked, prices per tariff, SMARD.de), how the card reaches the dashboard, sensors without a value and open repair issues. Entity ids, the names of the entry and the tariffs, areas, meter readings and energy or cost totals are not in it. Still read it before sharing and delete what you would rather not show. Please report security issues privately, see [SECURITY.md](SECURITY.md).
+Please open an [issue](https://github.com/tarifwacht/integration/issues) with the **report for a bug report**: press *Tarifwacht → entry → the meter's device (e.g. "Home") → Diagnostic → Report for a bug report*. The report shows up as a notification (bell at the bottom left) to copy. It holds the versions, the meter and price sensors by role (integration, unit, state class, state – for the meter only whether it delivers a number), the tariffs by kind and number with prices, base price, bonus, Modul 3 windows and price changes, the state of the bookings (start, quarter hours booked, prices per tariff, SMARD.de), how the card reaches the dashboard, sensors without a value and open repair issues. Entity ids, the names of the entry and the tariffs, areas, meter readings and energy or cost totals are not in it. Still read it before sharing and delete what you would rather not show. Please report security issues privately, see [SECURITY.md](SECURITY.md).
 
 ### What is in the diagnostics file?
 
 If the report is not enough, the issue will ask for the diagnostics file (*⋮ → Download diagnostics*). It is more detailed, and not all of it comes from Tarifwacht:
 
 - **From Home Assistant** (every integration gets this header, Tarifwacht cannot change it): version and installation type, operating system, time zone and under `custom_components` the list of **all** installed custom integrations with versions. You may delete these blocks before uploading; they are not needed. Under `issues` are the ids of the repair issues; they contain the entry id, and for the unit of a price sensor also its entity id.
-- **From Tarifwacht** (under `data`): the entity ids of the meter and the price sensors, the settings of every tariff (kind, prices, base price, Modul 3, price changes, the SMARD.de checkbox – without the tariff's name), start and extent of the bookings (number of quarter hours, first and last), for each price sensor its format, resolution and the structure of its attributes (keys and types only, no values), meter events, the time of the last reading and error messages. The entry name, meter readings and energy or cost totals are left out.
+- **From Tarifwacht** (under `data`): the entity ids of the meter and the price sensors, the settings of every tariff (kind, prices, base price, bonus, Modul 3, price changes, the SMARD.de checkbox – without the tariff's name), start and extent of the bookings (number of quarter hours, first and last), for each price sensor its format, resolution and the structure of its attributes (keys and types only, no values), meter events, the time of the last reading and error messages. The entry name, meter readings and energy or cost totals are left out.
 
 If you would rather not share the file publicly, that is fine: the report and the specific details asked for in the issue are usually enough.
 

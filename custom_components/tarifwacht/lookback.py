@@ -140,7 +140,7 @@ class HourlyCosts:
 
     energy: dict[datetime, float]
     consumption_cost: dict[str, dict[datetime, float]]
-    # Consumption cost plus base price.
+    # Consumption cost plus base price, less a bonus (in its period).
     cost: dict[str, dict[datetime, float]]
     # Tariffs without the price of a quarter hour with energy.
     incomplete: set[str]
@@ -159,7 +159,8 @@ def period_costs(
 
     Periods shorter than a quarter hour (5 minutes, for short-term
     statistics) get an equal share of their quarter hour's energy, priced
-    with its price. Periods without energy still carry the base price.
+    with its price. Periods without energy still carry the base price; a
+    tariff's bonus lowers the cost of the period containing its instant.
     """
     periods: list[datetime] = []
     period = period_start(start, width)
@@ -192,6 +193,7 @@ def period_costs(
         key: {
             period: consumption[key][period]
             + tariff.base_between(max(period, start), min(period + width, end), tz)
+            - tariff.bonus_between(max(period, start), min(period + width, end))
             for period in periods
         }
         for key, tariff in tariffs.items()
