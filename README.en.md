@@ -27,7 +27,7 @@ The user interface is available in German and English and follows the language o
 
 - [Features](#features) · [Notes on the comparison](#notes-on-the-comparison) · [What Tarifwacht does not do](#what-tarifwacht-does-not-do)
 - **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
-- **Using it:** [Entities](#entities) · [Card](#card) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics)
+- **Using it:** [Entities](#entities) · [Card](#card) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics) · [Recalculate statistics](#recalculate-statistics)
 - **More:** [Privacy](#privacy) · [Troubleshooting](#troubleshooting) · [Removal](#removal) · [Reporting issues](#reporting-issues) · [Thanks](#thanks) · [Sister integrations](#sister-integrations)
 
 ## Features
@@ -124,6 +124,8 @@ Click the cog (*Configure*) on the tariff:
 - **Add a price change from a date:** new prices from midnight of that day (German local time), e.g. a price increase by your supplier or new grid fees. The previous prices still apply before that. The form is pre-filled with today's prices.
 - **Remove a price change:** the prices before it apply again.
 - **Modul 3** (only for "exchange price plus surcharges"), see below.
+
+Every change applies to the whole period; the sensors show the new totals at once. The long-term statistics of past hours (statistics graphs, months of the [card](#card)) keep the old values, though – that is what [Recalculate statistics](#recalculate-statistics) is for. A repair notice reminds you.
 
 Several meters: add one entry each. To change the name or meter: *Tarifwacht → ⋮ → Reconfigure*.
 
@@ -446,8 +448,19 @@ data:
 - With [PV and battery](#pv-and-battery) also **Saving by PV** and **Saving by battery**: all hours before their first statistic, including the time between the setup and adding PV and battery. Statistics cards per month or year and the graph “saving per month” then show the whole time. With “no payment at negative prices” the exchange prices before the setup come from SMARD.de.
 - The start must be before the setup; it cannot go back further than your meter's long-term statistics (the response names the actual start).
 - A tariff lacking prices in the period – such as a **sensor with the total price** – is skipped entirely and listed under `skipped`: better no history than one with gaps.
-- Imported hours stay as written: if you later correct a tariff's prices, sensors and the action recalculate, the imported statistics do not. To redo them, delete the statistics of that tariff's sensors (*Tools → Statistics*) and import again.
+- **Implausible hours** in the statistics of the meter (or of the PV and battery meters) are left out and listed under `hours_implausible` (count and the first hours): an hour with more than **150 kWh** – the same bound as for every reading while running, 100 kW × 1.5 –, a negative hour (meter replaced) and the hour after such a jump in which the reading falls again. Typical case: a meter briefly reports Wh as kWh (107 → 109,851 → 110 kWh); without the check such a day would add more than 100,000 kWh. A full hour with wallbox and heat pump (about 20 kWh) stays. The same applies to [looking back](#looking-back-before-the-setup) (`estimate.hours_implausible`, with PV and battery `pv_battery.hours_implausible`) and the sensors “Saving by PV/battery”.
 - **This changes the statistics database – create a backup first.** A second call finds nothing left to import.
+
+### Recalculate statistics
+
+If you correct a tariff (prices, base price, a price change from a date, Modul 3, the current tariff) or PV and battery, Tarifwacht recalculates the whole period – sensors and the action “Compare tariffs” are right at once. The long-term statistics of past hours, which statistics graphs, values per day and month and the [card](#card) use, keep the old values, imported ones too. For this the meter's device has the button **Recalculate statistics** (under *Configuration*):
+
+- It recalculates the statistics of all Tarifwacht sensors with a sum (grid purchase, consumption cost, total cost, difference, saving by PV/battery) from their first statistic up to the last full hour with today's tariffs – before the setup as when importing, after it from the stored quarter hours. The statistics after it continue without a jump; Home Assistant counts on from there.
+- The result is shown as a notification: the period, how much each sensor's total changed, which tariffs were left out for missing prices and which hours were implausible. The repair notice after the tariff change disappears.
+- Sensors without statistics stay as they are. Pressing twice gives the same result.
+- The 5-minute statistics of the last 10 days are recalculated too; older ones (with a longer `purge_keep_days`) stay, only 5-minute graphs show them.
+- The same from a chosen day: the action **Import statistics** with **Replace existing statistics** (`replace: true`). The statistics before that day stay as they are; if the day is before the first statistic, the time before it is filled in as when importing.
+- **This changes the statistics database too – create a backup first.**
 
 ## Privacy
 

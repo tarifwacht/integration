@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Neu: Schaltfläche „Statistik neu berechnen“** am Gerät des Zählers (unter *Konfiguration*). Korrigierst du einen Tarif – Preise, Grundpreis, Preisänderung ab einem Datum, Modul 3, aktueller Tarif – oder PV und Speicher, rechnen Sensoren und „Tarife vergleichen“ sofort mit den neuen Werten, die Langzeitstatistik vergangener Stunden (Statistik-Diagramme, Werte je Tag und Monat, die Karte) behielt aber die alten, auch nachgetragene. Die Schaltfläche berechnet die Statistik aller Tarifwacht-Sensoren mit Summe von ihrem ersten Wert bis zur letzten vollen Stunde mit den aktuellen Tarifen neu; die Statistik danach schließt ohne Sprung an. Das Ergebnis erscheint als Benachrichtigung (Zeitraum, Änderung der Summe je Sensor, ausgelassene Tarife). Nach einer Tarifänderung erinnert ein Reparaturhinweis daran; er verschwindet nach dem Neuberechnen.
+- **Statistik nachtragen:** neues Feld **„Vorhandene Statistik ersetzen“** (`replace`): berechnet auch vorhandene Statistik ab dem gewählten Tag neu, wie die Schaltfläche.
+- **Unplausible Stunden werden ausgelassen:** Meldet ein Zähler kurz Wh als kWh, stehen in seiner Langzeitstatistik Sprünge von über 100.000 kWh. Rückblick, Statistik nachtragen, Neuberechnen und die Sensoren „Ersparnis PV/Speicher“ lassen jetzt jede Stunde mit mehr als 150 kWh (dieselbe Grenze wie für Ablesungen im laufenden Betrieb), jede negative Stunde und das Zurückfallen nach so einem Sprung aus und nennen sie unter `hours_implausible`. Eine volle Stunde mit Wallbox und Wärmepumpe bleibt drin.
+
 ## 0.2.3 – 2026-11-08
 
 - **PV und Speicher: Zähler auch aus Speicherwacht, mit Hinweis.** Ist [Speicherwacht](https://github.com/speicherwacht/integration) eingerichtet, sind jetzt auch „Speicher geladen“ und „Speicher entladen“ vorausgefüllt (wie bisher Einspeisezähler, Vergütung, § 51 und Börsenpreis aus Einspeisewacht; einmalig übernommen, keine Abhängigkeit). Ein Satz unter der Beschreibung des Formulars nennt, woher die Vorschläge kommen – etwa *Zähler vorbelegt aus Einspeisewacht „Dach“ und Speicherwacht „Speicher“ – bitte prüfen.*; bei mehreren Einträgen gilt der erste. Ist keine der beiden eingerichtet, steht dort ein Tipp mit Links zu Einspeisewacht und Speicherwacht. Nur im Formular, keine Benachrichtigung.

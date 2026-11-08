@@ -25,7 +25,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 
 - [Was Tarifwacht kann](#was-tarifwacht-kann) · [Hinweise zum Vergleich](#hinweise-zum-vergleich) · [Was Tarifwacht nicht kann](#was-tarifwacht-nicht-kann)
 - **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
-- **Nutzen:** [Entitäten](#entitäten) · [Karte](#karte) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen)
+- **Nutzen:** [Entitäten](#entitäten) · [Karte](#karte) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen) · [Statistik neu berechnen](#statistik-neu-berechnen)
 - **Mehr:** [Datenschutz](#datenschutz) · [Fehlerbehebung](#fehlerbehebung) · [Entfernen](#entfernen) · [Fehler melden](#fehler-melden) · [Danke](#danke) · [Weitere Wachten](#weitere-wachten)
 
 ## Was Tarifwacht kann
@@ -122,6 +122,8 @@ Beim Tarif auf das Zahnrad (*Konfigurieren*):
 - **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt.
 - **Preisänderung entfernen:** danach gelten wieder die Preise davor.
 - **Modul 3** (nur bei „Börsenpreis plus Aufschläge“), siehe unten.
+
+Jede Änderung gilt rückwirkend für den ganzen Zeitraum; die Sensoren zeigen sofort die neuen Summen. Die Langzeitstatistik vergangener Stunden (Statistik-Diagramme, Monate der [Karte](#karte)) behält aber die alten Werte – dafür gibt es [Statistik neu berechnen](#statistik-neu-berechnen). Ein Reparaturhinweis erinnert daran.
 
 Mehrere Zähler: je einen Eintrag anlegen. Name oder Zähler ändern: *Tarifwacht → ⋮ → Neu konfigurieren*.
 
@@ -444,8 +446,19 @@ data:
 - Mit [PV und Speicher](#pv-und-speicher) auch **Ersparnis PV** und **Ersparnis Speicher**: alle Stunden vor ihrem ersten Statistikwert, also auch die Zeit zwischen Einrichtung und Hinzufügen von PV und Speicher. Danach zeigen Statistik-Karten mit Monat oder Jahr und das Diagramm „Ersparnis je Monat“ die ganze Zeit. Mit „keine Vergütung bei negativen Preisen“ kommen die Börsenpreise vor der Einrichtung von SMARD.de.
 - Der Beginn muss vor der Einrichtung liegen; früher als die Langzeitstatistik deines Zählers geht es nicht (die Antwort nennt den tatsächlichen Beginn).
 - Ein Tarif, dem im Zeitraum Preise fehlen – etwa ein **Sensor mit Gesamtpreis** –, wird ganz übersprungen und unter `skipped` genannt: lieber keine Vergangenheit als eine mit Lücken.
-- Nachgetragene Stunden bleiben, wie sie geschrieben wurden: Korrigierst du später Preise eines Tarifs, rechnen Sensoren und Aktion neu, die nachgetragene Statistik nicht. Dafür die Statistik der Sensoren dieses Tarifs löschen (*Werkzeuge → Statistik*) und erneut nachtragen.
+- **Unplausible Stunden** in der Statistik des Zählers (oder der PV- und Speicherzähler) bleiben außen vor und stehen unter `hours_implausible` (Anzahl und die ersten Stunden): eine Stunde mit mehr als **150 kWh** – dieselbe Grenze wie für jede Ablesung im laufenden Betrieb, 100 kW × 1,5 –, eine negative Stunde (Zähler getauscht) und die Stunde danach, in der der Zählerstand nach so einem Sprung wieder fällt. Typischer Fall: Ein Zähler meldet kurz Wh als kWh (107 → 109.851 → 110 kWh); ohne die Prüfung käme so ein Tag auf über 100.000 kWh. Eine volle Stunde mit Wallbox und Wärmepumpe (etwa 20 kWh) bleibt drin. Dasselbe gilt für den [Rückblick](#rückblick-vor-der-einrichtung) (`estimate.hours_implausible`, bei PV und Speicher `pv_battery.hours_implausible`) und die Sensoren „Ersparnis PV/Speicher“.
 - **Das greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.** Ein zweiter Aufruf findet nichts mehr nachzutragen.
+
+### Statistik neu berechnen
+
+Korrigierst du einen Tarif (Preise, Grundpreis, Preisänderung ab einem Datum, Modul 3, aktueller Tarif) oder PV und Speicher, rechnet Tarifwacht den ganzen Zeitraum neu – Sensoren und die Aktion „Tarife vergleichen“ stimmen sofort. Die Langzeitstatistik vergangener Stunden, aus der Statistik-Diagramme, Werte je Tag und Monat und die [Karte](#karte) kommen, behält dagegen die alten Werte, auch nachgetragene. Dafür gibt es am Gerät des Zählers die Schaltfläche **Statistik neu berechnen** (unter *Konfiguration*):
+
+- Sie berechnet die Statistik aller Tarifwacht-Sensoren mit Summe (Strombezug, Verbrauchskosten, Kosten gesamt, Differenz, Ersparnis PV/Speicher) von deren erstem Statistikwert bis zur letzten vollen Stunde mit den heutigen Tarifen neu – vor der Einrichtung wie beim Nachtragen, danach aus den gespeicherten Viertelstunden. Die Statistik danach schließt ohne Sprung an; Home Assistant zählt von dort weiter.
+- Das Ergebnis erscheint als Benachrichtigung: welcher Zeitraum, um wie viel sich die Summe jedes Sensors geändert hat, welche Tarife wegen fehlender Preise ausgelassen wurden und welche Stunden unplausibel waren. Der Reparaturhinweis nach der Tarifänderung verschwindet danach.
+- Sensoren ohne Statistik bleiben, wie sie sind. Zweimal drücken ergibt dasselbe.
+- Auch die Fünf-Minuten-Statistik der letzten 10 Tage wird neu berechnet; ältere (bei längerem `purge_keep_days`) bleibt, die sehen nur Fünf-Minuten-Diagramme.
+- Dasselbe ab einem bestimmten Tag: die Aktion **Statistik nachtragen** mit **Vorhandene Statistik ersetzen** (`replace: true`). Davor bleibt die Statistik unverändert; liegt der Tag vor dem ersten Statistikwert, wird die Zeit davor wie beim Nachtragen ergänzt.
+- **Auch das greift in die Statistik-Datenbank ein – vorher ein Backup anlegen.**
 
 ## Datenschutz
 
