@@ -338,6 +338,24 @@
             "feed_in_rate": "What you get per kWh fed in.",
             "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
             "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Purchase (optional)",
+              "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
+              "data": {
+                "pv_cost": "PV purchase cost",
+                "pv_since": "PV running since",
+                "battery_cost": "Battery purchase cost",
+                "battery_since": "Battery running since"
+              },
+              "data_description": {
+                "pv_cost": "Gross, in €, e.g. from the invoice (minus any subsidy). Empty: no payback.",
+                "pv_since": "Day of commissioning. Savings before it do not count.",
+                "battery_cost": "Gross, in €. Only with the battery meters.",
+                "battery_since": "Empty: the same day as the PV. For a battery added later, its own day."
+              }
+            }
           }
         },
         "suggested_einspeisewacht": {
@@ -360,6 +378,24 @@
             "feed_in_rate": "What you get per kWh fed in.",
             "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
             "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Purchase (optional)",
+              "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
+              "data": {
+                "pv_cost": "PV purchase cost",
+                "pv_since": "PV running since",
+                "battery_cost": "Battery purchase cost",
+                "battery_since": "Battery running since"
+              },
+              "data_description": {
+                "pv_cost": "Gross, in €, e.g. from the invoice (minus any subsidy). Empty: no payback.",
+                "pv_since": "Day of commissioning. Savings before it do not count.",
+                "battery_cost": "Gross, in €. Only with the battery meters.",
+                "battery_since": "Empty: the same day as the PV. For a battery added later, its own day."
+              }
+            }
           }
         },
         "suggested_speicherwacht": {
@@ -382,6 +418,24 @@
             "feed_in_rate": "What you get per kWh fed in.",
             "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
             "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Purchase (optional)",
+              "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
+              "data": {
+                "pv_cost": "PV purchase cost",
+                "pv_since": "PV running since",
+                "battery_cost": "Battery purchase cost",
+                "battery_since": "Battery running since"
+              },
+              "data_description": {
+                "pv_cost": "Gross, in €, e.g. from the invoice (minus any subsidy). Empty: no payback.",
+                "pv_since": "Day of commissioning. Savings before it do not count.",
+                "battery_cost": "Gross, in €. Only with the battery meters.",
+                "battery_since": "Empty: the same day as the PV. For a battery added later, its own day."
+              }
+            }
           }
         },
         "suggested_both": {
@@ -404,6 +458,24 @@
             "feed_in_rate": "What you get per kWh fed in.",
             "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
             "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Purchase (optional)",
+              "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
+              "data": {
+                "pv_cost": "PV purchase cost",
+                "pv_since": "PV running since",
+                "battery_cost": "Battery purchase cost",
+                "battery_since": "Battery running since"
+              },
+              "data_description": {
+                "pv_cost": "Gross, in €, e.g. from the invoice (minus any subsidy). Empty: no payback.",
+                "pv_since": "Day of commissioning. Savings before it do not count.",
+                "battery_cost": "Gross, in €. Only with the battery meters.",
+                "battery_since": "Empty: the same day as the PV. For a battery added later, its own day."
+              }
+            }
           }
         },
         "reconfigure": {
@@ -426,6 +498,24 @@
             "feed_in_rate": "What you get per kWh fed in.",
             "negative_unpaid": "Section 51 EEG: plants commissioned from 25 February 2025 with a smart meter get nothing in quarter hours with a negative exchange price.",
             "market_entity": "Day-ahead price in €/kWh (e.g. EPEX Spot), only for the rule above. Empty: the exchange price tariff's sensor."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Purchase (optional)",
+              "description": "For “paid back”: what PV and battery cost and since when they run. Tarifwacht sets this against what they saved since that day.",
+              "data": {
+                "pv_cost": "PV purchase cost",
+                "pv_since": "PV running since",
+                "battery_cost": "Battery purchase cost",
+                "battery_since": "Battery running since"
+              },
+              "data_description": {
+                "pv_cost": "Gross, in €, e.g. from the invoice (minus any subsidy). Empty: no payback.",
+                "pv_since": "Day of commissioning. Savings before it do not count.",
+                "battery_cost": "Gross, in €. Only with the battery meters.",
+                "battery_since": "Empty: the same day as the PV. For a battery added later, its own day."
+              }
+            }
           }
         },
         "battery_same": {
@@ -466,7 +556,9 @@
         "meter_unit": "The meter must count energy in Wh, kWh or MWh.",
         "meter_state_class": "The meter needs a state class total or total_increasing (long-term statistics).",
         "battery_both": "Please choose both battery meters, or neither.",
-        "market_required": "For no payment at negative prices an exchange price is needed: choose a sensor or add an exchange price tariff."
+        "market_required": "For no payment at negative prices an exchange price is needed: choose a sensor or add an exchange price tariff.",
+        "purchase_date_required": "Please enter the commissioning day for the purchase cost.",
+        "battery_cost_without_meters": "A battery purchase cost needs the two battery meters."
       },
       "abort": {
         "single_solar": "PV and battery are already set up for this meter. Change them there.",

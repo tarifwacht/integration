@@ -2,7 +2,8 @@
 
 With a PV and battery subentry, each tariff also shows what PV and battery
 saved under it since the start of the period (solar.py, from the long-term
-statistics, recomputed every hour).
+statistics, recomputed every hour), and with a purchase cost when each has
+paid for itself (payback.py, as attributes).
 
 Each tariff (subentry) has its own device. Unique ids are
 `{entry_id}_{tariff key}_{sensor}`; the two tariffs of 0.1.0b1 keep the keys
@@ -31,6 +32,7 @@ from . import TarifwachtConfigEntry
 from .const import DOMAIN, VERSION
 from .entity import MeterEntity
 from .lookback import hour_start
+from .payback import BATTERY, PV, payback_attributes
 from .runtime import MeterRuntime, TariffInfo, has_battery
 from .solar import SolarTotals
 from .tariffs import TariffTotals
@@ -128,7 +130,13 @@ def _saving_pv_attributes(runtime: MeterRuntime, tariff: TariffInfo) -> dict[str
         "feed_in_unpaid_kwh": _r(totals.feed_in_unpaid, 1),
         "hours": totals.hours,
         "hours_left_out": totals.hours_left_out,
+        **_payback(runtime, tariff, PV),
     }
+
+
+def _payback(runtime: MeterRuntime, tariff: TariffInfo, part: str) -> dict[str, Any]:
+    """Payback of the part under the tariff, with a purchase cost only."""
+    return payback_attributes(runtime.payback.get(tariff.key, {}).get(part))
 
 
 def _saving_battery_attributes(
@@ -145,6 +153,7 @@ def _saving_battery_attributes(
         "value_per_kwh_ct": None if value is None else round(value * 100, 1),
         "hours": totals.hours,
         "hours_left_out": totals.hours_left_out,
+        **_payback(runtime, tariff, BATTERY),
     }
 
 

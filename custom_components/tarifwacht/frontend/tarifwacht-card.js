@@ -51,6 +51,12 @@ const TEXT = {
     battery: "Speicher",
     costsPerMonth: "Kosten je Monat in € (letzte 12 Monate)",
     savingPerMonth: (name) => `Ersparnis je Monat in € (mit ${name}, letzte 12 Monate)`,
+    paybackOf: (saved, cost) => `${saved} von ${cost}`,
+    paidBack: (when) => `bezahlt seit ${when}`,
+    forecast: (year) => `voraussichtlich bezahlt ${year}`,
+    rough: "grob",
+    roughHint: "Geschätzt aus weniger als einem Jahr – Sommer und Winter fehlen noch.",
+    countedSince: (day) => `Ersparnis gezählt ab ${day} (Langzeitstatistik); davor fehlt sie in der Rechnung.`,
     noStatistics: "Noch keine Langzeitstatistik.",
     parts: { tariffs: "Tarife", solar: "PV und Speicher", chart: "Diagramm je Monat" },
     editor: {
@@ -82,6 +88,12 @@ const TEXT = {
     battery: "Battery",
     costsPerMonth: "Costs per month in € (last 12 months)",
     savingPerMonth: (name) => `Saving per month in € (with ${name}, last 12 months)`,
+    paybackOf: (saved, cost) => `${saved} of ${cost}`,
+    paidBack: (when) => `paid back since ${when}`,
+    forecast: (year) => `expected to be paid back in ${year}`,
+    rough: "rough",
+    roughHint: "Estimated from less than a year – summer and winter are not both in it yet.",
+    countedSince: (day) => `Saving counted from ${day} (long-term statistics); before that it is missing.`,
     noStatistics: "No long-term statistics yet.",
     parts: { tariffs: "Tariffs", solar: "PV and battery", chart: "Chart per month" },
     editor: {
@@ -140,6 +152,7 @@ const STYLE = `
   tr.section .with { font-weight: 400; color: var(--secondary-text-color); }
   tr.total td { font-weight: 500; }
   tr.other td { color: var(--secondary-text-color); }
+  tr.payback td { font-size: 13px; color: var(--secondary-text-color); text-align: left; white-space: normal; }
   tr.note td { font-size: 12px; color: var(--secondary-text-color); border-bottom: 0; padding-top: 4px;
     text-align: left; white-space: normal; }
   .chart { margin-top: 16px; border-radius: 8px; cursor: pointer; min-width: 0; }
@@ -465,8 +478,14 @@ class TarifwachtCard extends HTMLElement {
     if (!this._hass || !this._config) return;
     this._fetch();
     const info = this._info();
-    const watched = [this._entity(), ...(info?.tariffs || []).map((t) => t.entities.average_price)]
-      .map((id) => (id ? this._hass.states[id] : undefined));
+    // The savings of the first tariff: their attributes carry the payback.
+    const first = info?.tariffs ? this._tariffs(info)[0] : undefined;
+    const watched = [
+      this._entity(),
+      ...(info?.tariffs || []).map((t) => t.entities.average_price),
+      first?.entities.saving_pv,
+      first?.entities.saving_battery,
+    ].map((id) => (id ? this._hass.states[id] : undefined));
     const seen = [generation, this._hass.locale?.language, this._hass.locale?.number_format, ...watched];
     if (this._seen && seen.length === this._seen.length && seen.every((v, i) => v === this._seen[i])) return;
     this._seen = seen;
@@ -665,9 +684,37 @@ class TarifwachtCard extends HTMLElement {
       if (info.battery) {
         rows += `<tr><td>${escapeHtml(t.battery)}</td>${periods.map((p) => this._cell(base.entities.saving_battery, p)).join("")}${pad}</tr>`;
       }
+      rows += this._payback(t, t.pv, base.entities.saving_pv, columns);
+      if (info.battery) rows += this._payback(t, t.battery, base.entities.saving_battery, columns);
       for (const tariff of tariffs.slice(1)) rows += sumRow("other", t.withTariff(tariff.title), tariff);
     }
     return `${before}<table>${head}${rows}</table>`;
+  }
+
+  /** "Battery: 1,240 € of 4,500 € – expected to be paid back in 2031", from
+   * the attributes of a saving sensor; nothing without a purchase cost. */
+  _payback(t, label, id, columns) {
+    const a = id && this._hass.states[id]?.attributes;
+    if (!a || typeof a.purchase_cost_eur !== "number") return "";
+    const date = (iso, options) => new Date(`${iso}T12:00:00`).toLocaleDateString(this._numberLocale(), options);
+    let text = t.paybackOf(this._eur(a.saved_since_commissioning_eur), this._eur(a.purchase_cost_eur));
+    let hint = "";
+    if (a.paid_back && a.paid_back_on) {
+      text += ` – ${t.paidBack(date(a.paid_back_on, { month: "long", year: "numeric" }))}`;
+    } else if (a.paid_back_forecast) {
+      text += ` – ${t.forecast(a.paid_back_forecast.slice(0, 4))}`;
+      if (a.forecast_rough) {
+        text += ` (${t.rough})`;
+        hint = t.roughHint;
+      }
+    }
+    if (a.counted_since && a.commissioned_on && a.counted_since > a.commissioned_on) {
+      hint = [hint, t.countedSince(date(a.counted_since, { day: "2-digit", month: "2-digit", year: "numeric" }))]
+        .filter(Boolean).join(" ");
+    }
+    const title = hint ? ` title="${escapeHtml(hint)}"` : "";
+    return `<tr class="payback"><td colspan="${columns}" class="link" data-entity="${escapeHtml(id)}"${title}>`
+      + `${escapeHtml(label)}: ${escapeHtml(text)}</td></tr>`;
   }
 
   /** False when the title is a single space (no heading). */

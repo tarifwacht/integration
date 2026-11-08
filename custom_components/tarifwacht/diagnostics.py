@@ -12,8 +12,9 @@ from homeassistant.core import HomeAssistant
 from . import TarifwachtConfigEntry
 from .const import CONF_NAME, VERSION
 from .history import SlotSeries
+from .payback import purchase_status
 from .prices import attribute_shape
-from .runtime import tariff_subentries
+from .runtime import has_battery, tariff_subentries
 from .tariff_config import tariff_key
 
 
@@ -86,4 +87,13 @@ async def async_get_config_entry_diagnostics(
         "past_prices_error": runtime.past_prices_error,
         # Tarifwacht's own sensors chosen as sources: not read (repair issue).
         "own_entities": runtime.own_entities,
+        # PV and battery: no meters, no amounts (purchase costs may be private).
+        "pv_battery": None
+        if runtime.solar_data is None
+        else {
+            "battery": has_battery(runtime.solar_data),
+            "purchase": purchase_status(runtime.solar_data),
+            "error": runtime.solar_error,
+            "payback_error": runtime.payback_error,
+        },
     }

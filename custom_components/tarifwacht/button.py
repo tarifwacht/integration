@@ -52,7 +52,8 @@ from .entity import MeterEntity
 from .frontend_resource import card_status
 from .issue_report import Lines, build, show
 from .modul3 import WindowError, parse_windows
-from .runtime import MeterRuntime, tariff_subentries
+from .payback import purchase_status
+from .runtime import MeterRuntime, has_battery, tariff_subentries
 from .smard_cache import DATA_SMARD, SmardError
 from .statistics_import import StatisticsImportError, async_recalculate
 from .tariff_config import MODUL3_STANDARD, MODUL3_VAT, price_entity, tariff_key
@@ -428,6 +429,16 @@ def entry_lines(
         )
     if runtime.past_prices_error:
         lines.append(("past prices error", scrub(runtime.past_prices_error, mapping)))
+    if (solar := runtime.solar_data) is not None:
+        parts = [
+            f"battery {'yes' if has_battery(solar) else 'no'}",
+            f"purchase {purchase_status(solar)}",
+        ]
+        if runtime.solar_error:
+            parts.append(f"error {runtime.solar_error}")
+        if runtime.payback_error:
+            parts.append(f"payback error {runtime.payback_error}")
+        lines.append(("pv and battery", ", ".join(parts)))
     lines.append(("card", card_status(hass)))
     if runtime.own_entities:
         own = {entity: role for role, entity in mapping.items()}

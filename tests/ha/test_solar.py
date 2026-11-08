@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from unittest.mock import patch
 
+import voluptuous as vol
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -380,3 +381,175 @@ async def test_compare_action_reports_the_saving(hass: HomeAssistant) -> None:
     assert rows["Fixed price"]["saving_battery"] == 0.38
     assert response["pv_battery"]["consumption_kwh"] == 3.0
     assert [m["month"] for m in response["pv_battery"]["months"]] == ["2026-06"]
+
+
+async def test_purchase_in_a_collapsed_section(hass: HomeAssistant) -> None:
+    """Purchase cost and commissioning in a collapsed section without a
+    default; reconfigure shows the stored values in it, saving without the
+    section keeps them, an emptied section removes them."""
+    set_sources(hass)
+    entry = solar_entry()
+    entry.add_to_hass(hass)
+    solar = next(
+        s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_SOLAR
+    )
+    battery = {CONF_CHARGED_ENTITY: CHARGED, CONF_DISCHARGED_ENTITY: DISCHARGED}
+
+    async def reconfigure(user_input: dict[str, Any]) -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
+        result = await configure(hass, result, user_input)
+        if result.get("step_id", "").startswith("battery_"):
+            result = await configure(hass, result, {CONF_SAME_INVERTER: False})
+        return result
+
+    with patch("custom_components.tarifwacht.async_setup_entry", return_value=True):
+        result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
+        schema = result["data_schema"].schema
+        (key,) = [k for k in schema if str(k) == "purchase_section"]
+        assert schema[key].options == {"collapsed": True}
+        assert isinstance(key, vol.Optional) and key.default is vol.UNDEFINED
+        # A cost without its day, a battery cost without battery meters.
+        result = await configure(
+            hass, result, solar_input(**battery, purchase_section={"pv_cost": 9000})
+        )
+        assert result["errors"] == {"base": "purchase_date_required"}
+        result = await configure(
+            hass,
+            result,
+            solar_input(
+                purchase_section={"battery_cost": 4500, "pv_since": "2023-04-01"}
+            ),
+        )
+        assert result["errors"] == {"base": "battery_cost_without_meters"}
+        result = await reconfigure(
+            solar_input(
+                **battery,
+                purchase_section={
+                    "pv_cost": 9000,
+                    "pv_since": "2023-04-01",
+                    "battery_cost": 4500,
+                    "battery_since": "2025-03-15",
+                },
+            )
+        )
+        assert result["type"] is FlowResultType.ABORT
+        data = entry.subentries[solar.subentry_id].data
+        assert data["pv_cost"] == 9000.0 and data["pv_since"] == "2023-04-01"
+        assert data["battery_cost"] == 4500.0
+        assert data["battery_since"] == "2025-03-15"
+        assert "purchase_section" not in data
+
+        # The stored values inside the section.
+        result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
+        schema = result["data_schema"].schema
+        (key,) = [k for k in schema if str(k) == "purchase_section"]
+        shown = {
+            str(k): (k.description or {}).get("suggested_value")
+            for k in schema[key].schema.schema
+        }
+        assert shown == {
+            "pv_cost": 9000.0,
+            "pv_since": "2023-04-01",
+            "battery_cost": 4500.0,
+            "battery_since": "2025-03-15",
+        }
+        # Saved without the section: kept.
+        await reconfigure(solar_input(**battery))
+        assert entry.subentries[solar.subentry_id].data["pv_cost"] == 9000.0
+        # The section emptied: gone.
+        await reconfigure(solar_input(**battery, purchase_section={}))
+        data = entry.subentries[solar.subentry_id].data
+        assert not {"pv_cost", "pv_since", "battery_cost", "battery_since"} & set(data)
+
+
+async def test_payback_attributes(hass: HomeAssistant) -> None:
+    """The saving sensors show the payback: the days before the setup (from
+    the statistics, faked here) and those of the hourly recomputation."""
+    set_sources(hass)
+    base = solar_entry()
+    solar_id = "01SOLARSUBENTRY00000000000"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=METER,
+        title="Haus",
+        data=dict(base.data),
+        version=2,
+        subentries_data=[
+            {
+                "data": dict(s.data)
+                | (
+                    {
+                        "pv_cost": 1000.0,
+                        "pv_since": "2026-05-01",
+                        "battery_cost": 500.0,
+                    }
+                    if s.subentry_id == solar_id
+                    else {}
+                ),
+                "subentry_id": s.subentry_id,
+                "subentry_type": s.subentry_type,
+                "title": s.title,
+                "unique_id": None,
+            }
+            for s in base.subentries.values()
+        ],
+    )
+    entry.add_to_hass(hass)
+    noon = datetime(2026, 6, 1, 10, tzinfo=UTC)
+    hourly = {
+        METER: {noon: 0.0, noon + 8 * HOUR: 0.2},
+        FEED_IN: {noon: 0.0, noon + 8 * HOUR: 0.0},
+        PV: {noon: 3.0, noon + 8 * HOUR: 0.0},
+        CHARGED: {noon: 2.0},
+        DISCHARGED: {noon + 8 * HOUR: 1.8},
+    }
+    reads: list[datetime] = []
+
+    async def fake_hourly(self: MeterRuntime, *_: Any) -> dict:
+        return hourly
+
+    async def fake_before(self: MeterRuntime, started: datetime) -> None:
+        reads.append(started)
+        self._payback_before = {"fixed": {"pv": {date(2026, 5, 1): 100.0}}}
+
+    with (
+        patch.object(MeterRuntime, "_async_hourly", fake_hourly),
+        patch.object(MeterRuntime, "_async_payback_before", fake_before),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        runtime: MeterRuntime = entry.runtime_data
+        await runtime.async_refresh_solar(datetime.now(UTC))
+        await runtime.async_refresh_solar(datetime.now(UTC))
+        await hass.async_block_till_done()
+        response = await hass.services.async_call(
+            DOMAIN,
+            "compare",
+            {"config_entry": entry.entry_id},
+            blocking=True,
+            return_response=True,
+        )
+    # Read once per start, not with every recomputation.
+    assert len(reads) == 1
+    registry = er.async_get(hass)
+    pv = hass.states.get(
+        registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_fixed_saving_pv"
+        )
+    )
+    battery = hass.states.get(
+        registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_fixed_saving_battery"
+        )
+    )
+    assert pv.attributes["purchase_cost_eur"] == 1000.0
+    assert pv.attributes["saved_since_commissioning_eur"] == 100.46
+    assert pv.attributes["remaining_eur"] == 899.54
+    assert pv.attributes["paid_back"] is False
+    assert pv.attributes["counted_since"] == "2026-05-01"
+    # The battery counts from the PV's day; 0.38 saved.
+    assert battery.attributes["commissioned_on"] == "2026-05-01"
+    assert battery.attributes["saved_since_commissioning_eur"] == 0.38
+    rows = {row["tariff"]: row for row in response["pv_battery"]["payback"]}
+    assert rows["Fixed price"]["pv"]["remaining_eur"] == 899.54
+    assert rows["Fixed price"]["battery"]["purchase_cost_eur"] == 500.0

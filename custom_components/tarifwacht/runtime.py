@@ -7,7 +7,7 @@ import logging
 import math
 from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
@@ -73,6 +73,7 @@ from .lookback import (
 )
 from .meter import MeterTracker, to_kwh
 from .outdated import async_clear_outdated
+from .payback import BATTERY, PV, Payback, merge_days, payback, purchases
 from .prices import (
     ParsedPrices,
     PriceTable,
@@ -350,6 +351,13 @@ class MeterRuntime:
         self.solar_data: Mapping[str, Any] | None = solar.data if solar else None
         self.solar_result: SolarResult | None = None
         self.solar_error: str | None = None
+        # Payback of PV and battery (payback.py): per tariff key and part.
+        self.purchases = purchases(self.solar_data) if self.solar_data else {}
+        self.payback: dict[str, dict[str, Payback]] = {}
+        self.payback_error: str | None = None
+        # The savings per day before the setup, from the statistics of the
+        # saving sensors (imported); read once per start (None: not yet).
+        self._payback_before: dict[str, dict[str, dict[date, float]]] | None = None
         self.market_entity: str | None = None
         if self.solar_data is not None and self.solar_data.get(CONF_NEGATIVE_UNPAID):
             self.market_entity = self.solar_data.get(CONF_MARKET_ENTITY) or next(
@@ -661,6 +669,8 @@ class MeterRuntime:
             _LOGGER.warning("PV and battery: statistics not read: %s", err)
             self.solar_error = type(err).__name__
             return
+        if self.purchases and self._payback_before is None:
+            await self._async_payback_before(started)
         if self._stopped:
             return
         market = (
@@ -672,9 +682,92 @@ class MeterRuntime:
             solar_settings(self.solar_data),
             BERLIN,
             market,
+            daily=bool(self.purchases),
         )
         self.solar_error = None
+        if self.purchases:
+            self._update_payback(now)
         self._notify()
+
+    async def _async_payback_before(self, started: datetime) -> None:
+        """The savings per local day before the setup: the daily changes of
+        the saving sensors' long-term statistics, from the earliest
+        commissioning to the setup hour (there only if imported). Once per
+        start, again after an import or recalculation; a failure is not
+        retried before that."""
+        self._payback_before = {}
+        first = min(p.since for p in self.purchases.values())
+        start = datetime.combine(first, time(), BERLIN).astimezone(UTC)
+        end = hour_start(started)
+        if start >= end:
+            return
+        registry = er.async_get(self.hass)
+        ids: dict[str, tuple[str, str]] = {}
+        for key in self.tariffs:
+            for part in self.purchases:
+                name = "saving_pv" if part == PV else "saving_battery"
+                unique_id = f"{self.entry.entry_id}_{key}_{name}"
+                if entity := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
+                    ids[entity] = (key, part)
+        if not ids:
+            return
+        try:
+            rows = await get_instance(self.hass).async_add_executor_job(
+                statistics_during_period,
+                self.hass,
+                start,
+                end,
+                set(ids),
+                "day",
+                None,
+                {"change"},
+            )
+        except Exception as err:  # never block the integration
+            _LOGGER.warning("Payback: statistics not read: %s", err)
+            self.payback_error = type(err).__name__
+            return
+        self.payback_error = None
+        for entity, (key, part) in ids.items():
+            days = self._payback_before.setdefault(key, {}).setdefault(part, {})
+            for row in rows.get(entity, []):
+                if row.get("change") is None:
+                    continue
+                day = datetime.fromtimestamp(row["start"], BERLIN).date()
+                days[day] = days.get(day, 0.0) + row["change"]
+
+    def _update_payback(self, now: datetime) -> None:
+        """Payback per tariff and part, from the days before the setup and
+        those of the hourly recomputation (pure, payback.py)."""
+        assert self.solar_result is not None
+        today = now.astimezone(BERLIN).date()
+        before = self._payback_before or {}
+        result: dict[str, dict[str, Payback]] = {}
+        for key in self.engine.tariffs:
+            days = self.solar_result.days.get(key, {})
+            for index, part in enumerate((PV, BATTERY)):
+                if (purchase := self.purchases.get(part)) is None:
+                    continue
+                daily = merge_days(
+                    before.get(key, {}).get(part, {}),
+                    {day: values[index] for day, values in days.items()},
+                )
+                result.setdefault(key, {})[part] = payback(purchase, daily, today)
+        self.payback = result
+
+    @callback
+    def async_reload_payback(self) -> None:
+        """The statistics before the setup changed (import, recalculation):
+        read them again with the next recomputation, now."""
+        if not self.purchases or self._stopped:
+            return
+        self._payback_before = None
+
+        async def refresh() -> None:
+            # The import's rows are queued in the recorder: written first.
+            await get_instance(self.hass).async_block_till_done()
+            await self.async_refresh_solar(dt_util.utcnow())
+
+        self._background(refresh(), "PV and battery payback")
 
     async def _async_solar_inputs(
         self,

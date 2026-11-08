@@ -338,6 +338,24 @@
             "feed_in_rate": "Was du je eingespeister kWh bekommst.",
             "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
             "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Anschaffung (optional)",
+              "description": "Für „bezahlt gemacht“: was PV und Speicher gekostet haben und seit wann sie laufen. Tarifwacht stellt das der Ersparnis seit diesem Tag gegenüber.",
+              "data": {
+                "pv_cost": "Anschaffung PV",
+                "pv_since": "PV in Betrieb seit",
+                "battery_cost": "Anschaffung Speicher",
+                "battery_since": "Speicher in Betrieb seit"
+              },
+              "data_description": {
+                "pv_cost": "Brutto in €, z. B. laut Rechnung (abzüglich Förderung). Leer: keine Amortisation.",
+                "pv_since": "Tag der Inbetriebnahme. Ersparnis davor zählt nicht.",
+                "battery_cost": "Brutto in €. Nur mit den Speicherzählern.",
+                "battery_since": "Leer: derselbe Tag wie bei der PV. Für einen später nachgerüsteten Speicher dessen Tag."
+              }
+            }
           }
         },
         "suggested_einspeisewacht": {
@@ -360,6 +378,24 @@
             "feed_in_rate": "Was du je eingespeister kWh bekommst.",
             "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
             "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Anschaffung (optional)",
+              "description": "Für „bezahlt gemacht“: was PV und Speicher gekostet haben und seit wann sie laufen. Tarifwacht stellt das der Ersparnis seit diesem Tag gegenüber.",
+              "data": {
+                "pv_cost": "Anschaffung PV",
+                "pv_since": "PV in Betrieb seit",
+                "battery_cost": "Anschaffung Speicher",
+                "battery_since": "Speicher in Betrieb seit"
+              },
+              "data_description": {
+                "pv_cost": "Brutto in €, z. B. laut Rechnung (abzüglich Förderung). Leer: keine Amortisation.",
+                "pv_since": "Tag der Inbetriebnahme. Ersparnis davor zählt nicht.",
+                "battery_cost": "Brutto in €. Nur mit den Speicherzählern.",
+                "battery_since": "Leer: derselbe Tag wie bei der PV. Für einen später nachgerüsteten Speicher dessen Tag."
+              }
+            }
           }
         },
         "suggested_speicherwacht": {
@@ -382,6 +418,24 @@
             "feed_in_rate": "Was du je eingespeister kWh bekommst.",
             "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
             "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Anschaffung (optional)",
+              "description": "Für „bezahlt gemacht“: was PV und Speicher gekostet haben und seit wann sie laufen. Tarifwacht stellt das der Ersparnis seit diesem Tag gegenüber.",
+              "data": {
+                "pv_cost": "Anschaffung PV",
+                "pv_since": "PV in Betrieb seit",
+                "battery_cost": "Anschaffung Speicher",
+                "battery_since": "Speicher in Betrieb seit"
+              },
+              "data_description": {
+                "pv_cost": "Brutto in €, z. B. laut Rechnung (abzüglich Förderung). Leer: keine Amortisation.",
+                "pv_since": "Tag der Inbetriebnahme. Ersparnis davor zählt nicht.",
+                "battery_cost": "Brutto in €. Nur mit den Speicherzählern.",
+                "battery_since": "Leer: derselbe Tag wie bei der PV. Für einen später nachgerüsteten Speicher dessen Tag."
+              }
+            }
           }
         },
         "suggested_both": {
@@ -404,6 +458,24 @@
             "feed_in_rate": "Was du je eingespeister kWh bekommst.",
             "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
             "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Anschaffung (optional)",
+              "description": "Für „bezahlt gemacht“: was PV und Speicher gekostet haben und seit wann sie laufen. Tarifwacht stellt das der Ersparnis seit diesem Tag gegenüber.",
+              "data": {
+                "pv_cost": "Anschaffung PV",
+                "pv_since": "PV in Betrieb seit",
+                "battery_cost": "Anschaffung Speicher",
+                "battery_since": "Speicher in Betrieb seit"
+              },
+              "data_description": {
+                "pv_cost": "Brutto in €, z. B. laut Rechnung (abzüglich Förderung). Leer: keine Amortisation.",
+                "pv_since": "Tag der Inbetriebnahme. Ersparnis davor zählt nicht.",
+                "battery_cost": "Brutto in €. Nur mit den Speicherzählern.",
+                "battery_since": "Leer: derselbe Tag wie bei der PV. Für einen später nachgerüsteten Speicher dessen Tag."
+              }
+            }
           }
         },
         "reconfigure": {
@@ -426,6 +498,24 @@
             "feed_in_rate": "Was du je eingespeister kWh bekommst.",
             "negative_unpaid": "§ 51 EEG: Anlagen ab 25.02.2025 mit Smart Meter bekommen in Viertelstunden mit negativem Börsenpreis nichts.",
             "market_entity": "Day-Ahead-Preis in €/kWh (z. B. EPEX Spot), nur für die Regel oben. Leer: der Sensor des Börsenpreis-Tarifs."
+          },
+          "sections": {
+            "purchase_section": {
+              "name": "Anschaffung (optional)",
+              "description": "Für „bezahlt gemacht“: was PV und Speicher gekostet haben und seit wann sie laufen. Tarifwacht stellt das der Ersparnis seit diesem Tag gegenüber.",
+              "data": {
+                "pv_cost": "Anschaffung PV",
+                "pv_since": "PV in Betrieb seit",
+                "battery_cost": "Anschaffung Speicher",
+                "battery_since": "Speicher in Betrieb seit"
+              },
+              "data_description": {
+                "pv_cost": "Brutto in €, z. B. laut Rechnung (abzüglich Förderung). Leer: keine Amortisation.",
+                "pv_since": "Tag der Inbetriebnahme. Ersparnis davor zählt nicht.",
+                "battery_cost": "Brutto in €. Nur mit den Speicherzählern.",
+                "battery_since": "Leer: derselbe Tag wie bei der PV. Für einen später nachgerüsteten Speicher dessen Tag."
+              }
+            }
           }
         },
         "battery_same": {
@@ -466,7 +556,9 @@
         "meter_unit": "Der Zähler muss Energie in Wh, kWh oder MWh zählen.",
         "meter_state_class": "Der Zähler braucht die Zustandsklasse total oder total_increasing (Langzeitstatistik).",
         "battery_both": "Bitte beide Speicherzähler wählen oder keinen.",
-        "market_required": "Für „keine Vergütung bei negativen Preisen“ braucht es einen Börsenpreis: Sensor wählen oder einen Börsenpreis-Tarif anlegen."
+        "market_required": "Für „keine Vergütung bei negativen Preisen“ braucht es einen Börsenpreis: Sensor wählen oder einen Börsenpreis-Tarif anlegen.",
+        "purchase_date_required": "Bitte zur Anschaffung den Tag der Inbetriebnahme eintragen.",
+        "battery_cost_without_meters": "Für die Anschaffung des Speichers braucht es die beiden Speicherzähler."
       },
       "abort": {
         "single_solar": "PV und Speicher sind für diesen Zähler schon eingerichtet. Bitte dort ändern.",

@@ -61,6 +61,21 @@ CONF_SAME_INVERTER: Final = "same_inverter"  # battery behind the PV inverter
 CONF_FEED_IN_RATE: Final = "feed_in_rate"  # ct/kWh
 CONF_NEGATIVE_UNPAID: Final = "negative_unpaid"  # § 51 EEG
 CONF_MARKET_ENTITY: Final = "market_entity"  # exchange price for § 51
+# Purchase of PV and battery (payback.py), in the form in a collapsed
+# section: cost in EUR, commissioning as ISO date. Without its own date the
+# battery counts from the PV's.
+CONF_PV_COST: Final = "pv_cost"
+CONF_PV_SINCE: Final = "pv_since"
+CONF_BATTERY_COST: Final = "battery_cost"
+CONF_BATTERY_SINCE: Final = "battery_since"
+SECTION_PURCHASE: Final = "purchase_section"
+# They change no past hour: no repair issue, no stale statistics.
+PURCHASE_KEYS: Final = (
+    CONF_PV_COST,
+    CONF_PV_SINCE,
+    CONF_BATTERY_COST,
+    CONF_BATTERY_SINCE,
+)
 
 KIND_FIXED: Final = "fixed"
 KIND_DYNAMIC_TOTAL: Final = "dynamic_total"

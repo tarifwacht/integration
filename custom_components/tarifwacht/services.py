@@ -23,6 +23,7 @@ from homeassistant.helpers.selector import ConfigEntrySelector
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .payback import payback_attributes
 from .smard import ATTRIBUTION
 from .smard_cache import SmardError
 from .statistics_import import (
@@ -160,6 +161,18 @@ def _solar_response(runtime: MeterRuntime, result: SolarResult) -> dict[str, Any
         {"month": month, "tariffs": _solar_rows(runtime, totals, details=False)}
         for month, totals in result.months.items()
     ]
+    if runtime.payback:
+        # As the saving sensors show it now, whatever the period.
+        response["payback"] = [
+            {
+                "tariff": tariff.title,
+                **{
+                    part: payback_attributes(state)
+                    for part, state in runtime.payback.get(tariff.key, {}).items()
+                },
+            }
+            for tariff in runtime.tariffs.values()
+        ]
     return response
 
 

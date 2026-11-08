@@ -3,8 +3,10 @@
 At most one per entry. Prefilled from an Einspeisewacht entry if there is
 one (feed-in meter, rate, the negative price rule, exchange price sensor) and
 from a Speicherwacht entry (battery meters); copied once, no dependency at
-runtime. The form names the entries, or links the sisters if there is none. Whether the battery sits behind the PV
-inverter is asked in plain words, with the answer the data suggest.
+runtime. The form names the entries, or links the sisters if there is none.
+Whether the battery sits behind the PV inverter is asked in plain words,
+with the answer the data suggest. Purchase cost and commissioning of PV and
+battery (payback.py) go in a collapsed section.
 """
 
 from __future__ import annotations
@@ -18,10 +20,13 @@ from homeassistant.components.sensor import ATTR_STATE_CLASS, SensorStateClass
 from homeassistant.config_entries import ConfigSubentryFlow, SubentryFlowResult
 from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, UnitOfEnergy
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_BATTERY_COST,
+    CONF_BATTERY_SINCE,
     CONF_CHARGED_ENTITY,
     CONF_DISCHARGED_ENTITY,
     CONF_FEED_IN_ENTITY,
@@ -29,8 +34,12 @@ from .const import (
     CONF_MARKET_ENTITY,
     CONF_METER,
     CONF_NEGATIVE_UNPAID,
+    CONF_PV_COST,
     CONF_PV_ENTITY,
+    CONF_PV_SINCE,
     CONF_SAME_INVERTER,
+    PURCHASE_KEYS,
+    SECTION_PURCHASE,
     SUBENTRY_SOLAR,
 )
 from .meter import UNIT_FACTORS
@@ -54,6 +63,16 @@ RATE = selector.NumberSelector(
         max=100,
         step=0.001,
         unit_of_measurement="ct/kWh",
+        mode=selector.NumberSelectorMode.BOX,
+    )
+)
+# Selector units are not translated.
+COST = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=0,
+        max=1_000_000,
+        step=1,
+        unit_of_measurement="€",
         mode=selector.NumberSelectorMode.BOX,
     )
 )
@@ -192,9 +211,48 @@ async def async_detect_same_inverter(
     return detect_same_inverter(hours)
 
 
+def purchase_values(data: Mapping[str, Any]) -> dict[str, Any]:
+    """The stored purchase fields, as the section shows them."""
+    return {key: data[key] for key in PURCHASE_KEYS if data.get(key) is not None}
+
+
+def purchase_error(user_input: Mapping[str, Any]) -> str | None:
+    """A cost needs its commissioning date (the battery: its own or the
+    PV's), the battery's cost the battery meters."""
+    values = user_input.get(SECTION_PURCHASE) or {}
+    if values.get(CONF_PV_COST) and not values.get(CONF_PV_SINCE):
+        return "purchase_date_required"
+    if values.get(CONF_BATTERY_COST):
+        if not (
+            user_input.get(CONF_CHARGED_ENTITY)
+            and user_input.get(CONF_DISCHARGED_ENTITY)
+        ):
+            return "battery_cost_without_meters"
+        if not (values.get(CONF_BATTERY_SINCE) or values.get(CONF_PV_SINCE)):
+            return "purchase_date_required"
+    return None
+
+
+def purchase_data(values: Mapping[str, Any]) -> dict[str, Any]:
+    """What the subentry stores of the section: costs above 0 with dates."""
+    data: dict[str, Any] = {}
+    for cost, since in (
+        (CONF_PV_COST, CONF_PV_SINCE),
+        (CONF_BATTERY_COST, CONF_BATTERY_SINCE),
+    ):
+        if float(values.get(cost) or 0) > 0:
+            data[cost] = float(values[cost])
+        if values.get(since):
+            data[since] = str(values[since])
+    return data
+
+
 def _schema(values: dict[str, Any]) -> vol.Schema:
-    def suggested(key: str) -> dict[str, Any]:
-        return {"suggested_value": values.get(key)}
+    def suggested(key: str, source: Mapping[str, Any] = values) -> dict[str, Any]:
+        return {"suggested_value": source.get(key)}
+
+    shown = values.get(SECTION_PURCHASE)
+    purchase = purchase_values(values) if shown is None else shown
 
     return vol.Schema(
         {
@@ -220,6 +278,32 @@ def _schema(values: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_MARKET_ENTITY, description=suggested(CONF_MARKET_ENTITY)
             ): PRICE_SENSOR,
+            # Collapsed, the form stays short. Optional and without a
+            # default: the frontend takes a section's default over the
+            # suggested values of its fields (Wärmewacht 9c7e722); missing
+            # input keeps the stored values.
+            vol.Optional(SECTION_PURCHASE): section(
+                vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_PV_COST, description=suggested(CONF_PV_COST, purchase)
+                        ): COST,
+                        vol.Optional(
+                            CONF_PV_SINCE,
+                            description=suggested(CONF_PV_SINCE, purchase),
+                        ): selector.DateSelector(),
+                        vol.Optional(
+                            CONF_BATTERY_COST,
+                            description=suggested(CONF_BATTERY_COST, purchase),
+                        ): COST,
+                        vol.Optional(
+                            CONF_BATTERY_SINCE,
+                            description=suggested(CONF_BATTERY_SINCE, purchase),
+                        ): selector.DateSelector(),
+                    }
+                ),
+                {"collapsed": True},
+            ),
         }
     )
 
@@ -274,6 +358,8 @@ class SolarSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             values = dict(user_input)
+            if SECTION_PURCHASE not in values and self.source == "reconfigure":
+                values |= purchase_values(self._get_reconfigure_subentry().data)
             purchase = self._get_entry().data[CONF_METER]
             for key in METERS:
                 if (entity := user_input.get(key)) and (
@@ -288,10 +374,19 @@ class SolarSubentryFlow(ConfigSubentryFlow):
                 user_input.get(CONF_MARKET_ENTITY) or self._has_market_tariff()
             ):
                 errors[CONF_MARKET_ENTITY] = "market_required"
+            if "base" not in errors and (error := purchase_error(user_input)):
+                errors["base"] = error
             if not errors:
                 self._data = {
-                    k: v for k, v in user_input.items() if v not in (None, "")
+                    k: v
+                    for k, v in user_input.items()
+                    if v not in (None, "") and k != SECTION_PURCHASE
                 }
+                if SECTION_PURCHASE in user_input:
+                    self._data |= purchase_data(user_input[SECTION_PURCHASE])
+                elif self.source == "reconfigure":
+                    # The section did not come back: keep what is stored.
+                    self._data |= purchase_values(self._get_reconfigure_subentry().data)
                 if charged and discharged:
                     self._detected = await async_detect_same_inverter(
                         self.hass, user_input[CONF_PV_ENTITY], charged, discharged

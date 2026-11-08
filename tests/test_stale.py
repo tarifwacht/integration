@@ -8,7 +8,11 @@ from typing import Any
 from custom_components.tarifwacht.const import BERLIN
 from custom_components.tarifwacht.engine import Engine
 from custom_components.tarifwacht.meter import MeterTracker
-from custom_components.tarifwacht.outdated import merge_stale, stale_statistics
+from custom_components.tarifwacht.outdated import (
+    merge_stale,
+    past_changed,
+    stale_statistics,
+)
 from custom_components.tarifwacht.statistics_import import _changed, _clear_stale
 from custom_components.tarifwacht.tariff_config import stale_since
 
@@ -141,3 +145,13 @@ def test_unchanged_rows_are_not_written() -> None:
     assert _changed(row, (1.0, 5.01))
     assert _changed(row, (None, 5.0))
     assert _changed(row, None)
+
+
+def test_purchase_of_pv_and_battery_changes_no_past_hour() -> None:
+    """Purchase cost and commissioning only feed the payback: no stale
+    statistics, no repair issue."""
+    old = subentries(FIXED, S=SOLAR)
+    new = subentries(FIXED, S={**SOLAR, "pv_cost": 9000.0, "pv_since": "2023-04-01"})
+    assert stale_statistics(old, new) == {}
+    assert not past_changed(old, new)
+    assert past_changed(old, subentries(FIXED, S={**SOLAR, "feed_in_rate": 8.0}))

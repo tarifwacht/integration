@@ -24,7 +24,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 
-from .const import CONF_CURRENT, CONF_KIND, DOMAIN
+from .const import CONF_CURRENT, CONF_KIND, DOMAIN, PURCHASE_KEYS
 from .tariff_config import stale_since, tariff_key
 
 ISSUE = "statistics_outdated"
@@ -44,6 +44,12 @@ SAVINGS = ("saving_pv", "saving_battery")
 
 # Unique id suffix -> first moment whose statistics are stale (None: all).
 Stale = dict[str, datetime | None]
+
+
+def _past(data: Mapping[str, Any]) -> dict[str, Any]:
+    """What of a subentry alters past hours: not the purchase of PV and
+    battery (only their payback, computed anew at the start)."""
+    return {k: v for k, v in data.items() if k not in PURCHASE_KEYS}
 
 
 def merge_stale(into: Stale, new: Mapping[str, datetime | None]) -> None:
@@ -100,8 +106,8 @@ def stale_statistics(
         mark((f"{key}_{name}" for name in TARIFF_SERIES), since)
         if key == current_key:
             mark((f"{other}_difference" for other in names), since)
-    solar_old = {s: dict(d) for s, d in old.items() if s not in old_tariffs}
-    solar_new = {s: dict(d) for s, d in new.items() if s not in new_tariffs}
+    solar_old = {s: _past(d) for s, d in old.items() if s not in old_tariffs}
+    solar_new = {s: _past(d) for s, d in new.items() if s not in new_tariffs}
     if solar_old != solar_new:
         mark((f"{key}_{name}" for key in names for name in SAVINGS), None)
     return stale
@@ -114,12 +120,15 @@ def issue_id(entry_id: str) -> str:
 def past_changed(
     old: Mapping[str, Mapping[str, Any]], new: Mapping[str, Mapping[str, Any]]
 ) -> bool:
-    """Whether a subentry that stays changed its data (not only its title).
+    """Whether a subentry that stays changed its data (not only its title,
+    not only the purchase of PV and battery).
 
     A new subentry has no statistics yet; a removed one takes its sensors
     with it.
     """
-    return any(key in new and dict(new[key]) != dict(data) for key, data in old.items())
+    return any(
+        key in new and _past(new[key]) != _past(data) for key, data in old.items()
+    )
 
 
 @callback

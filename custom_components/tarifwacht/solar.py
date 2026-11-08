@@ -38,7 +38,7 @@ from __future__ import annotations
 import statistics
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, tzinfo
+from datetime import date, datetime, tzinfo
 
 from .tariffs import PriceSource, Tariff
 from .timeslots import QUARTER
@@ -125,10 +125,13 @@ class SolarTotals:
 
 @dataclass
 class SolarResult:
-    """Totals per tariff, for the whole period and per local month."""
+    """Totals per tariff, for the whole period and per local month; with
+    `daily`, the saving by PV and by the battery per tariff and local day
+    (payback.py)."""
 
     totals: dict[str, SolarTotals]
     months: dict[str, dict[str, SolarTotals]] = field(default_factory=dict)
+    days: dict[str, dict[date, tuple[float, float]]] = field(default_factory=dict)
 
 
 def _hour_prices(source: PriceSource | Tariff, hour: datetime) -> list[float] | None:
@@ -184,27 +187,40 @@ def solar_totals(
     settings: SolarSettings,
     tz: tzinfo,
     market: PriceSource | None = None,
+    *,
+    daily: bool = False,
 ) -> SolarResult:
     """The three cases per tariff over `hours` (UTC hour starts).
 
     With `settings.negative_unpaid` the market prices decide which quarter
     hours pay for feed-in; an hour without them is left out (as an hour
-    without the tariff's price).
+    without the tariff's price). With `daily` also the savings per local
+    day (`SolarResult.days`).
     """
     result = SolarResult(totals={key: SolarTotals() for key in tariffs})
+    per_day: dict[str, dict[date, SolarTotals]] = {key: {} for key in tariffs}
     for start, flows in sorted(hours.items()):
-        month = start.astimezone(tz).strftime("%Y-%m")
+        local = start.astimezone(tz)
+        month = local.strftime("%Y-%m")
         per_month = result.months.setdefault(
             month, {key: SolarTotals() for key in tariffs}
         )
         paid_share = _paid_share(settings, market, start)
         for key, tariff in tariffs.items():
             prices = _hour_prices(tariff, start)
-            for totals in (result.totals[key], per_month[key]):
+            targets = [result.totals[key], per_month[key]]
+            if daily:
+                targets.append(per_day[key].setdefault(local.date(), SolarTotals()))
+            for totals in targets:
                 if prices is None or paid_share is None:
                     totals.hours_left_out += 1
                 else:
                     book_hour(totals, flows, prices, paid_share, settings)
+    if daily:
+        result.days = {
+            key: {d: (t.saving_pv, t.saving_battery) for d, t in days.items()}
+            for key, days in per_day.items()
+        }
     return result
 
 

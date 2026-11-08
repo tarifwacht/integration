@@ -846,7 +846,10 @@
             const id = `sensor.${household}_${tariff.slug}_${SENSOR_SLUGS[key]}`;
             ids[key] = id;
             stats[id] = [key, tariff.key];
+            // The savings carry their attributes, the payback among them (the card shows it).
+            const more = !solar ? {} : key === "saving_pv" ? solar[tariff.key].pv : key === "saving_battery" ? solar[tariff.key].battery : {};
             add(id, key, value, {
+              ...more,
               friendly_name: `${data.device} ${tariff.title} ${names[key]}`,
               unit_of_measurement: key === "average_price" ? "ct/kWh" : "€",
             });

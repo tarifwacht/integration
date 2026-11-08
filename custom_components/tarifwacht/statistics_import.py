@@ -223,7 +223,10 @@ async def async_import_history(
     if lock.locked():
         raise StatisticsImportError("busy")
     async with lock:
-        return await _async_import_history(hass, entry, first_day)
+        result = await _async_import_history(hass, entry, first_day)
+    # The payback of PV and battery counts the imported days too.
+    entry.runtime_data.async_reload_payback()
+    return result
 
 
 async def _async_import_history(
@@ -486,6 +489,7 @@ async def async_recalculate(
         result, up_to_date = await _async_recalculate(hass, entry, first_day)
     if up_to_date:
         async_clear_outdated(hass, entry.entry_id)
+    entry.runtime_data.async_reload_payback()
     return result
 
 

@@ -33,6 +33,11 @@ sys.path.insert(0, str(ROOT))
 from custom_components.tarifwacht.const import BERLIN  # noqa: E402
 from custom_components.tarifwacht.engine import Engine, PeriodCosts  # noqa: E402
 from custom_components.tarifwacht.meter import MeterTracker  # noqa: E402
+from custom_components.tarifwacht.payback import (  # noqa: E402
+    Purchase,
+    payback,
+    payback_attributes,
+)
 from custom_components.tarifwacht.solar import (  # noqa: E402
     HourFlows,
     SolarResult,
@@ -107,6 +112,11 @@ BATTERY_LOSS = 0.97  # into and out of the cells, each way
 INVERTER = 0.95  # DC to AC
 # As the subentry "PV und Speicher" stores it (ct/kWh); § 51 EEG applies.
 SOLAR = {"same_inverter": True, "feed_in_rate": 7.9, "negative_unpaid": True}
+# Made-up purchase (section "Anschaffung"): both running since the setup.
+PURCHASES = {
+    "pv": Purchase(12_600.0, SETUP.date()),
+    "battery": Purchase(4_500.0, SETUP.date()),
+}
 SOLAR_SETTINGS = SolarSettings(
     same_inverter=True, feed_in_rate=SOLAR["feed_in_rate"] / 100, negative_unpaid=True
 )
@@ -348,13 +358,37 @@ def _rows(costs: PeriodCosts, keys: tuple[str, ...]) -> list[dict[str, Any]]:
     return rows
 
 
-def solar_between(engine: Engine, hours: dict[datetime, HourFlows], start: datetime, end: datetime) -> SolarResult:  # fmt: skip
+def solar_between(engine: Engine, hours: dict[datetime, HourFlows], start: datetime, end: datetime, *, daily: bool = False) -> SolarResult:  # fmt: skip
     """The complete hours in [start, end) booked by the integration's code."""
     utc_start, utc_end = start.astimezone(UTC), end.astimezone(UTC)
     flows = {h: f for h, f in hours.items() if utc_start <= h and h + HOUR <= utc_end}
     return solar_totals(
-        flows, engine.tariffs, SOLAR_SETTINGS, BERLIN, engine.price_table(MARKET)
+        flows,
+        engine.tariffs,
+        SOLAR_SETTINGS,
+        BERLIN,
+        engine.price_table(MARKET),
+        daily=daily,
     )
+
+
+def paybacks(result: SolarResult, keys: tuple[str, ...], now: datetime) -> dict[str, dict[str, Any]]:  # fmt: skip
+    """Attributes of the payback per tariff and part, as
+    runtime._update_payback and sensor._payback (no time before the setup)."""
+    today = now.astimezone(BERLIN).date()
+    return {
+        key: {
+            part: payback_attributes(
+                payback(
+                    purchase,
+                    {d: v[index] for d, v in result.days[key].items()},
+                    today,
+                )
+            )
+            for index, (part, purchase) in enumerate(PURCHASES.items())
+        }
+        for key in keys
+    }
 
 
 def _solar_rows(totals: dict[str, SolarTotals], keys: tuple[str, ...], *, details: bool) -> list[dict[str, Any]]:  # fmt: skip
@@ -382,10 +416,10 @@ def _solar_rows(totals: dict[str, SolarTotals], keys: tuple[str, ...], *, detail
     return rows
 
 
-def solar_response(result: SolarResult, keys: tuple[str, ...]) -> dict[str, Any]:
+def solar_response(result: SolarResult, keys: tuple[str, ...], payback_now: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:  # fmt: skip
     """Like services._solar_response: "pv_battery" in the compare response."""
     t = result.totals[keys[0]]
-    return {
+    response = {
         "tariffs": _solar_rows(result.totals, keys, details=True),
         "consumption_kwh": round(t.consumption, 3),
         "pv_kwh": round(t.pv, 3),
@@ -399,13 +433,19 @@ def solar_response(result: SolarResult, keys: tuple[str, ...]) -> dict[str, Any]
             for month, totals in result.months.items()
         ],
     }
+    if payback_now:
+        response["payback"] = [
+            {"tariff": TARIFFS[key][0], **payback_now[key]} for key in keys
+        ]
+    return response
 
 
-def solar_sensors(result: SolarResult, keys: tuple[str, ...]) -> dict[str, Any]:
+def solar_sensors(result: SolarResult, keys: tuple[str, ...], payback_now: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:  # fmt: skip
     """State and attributes of "Ersparnis PV" and "Ersparnis Speicher" per
     tariff (sensor._saving_pv_attributes, _saving_battery_attributes)."""
     sensors: dict[str, Any] = {}
     for key in keys:
+        extra = (payback_now or {}).get(key, {})
         t = result.totals[key]
         value = t.battery_value
         sensors[key] = {
@@ -422,6 +462,7 @@ def solar_sensors(result: SolarResult, keys: tuple[str, ...]) -> dict[str, Any]:
                 "feed_in_unpaid_kwh": round(t.feed_in_unpaid, 1),
                 "hours": t.hours,
                 "hours_left_out": t.hours_left_out,
+                **extra.get("pv", {}),
             },
             "battery": {
                 "charged_kwh": round(t.charged, 1),
@@ -429,6 +470,7 @@ def solar_sensors(result: SolarResult, keys: tuple[str, ...]) -> dict[str, Any]:
                 "value_per_kwh_ct": None if value is None else round(value * 100, 1),
                 "hours": t.hours,
                 "hours_left_out": t.hours_left_out,
+                **extra.get("battery", {}),
             },
         }
     return sensors
@@ -464,8 +506,11 @@ def compare(engine: Engine, keys: tuple[str, ...], start: datetime, end: datetim
         "months": months,
     }
     if solar is not None:
+        since_setup = solar_between(engine, solar, SETUP, now, daily=True)
         response["pv_battery"] = solar_response(
-            solar_between(engine, solar, start, end), keys
+            solar_between(engine, solar, start, end),
+            keys,
+            paybacks(since_setup, keys, now),
         )
     return response
 
@@ -585,8 +630,11 @@ def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[
     if solar is not None:
         # The sensors since the setup; today and this month as the
         # statistic cards would show their change.
+        since_setup = solar_between(engine, solar, SETUP, now, daily=True)
         extra["solar"] = {
-            "sensors": solar_sensors(solar_between(engine, solar, SETUP, now), keys),
+            "sensors": solar_sensors(
+                since_setup, keys, paybacks(since_setup, keys, now)
+            ),
             "month": solar_sensors(solar_between(engine, solar, month, now), keys),
         }
     return extra | {
