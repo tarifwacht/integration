@@ -187,6 +187,7 @@ async def test_recalculate_after_a_tariff_change(
     assert jump == pytest.approx(0.84 - old_hour[1])
     assert jump > 0.19
 
+    energy_before = await rows(hass, energy, "hour")
     title, message = await press(hass, entry)
     assert title == "Tarifwacht: statistics recalculated"
     assert "recalculated with the current tariffs" in message
@@ -205,14 +206,17 @@ async def test_recalculate_after_a_tariff_change(
     # the same as in them (0: the sensor counts since the setup).
     latest = by_start[utc(2026, 10, 25, 17, 5)]
     assert latest == (pytest.approx(0.84), pytest.approx(0.84))
-    energy_hours = await rows(hass, energy, "hour")
-    assert energy_hours[-1][2] == pytest.approx(2.0)
+    # Only what the change made stale: "grid purchase" stays.
+    assert await rows(hass, energy, "hour") == energy_before
     assert issues.async_get_issue(DOMAIN, issue_id(entry.entry_id)) is None
 
-    # Idempotent: pressing again changes nothing.
+    # Idempotent: pressing again changes nothing. Nothing known as stale,
+    # so this one takes every sensor (grid purchase too) from its first row.
     await press(hass, entry)
     assert await rows(hass, cost, "hour") == hours
     assert await rows(hass, cost, "5minute") == short
+    energy_hours = await rows(hass, energy, "hour")
+    assert energy_hours[-1][2] == pytest.approx(2.0)
 
     # The next live compiles: only the base price of the quarter hour 17:00.
     await at(hass, freezer, 17, 15, 1)
