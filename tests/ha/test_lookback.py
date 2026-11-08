@@ -394,7 +394,9 @@ async def test_added_exchange_price_tariff_without_consent(
     result = await entry.start_subentry_reconfigure_flow(hass, key)
     result = await flows.async_configure(result["flow_id"], {"next_step_id": "edit"})
     assert suggested(result, "smard_fill") is False
-    await flows.async_configure(result["flow_id"], {**form, "smard_fill": True})
+    await flows.async_configure(
+        result["flow_id"], nest_sections(result, {**form, "smard_fill": True})
+    )
     await hass.async_block_till_done(wait_background_tasks=True)
     assert aioclient_mock.call_count == 2
     assert value(hass, entry, f"{key}_consumption_cost") == pytest.approx(SMARD_FILLED)
