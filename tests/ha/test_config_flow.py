@@ -835,6 +835,7 @@ async def test_price_change_without_modul3(hass: HomeAssistant) -> None:
         "base_price",
         "details_section",
         "modul3_section",
+        "bonus_section",
     }
     (key,) = [k for k in schema if str(k) == "modul3_section"]
     assert schema[key].options == {"collapsed": True}
