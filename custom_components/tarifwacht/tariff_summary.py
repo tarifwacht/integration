@@ -118,7 +118,10 @@ def _words(german: bool) -> dict[str, str]:
 
 def _number(value: float, german: bool, digits: int = 3) -> str:
     """27.75 -> "27,75" (German) or "27.75"; trailing zeros dropped."""
-    text = f"{value:.{digits}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{digits}f}"
+    # Only decimals lose their trailing zeros: 90 with no decimals stays 90.
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
     return text.replace(".", ",") if german else text
 
 

@@ -17,6 +17,7 @@ from custom_components.tarifwacht.prices import PriceTable
 from custom_components.tarifwacht.sensor import PRICE_NOW, _price_now
 from custom_components.tarifwacht.tariff_config import tariff_from_data
 from custom_components.tarifwacht.tariff_summary import (
+    _number,
     edit_hint,
     price_now_attributes,
     summary,
@@ -292,3 +293,11 @@ def test_price_now_total_price_sensor() -> None:
     run, tariff = runtime(TOTAL, table)
     assert _price_now(run, tariff, local(2026, 11, 8, 12, 14)) == 31.234
     assert _price_now(run, tariff, local(2026, 11, 8, 12, 15)) is None
+
+
+@pytest.mark.parametrize(
+    ("value", "digits", "expected"),
+    [(90, 0, "90"), (100, 0, "100"), (0, 0, "0"), (27.75, 3, "27,75"), (19.0, 1, "19")],
+)
+def test_number_keeps_whole_numbers(value: float, digits: int, expected: str) -> None:
+    assert _number(value, True, digits) == expected
