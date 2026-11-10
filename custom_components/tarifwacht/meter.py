@@ -3,8 +3,17 @@
 Derived from einspeisewacht/custom_components/einspeisewacht/meter.py (as of
 1a69db8), adapted: no spreading of long gaps by a weight (GAP), no aliases of
 a renamed meter (rename.py moves the stored state), limits described for grid
-purchase. A bug there may be here too; tools/check_shared.py in the parent
-folder reports changes to the original.
+purchase, the bound of a plausible increase counts from the last change of
+the value (`last_change`), not from the last reading. A bug there may be here
+too; tools/check_shared.py in the parent folder reports changes to the
+original.
+
+Why the last change: after a restart of Home Assistant the meter's
+integration writes its old value again with a new time stamp. Counted from
+that reading, the next real increase a few seconds later looked like far more
+than the house connection can deliver and was dropped as a jump (seen
+2026-11-09: 0.86 kWh three seconds after the old value, bound 0.13 kWh).
+The energy is still spread from the last reading on.
 """
 
 from __future__ import annotations
@@ -62,6 +71,9 @@ class MeterTracker:
     last_value: float | None = None
     last_time: datetime | None = None
     source: str | None = None
+    # When the value last changed (or the baseline began): the bound of a
+    # plausible increase counts from here (see the module).
+    last_change: datetime | None = None
 
     def update(self, value: float, at: datetime) -> MeterUpdate:
         """Process a reading in kWh taken at `at` (timezone-aware)."""
@@ -69,23 +81,27 @@ class MeterTracker:
         if previous_time is not None and at < previous_time:
             # Out-of-order reading: ignore, keep the newer baseline.
             return MeterUpdate()
+        changed_at = self.last_change or previous_time
         self.last_value, self.last_time = value, at
-        if previous_value is None or previous_time is None:
+        if previous_value is None or previous_time is None or changed_at is None:
+            self.last_change = at
             return MeterUpdate(event=MeterEvent.FIRST)
         delta = value - previous_value
-        if delta < 0:
-            return MeterUpdate(event=MeterEvent.RESET, delta=delta)
-        hours = (at - previous_time).total_seconds() / 3600
-        if delta > self.max_power_kw * POWER_MARGIN * hours + ROUNDING_TOLERANCE_KWH:
-            return MeterUpdate(event=MeterEvent.JUMP, delta=delta)
         if delta == 0:
             return MeterUpdate()
+        self.last_change = at
+        if delta < 0:
+            return MeterUpdate(event=MeterEvent.RESET, delta=delta)
+        hours = (at - changed_at).total_seconds() / 3600
+        if delta > self.max_power_kw * POWER_MARGIN * hours + ROUNDING_TOLERANCE_KWH:
+            return MeterUpdate(event=MeterEvent.JUMP, delta=delta)
         return MeterUpdate(pieces=split_interval(previous_time, at, delta), delta=delta)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "last_value": self.last_value,
             "last_time": self.last_time.isoformat() if self.last_time else None,
+            "last_change": self.last_change.isoformat() if self.last_change else None,
             "source": self.source,
         }
 
@@ -98,3 +114,6 @@ class MeterTracker:
         self.last_value = data.get("last_value")
         last_time = data.get("last_time")
         self.last_time = datetime.fromisoformat(last_time) if last_time else None
+        # Stored before 0.2.6: the last reading is the best guess.
+        last_change = data.get("last_change") or last_time
+        self.last_change = datetime.fromisoformat(last_change) if last_change else None
