@@ -1,12 +1,10 @@
 """Turn readings of a cumulative energy meter into energy per quarter hour.
 
 Derived from einspeisewacht/custom_components/einspeisewacht/meter.py (as of
-1a69db8), adapted: no spreading of long gaps by a weight (GAP), no aliases of
+8569dea), adapted: no spreading of long gaps by a weight (GAP), no aliases of
 a renamed meter (rename.py moves the stored state), limits described for grid
-purchase, the bound of a plausible increase counts from the last change of
-the value (`last_change`), not from the last reading. A bug there may be here
-too; tools/check_shared.py in the parent folder reports changes to the
-original.
+purchase. A bug there may be here too; tools/check_shared.py in the parent
+folder reports changes to the original.
 
 Why the last change: after a restart of Home Assistant the meter's
 integration writes its old value again with a new time stamp. Counted from
