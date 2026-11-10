@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.6 – 2026-11-10
 
 - **Fehler behoben: Verbrauch nach einem Neustart verloren.** Nach einem Neustart von Home Assistant schreibt die Integration des Stromzählers oft ihren alten Zählerstand mit neuer Uhrzeit. Kam der echte neue Stand nur Sekunden danach, rechnete Tarifwacht die Zunahme auf diese wenigen Sekunden und hielt sie für unmöglich viel (mehr als 100 kW): Die Ablesung galt als Sprung und wurde nicht gebucht. Jetzt zählt die Plausibilitätsgrenze ab der letzten Änderung des Zählerstands, nicht ab der letzten Ablesung; ein gleicher Stand mit neuer Uhrzeit verschiebt sie nicht mehr. Ein echter Zählerwechsel gilt weiter als Sprung. Gesehen in der eigenen Anlage: 0,86 kWh drei Sekunden nach dem Neustart fehlten in Strombezug und Kosten. Was schon fehlt, bleibt fehlen („Statistik neu berechnen“ rechnet aus den gebuchten Viertelstunden). Anlass: eigene Prüfung.
 
