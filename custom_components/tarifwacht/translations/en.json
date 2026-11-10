@@ -261,7 +261,7 @@
         },
         "add_change": {
           "title": "Price change ({tariff})",
-          "description": "From this date on (local midnight) the new prices apply; before it the previous ones stay. Prefilled with the prices valid today.",
+          "description": "From this date on (local midnight) the new prices apply; before it the previous ones stay. Prefilled with the prices valid today. A new contract with a bonus: enter it under Bonus.",
           "data": {
             "from": "Valid from",
             "price": "Energy price",
@@ -301,6 +301,18 @@
                 "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
                 "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
                 "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
+              }
+            },
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "The bonus of the new contract, e.g. a new-customer or switching bonus. Earlier bonuses stay.",
+              "data": {
+                "bonus": "One-off bonus",
+                "bonus_date": "Bonus credited on"
+              },
+              "data_description": {
+                "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
+                "bonus_date": "Usually the start of the contract or the end of the first contract year."
               }
             }
           }

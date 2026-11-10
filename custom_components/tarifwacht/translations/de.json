@@ -261,7 +261,7 @@
         },
         "add_change": {
           "title": "Preisänderung ({tariff})",
-          "description": "Ab diesem Datum (Mitternacht Ortszeit) gelten die neuen Preise, davor bleiben die bisherigen. Vorausgefüllt mit den heute gültigen Preisen.",
+          "description": "Ab diesem Datum (Mitternacht Ortszeit) gelten die neuen Preise, davor bleiben die bisherigen. Vorausgefüllt mit den heute gültigen Preisen. Neuer Vertrag mit Bonus: unter Bonus eintragen.",
           "data": {
             "from": "Gültig ab",
             "price": "Arbeitspreis",
@@ -301,6 +301,18 @@
                 "standard_fee": "ct/kWh netto: das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
                 "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
                 "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
+              }
+            },
+            "bonus_section": {
+              "name": "Bonus (optional)",
+              "description": "Bonus des neuen Vertrags, z. B. Neukunden- oder Wechselbonus. Frühere Boni bleiben.",
+              "data": {
+                "bonus": "Einmaliger Bonus",
+                "bonus_date": "Bonus gutgeschrieben am"
+              },
+              "data_description": {
+                "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
               }
             }
           }

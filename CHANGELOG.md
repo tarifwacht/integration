@@ -1,5 +1,9 @@
 # Changelog
 
+## Unveröffentlicht
+
+- **Bonus je Preisänderung: ein Bonus pro Vertrag.** Bisher hatte jeder Tarif genau einen einmaligen Bonus. Wer alle ein, zwei Jahre den Anbieter wechselt und den eigenen Strom als einen Tarif mit Preisänderungen führt, bekam so nur einen Bonus unter. Jetzt hat das Formular *Preisänderung ab einem Datum hinzufügen* einen eingeklappten Abschnitt **Bonus (optional)** mit Betrag und Datum der Gutschrift; jeder Bonus senkt die Kosten gesamt einmal an seinem Tag. Die Übersicht im Zahnrad nennt alle Boni, das Attribut `bonus` von „Arbeitspreis jetzt“ den jüngsten, `bonuses` (ab zwei) alle. Anlass: Rückmeldung aus dem simon42-Forum.
+
 ## 0.2.6 – 2026-11-10
 
 - **Fehler behoben: Verbrauch nach einem Neustart verloren.** Nach einem Neustart von Home Assistant schreibt die Integration des Stromzählers oft ihren alten Zählerstand mit neuer Uhrzeit. Kam der echte neue Stand nur Sekunden danach, rechnete Tarifwacht die Zunahme auf diese wenigen Sekunden und hielt sie für unmöglich viel (mehr als 100 kW): Die Ablesung galt als Sprung und wurde nicht gebucht. Jetzt zählt die Plausibilitätsgrenze ab der letzten Änderung des Zählerstands, nicht ab der letzten Ablesung; ein gleicher Stand mit neuer Uhrzeit verschiebt sie nicht mehr. Ein echter Zählerwechsel gilt weiter als Sprung. Gesehen in der eigenen Anlage: 0,86 kWh drei Sekunden nach dem Neustart fehlten in Strombezug und Kosten. Was schon fehlt, bleibt fehlen („Statistik neu berechnen“ rechnet aus den gebuchten Viertelstunden). Anlass: eigene Prüfung.

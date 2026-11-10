@@ -413,7 +413,14 @@ def _tariff_schema(kind: str, *, setup: bool = False) -> vol.Schema:
         fields[vol.Optional(SECTION_DETAILS)] = _collapsed(details)
     if setup:
         return vol.Schema(fields)
-    fields[vol.Optional(SECTION_BONUS)] = section(
+    fields[vol.Optional(SECTION_BONUS)] = _bonus_section()
+    return vol.Schema(fields)
+
+
+def _bonus_section() -> Any:
+    """The collapsed section "Bonus": amount and the day it is credited on.
+    In the tariff form and in a price change (the bonus of a new contract)."""
+    return section(
         vol.Schema(
             {
                 vol.Optional(CONF_BONUS): BASE_NUMBER,
@@ -422,7 +429,6 @@ def _tariff_schema(kind: str, *, setup: bool = False) -> vol.Schema:
         ),
         {"collapsed": True},
     )
-    return vol.Schema(fields)
 
 
 def bonus_error(user_input: dict[str, Any]) -> str | None:
@@ -431,6 +437,17 @@ def bonus_error(user_input: dict[str, Any]) -> str | None:
     if bonus.get(CONF_BONUS) and not bonus.get(CONF_BONUS_DATE):
         return "bonus_date_required"
     return None
+
+
+def bonus_data(user_input: dict[str, Any]) -> dict[str, Any]:
+    """The bonus of the form's section as stored: {} without one."""
+    bonus = user_input.get(SECTION_BONUS) or {}
+    if float(bonus.get(CONF_BONUS) or 0) > 0 and bonus.get(CONF_BONUS_DATE):
+        return {
+            CONF_BONUS: float(bonus[CONF_BONUS]),
+            CONF_BONUS_DATE: str(bonus[CONF_BONUS_DATE]),
+        }
+    return {}
 
 
 def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
@@ -449,10 +466,7 @@ def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     data[CONF_CURRENT] = bool(user_input[CONF_CURRENT])
     if kind == KIND_DYNAMIC_MARKET and CONF_SMARD_FILL in user_input:
         data[CONF_SMARD_FILL] = bool(user_input[CONF_SMARD_FILL])
-    bonus = user_input.get(SECTION_BONUS) or {}
-    if float(bonus.get(CONF_BONUS) or 0) > 0 and bonus.get(CONF_BONUS_DATE):
-        data[CONF_BONUS] = float(bonus[CONF_BONUS])
-        data[CONF_BONUS_DATE] = str(bonus[CONF_BONUS_DATE])
+    data.update(bonus_data(user_input))
     return data
 
 
@@ -701,8 +715,12 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 errors[CONF_FROM] = "change_exists"
             elif kind == KIND_FIXED and not user_input.get(CONF_PRICE):
                 errors[CONF_PRICE] = "price_required"
+            elif error := bonus_error(user_input):
+                errors["base"] = error
             else:
+                # A new contract may bring its own bonus.
                 change: dict[str, Any] = {CONF_FROM: valid_from}
+                change.update(bonus_data(user_input))
                 for key in change_fields(kind):
                     if key == CONF_MODUL3:
                         # Without the section (or, for a fixed price, its
@@ -744,6 +762,8 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 _modul3_fields(kind, in_section=True),
                 collapsed=not modul3_today.get("active"),
             )
+        # Empty: the bonuses before stay with their tariff or change.
+        fields[vol.Optional(SECTION_BONUS)] = _bonus_section()
         if user_input is not None:
             suggested = user_input
         else:

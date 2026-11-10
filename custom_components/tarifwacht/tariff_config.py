@@ -91,14 +91,38 @@ def change_start(change: Mapping[str, Any]) -> datetime:
     return datetime.combine(day, time(), BERLIN).astimezone(UTC)
 
 
+BONUS_KEYS = (CONF_BONUS, CONF_BONUS_DATE)
+
+
 def bonus_of(data: Mapping[str, Any]) -> tuple[float, datetime | None]:
-    """The tariff's one-off bonus (EUR) and its instant: local midnight of
-    its date, like a price change. (0, None) without one."""
+    """A one-off bonus (EUR) and its instant: local midnight of its date,
+    like a price change. (0, None) without one. `data` is the tariff (its
+    own bonus) or one of its price changes (the bonus of that contract)."""
     amount = float(data.get(CONF_BONUS) or 0)
     day = data.get(CONF_BONUS_DATE)
     if amount <= 0 or not day:
         return 0.0, None
-    return amount, change_start({CONF_FROM: day})
+    return amount, change_start({CONF_FROM: str(day)})
+
+
+def bonus_list(data: Mapping[str, Any]) -> list[tuple[date, float]]:
+    """Every bonus of a tariff as (date, EUR), by date: its own and those of
+    its price changes. Who switches every year or two gets one per
+    contract, entered with the price change of the new contract."""
+    items = []
+    for source in (data, *(data.get(CONF_CHANGES) or [])):
+        amount, _ = bonus_of(source)
+        if amount:
+            items.append((date.fromisoformat(str(source[CONF_BONUS_DATE])), amount))
+    return sorted(items)
+
+
+def bonuses_of(data: Mapping[str, Any]) -> tuple[tuple[datetime, float], ...]:
+    """Every bonus of a tariff as (UTC instant, EUR), by instant."""
+    return tuple(
+        (change_start({CONF_FROM: day.isoformat()}), amount)
+        for day, amount in bonus_list(data)
+    )
 
 
 # What a tariff's own costs do not depend on (the current tariff only moves
@@ -130,8 +154,9 @@ def stale_since(
     for day in before.keys() | after.keys():
         if before.get(day) != after.get(day):
             moments.append(change_start({CONF_FROM: day}))
-    if (old_bonus := bonus_of(old)) != (new_bonus := bonus_of(new)):
-        moments += [at for _, at in (old_bonus, new_bonus) if at is not None]
+    # A bonus added, removed or moved, also one of a price change (its date
+    # may lie before the change).
+    moments += [at for at, _ in set(bonuses_of(old)) ^ set(bonuses_of(new))]
     if not moments:
         return False, None
     return True, min(moments)
@@ -139,11 +164,13 @@ def stale_since(
 
 def state_at(data: Mapping[str, Any], day: date) -> dict[str, Any]:
     """The tariff's values valid on `day`: the start values plus all changes
-    from before or on that day."""
+    from before or on that day. A change's bonus is no price: it stays with
+    the change (`bonus_list`)."""
     values = {k: v for k, v in data.items() if k != CONF_CHANGES}
+    skip = (CONF_FROM, *BONUS_KEYS)
     for change in sorted(data.get(CONF_CHANGES, []), key=lambda c: c[CONF_FROM]):
         if date.fromisoformat(change[CONF_FROM]) <= day:
-            values.update({k: v for k, v in change.items() if k != CONF_FROM})
+            values.update({k: v for k, v in change.items() if k not in skip})
     return values
 
 
@@ -153,16 +180,15 @@ def tariff_from_data(
     market_table: Callable[[str], PriceSource] | None = None,
 ) -> Tariff:
     """The engine's tariff with its later price states (`changes`) and its
-    one-off bonus.
+    one-off bonuses (its own and those of its price changes).
 
     `price_table` returns the prices of a price sensor; `market_table`, if
     given, those of an exchange price sensor (e.g. completed from SMARD.de).
     """
     tables = (price_table, market_table or price_table)
     tariff = _single_tariff(data, *tables)
-    bonus, bonus_at = bonus_of(data)
-    if bonus_at is not None:
-        tariff = replace(tariff, bonus=bonus, bonus_at=bonus_at)
+    if bonuses := bonuses_of(data):
+        tariff = replace(tariff, bonuses=bonuses)
     changes = sorted(data.get(CONF_CHANGES, []), key=lambda c: c[CONF_FROM])
     if not changes:
         return tariff

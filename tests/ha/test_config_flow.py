@@ -359,6 +359,20 @@ async def test_price_changes(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.ABORT
     assert "changes" not in entry.subentries[FIXED_SUBENTRY].data
 
+    # A new contract with its own bonus: stored with the change, the date
+    # is required.
+    contract = {**change, "from": "2028-01-01", "bonus": 120.0}
+    result = await reconfigure("add_change")
+    result = await configure_tariff(hass, result, contract)
+    assert result["errors"] == {"base": "bonus_date_required"}
+    result = await configure_tariff(
+        hass, result, {**contract, "bonus_date": "2028-12-31"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[FIXED_SUBENTRY].data["changes"] == [
+        {**contract, "bonus_date": "2028-12-31"}
+    ]
+
 
 # 1 January 2027, 00:30 in Germany; still 31 December in the test time zone (US/Pacific).
 @pytest.mark.freeze_time("2026-12-31 23:30:00+00:00")

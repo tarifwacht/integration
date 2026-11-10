@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -26,7 +26,17 @@ from custom_components.tarifwacht.const import (
 from custom_components.tarifwacht.engine import Engine
 from custom_components.tarifwacht.lookback import FIVE_MINUTES, HOUR, period_costs
 from custom_components.tarifwacht.meter import MeterTracker
-from custom_components.tarifwacht.tariff_config import bonus_of, tariff_from_data
+from custom_components.tarifwacht.tariff_config import (
+    bonus_list,
+    bonus_of,
+    stale_since,
+    state_at,
+    tariff_from_data,
+)
+from custom_components.tarifwacht.tariff_summary import (
+    price_now_attributes,
+    summary,
+)
 from custom_components.tarifwacht.tariffs import FixedPrice, Tariff
 from custom_components.tarifwacht.timeslots import QUARTER
 
@@ -79,7 +89,7 @@ def test_the_bonus_belongs_to_the_tariff_not_to_a_price_state() -> None:
         CONF_CHANGES: [{CONF_FROM: "2027-01-15", CONF_PRICE: 32.0}],
     }
     tariff = tariff_from_data(data, no_tables)
-    assert tariff.bonus == 250.0 and tariff.bonus_at == BONUS_AT
+    assert tariff.bonuses == ((BONUS_AT, 250.0),)
     assert tariff.price(BONUS_AT) == pytest.approx(0.32)
     assert tariff.bonus_between(BONUS_AT, BONUS_AT + QUARTER) == 250.0
     assert tariff.bonus_between(BONUS_AT - QUARTER, BONUS_AT) == 0.0
@@ -182,3 +192,75 @@ def test_issue_report_lists_the_bonus() -> None:
     ((label, line),) = tariff_settings([FIXED_DATA])
     assert label == "tariff 1"
     assert line.endswith("bonus 250 EUR on 2027-02-01")
+
+
+# A bonus per price change: a new contract with its own bonus.
+CONTRACTS = {
+    **FIXED_DATA,
+    CONF_CHANGES: [
+        {
+            CONF_FROM: "2028-01-01",
+            CONF_PRICE: 28.0,
+            CONF_BONUS: 120.0,
+            CONF_BONUS_DATE: "2028-12-31",
+        },
+        {CONF_FROM: "2027-06-01", CONF_PRICE: 31.0},
+    ],
+}
+SECOND_AT = utc(2028, 12, 30, 23)
+
+
+def test_each_price_change_may_bring_its_own_bonus() -> None:
+    assert bonus_list(CONTRACTS) == [
+        (date(2027, 2, 1), 250.0),
+        (date(2028, 12, 31), 120.0),
+    ]
+    tariff = tariff_from_data(CONTRACTS, no_tables)
+    assert tariff.bonuses == ((BONUS_AT, 250.0), (SECOND_AT, 120.0))
+    assert tariff.bonus_between(BONUS_AT, SECOND_AT + QUARTER) == 370.0
+    assert tariff.bonus_between(SECOND_AT, SECOND_AT + QUARTER) == 120.0
+    # The bonus is no price: the state of the change keeps the tariff's.
+    later = state_at(CONTRACTS, date(2029, 1, 1))
+    assert later[CONF_PRICE] == 28.0 and later[CONF_BONUS] == 250.0
+
+
+def test_running_totals_credit_both_bonuses() -> None:
+    engine = Engine(meter=MeterTracker(max_power_kw=100), tariffs={}, tz=BERLIN)
+    engine.tariffs = {"bonus": tariff_from_data(CONTRACTS, no_tables)}
+    engine.start(utc(2027, 1, 20))
+    engine.tick(SECOND_AT + QUARTER)
+    assert engine.totals["bonus"].bonus == 370.0
+
+
+def test_a_change_of_a_contract_bonus_recomputes_from_its_date() -> None:
+    changes = CONTRACTS[CONF_CHANGES]
+    moved = {
+        **CONTRACTS,
+        CONF_CHANGES: [{**changes[0], CONF_BONUS_DATE: "2028-06-30"}, changes[1]],
+    }
+    # The change itself differs (from 1 January), the new date lies before.
+    assert stale_since(CONTRACTS, moved) == (True, utc(2027, 12, 31, 23))
+    early = {
+        **CONTRACTS,
+        CONF_CHANGES: [{**changes[0], CONF_BONUS_DATE: "2027-12-01"}, changes[1]],
+    }
+    assert stale_since(CONTRACTS, early) == (True, utc(2027, 11, 30, 23))
+    assert stale_since(CONTRACTS, CONTRACTS) == (False, None)
+
+
+def test_overview_and_attributes_list_every_bonus() -> None:
+    text = summary(CONTRACTS, date(2029, 1, 1), german=True)
+    assert "Bonus: 250,00 € am 01.02.2027, 120,00 € am 31.12.2028" in text
+    attributes = price_now_attributes(CONTRACTS, utc(2029, 1, 2))
+    assert attributes["bonus"] == {"amount_eur": 120.0, "date": "2028-12-31"}
+    assert attributes["bonuses"] == [
+        {"amount_eur": 250.0, "date": "2027-02-01"},
+        {"amount_eur": 120.0, "date": "2028-12-31"},
+    ]
+    # One bonus: as before, no list.
+    assert "bonuses" not in price_now_attributes(FIXED_DATA, utc(2027, 3, 1))
+
+
+def test_issue_report_lists_the_bonus_of_a_change() -> None:
+    lines = dict(tariff_settings([CONTRACTS]))
+    assert lines["tariff 1 from 2028-01-01"].endswith("bonus 120 EUR on 2028-12-31")

@@ -19,8 +19,6 @@ from .const import (
     BERLIN,
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
-    CONF_BONUS,
-    CONF_BONUS_DATE,
     CONF_CHANGES,
     CONF_CURRENT,
     CONF_FROM,
@@ -35,7 +33,7 @@ from .const import (
     KIND_DYNAMIC_TOTAL,
     KIND_FIXED,
 )
-from .tariff_config import state_at
+from .tariff_config import bonus_list, state_at
 
 _WORDS: dict[str, dict[str, str]] = {
     "de": {
@@ -60,7 +58,8 @@ _WORDS: dict[str, dict[str, str]] = {
         "base": "Grundpreis",
         "no_base": "ohne Grundpreis",
         "sensor": "Preissensor „{name}“",
-        "bonus": "Bonus: {amount} am {date}",
+        "bonus": "Bonus: {items}",
+        "bonus_item": "{amount} am {date}",
         "no_bonus": "Bonus: –",
         "modul3": "Modul 3",
         "on": "an",
@@ -94,7 +93,8 @@ _WORDS: dict[str, dict[str, str]] = {
         "base": "base price",
         "no_base": "no base price",
         "sensor": "price sensor “{name}”",
-        "bonus": "Bonus: {amount} on {date}",
+        "bonus": "Bonus: {items}",
+        "bonus_item": "{amount} on {date}",
         "no_bonus": "Bonus: –",
         "modul3": "Modul 3",
         "on": "on",
@@ -286,14 +286,14 @@ def summary(
             items.append(item)
         paragraphs.append("\n".join(items))
     extras = []
-    amount = float(data.get(CONF_BONUS) or 0)
-    if amount > 0 and data.get(CONF_BONUS_DATE):
-        extras.append(
-            words["bonus"].format(
-                amount=_euro(amount, german),
-                date=_date(date.fromisoformat(str(data[CONF_BONUS_DATE])), german),
+    if bonuses := bonus_list(data):
+        items = ", ".join(
+            words["bonus_item"].format(
+                amount=_euro(amount, german), date=_date(day, german)
             )
+            for day, amount in bonuses
         )
+        extras.append(words["bonus"].format(items=items))
     else:
         extras.append(words["no_bonus"])
     if kind != KIND_DYNAMIC_TOTAL:
@@ -346,12 +346,12 @@ def price_now_attributes(data: Mapping[str, Any], moment: datetime) -> dict[str,
     if (upcoming := next_change(data, today)) is not None:
         day, later = upcoming
         attributes["next_change"] = {"from": day.isoformat(), **_values(kind, later)}
-    amount = float(data.get(CONF_BONUS) or 0)
-    if amount > 0 and data.get(CONF_BONUS_DATE):
-        attributes["bonus"] = {
-            "amount_eur": amount,
-            "date": str(data[CONF_BONUS_DATE]),
-        }
+    if bonuses := bonus_list(data):
+        # "bonus": the latest (the current contract's); "bonuses": all.
+        items = [{"amount_eur": a, "date": day.isoformat()} for day, a in bonuses]
+        attributes["bonus"] = items[-1]
+        if len(items) > 1:
+            attributes["bonuses"] = items
     if kind != KIND_DYNAMIC_TOTAL:
         quarter = (local.month - 1) // 3 + 1
         quarters = {

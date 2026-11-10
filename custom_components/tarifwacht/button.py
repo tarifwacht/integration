@@ -308,6 +308,11 @@ def tariff_settings(tariffs: Sequence[Mapping[str, Any]]) -> Lines:
             parts = _prices(change)
             if CONF_MODUL3 in change:
                 parts.append(f"modul 3 {_modul3(change[CONF_MODUL3] or {})}")
+            if change.get(CONF_BONUS):
+                parts.append(
+                    f"bonus {_num(change[CONF_BONUS])} EUR"
+                    f" on {change.get(CONF_BONUS_DATE)}"
+                )
             lines.append((f"{label} from {change[CONF_FROM]}", ", ".join(parts)))
     return lines
 

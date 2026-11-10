@@ -82,17 +82,17 @@ class Tariff:
     """Energy price per quarter hour plus an optional base price.
 
     `changes` are later price states, each valid from its UTC instant on, in
-    chronological order (e.g. new grid fees from 1 January). `bonus` is a
-    one-off credit in EUR (new-customer or switching bonus) at the instant
-    `bonus_at`; it belongs to the tariff, not to a price state.
+    chronological order (e.g. new grid fees from 1 January). `bonuses` are
+    one-off credits in EUR (new-customer or switching bonus), each at its
+    UTC instant: the tariff's own and those of its price changes (a new
+    contract with its own bonus).
     """
 
     prices: PriceSource
     base_price: float = 0.0
     base_period: BasePeriod = BasePeriod.MONTH
     changes: tuple[tuple[datetime, Tariff], ...] = ()
-    bonus: float = 0.0
-    bonus_at: datetime | None = None
+    bonuses: tuple[tuple[datetime, float], ...] = ()
 
     def at(self, moment: datetime) -> Tariff:
         """The price state valid at `moment`."""
@@ -107,16 +107,13 @@ class Tariff:
         return self.at(slot).prices.get(slot)
 
     def bonus_between(self, start: datetime, end: datetime) -> float:
-        """The bonus if its instant lies in [start, end), else 0.
+        """The bonuses whose instant lies in [start, end), 0 without one.
 
-        Like a base price it counts for the quarter hours of the period
+        Like a base price a bonus counts for the quarter hours of the period
         (the quarter hour starting at its instant); before or after the
         period it does not.
         """
-        at = self.bonus_at
-        if not self.bonus or at is None or not start <= at < end:
-            return 0.0
-        return self.bonus
+        return sum((a for at, a in self.bonuses if start <= at < end), 0.0)
 
     def base_between(self, start: datetime, end: datetime, tz: tzinfo) -> float:
         """Base price of [start, end), split at every change."""

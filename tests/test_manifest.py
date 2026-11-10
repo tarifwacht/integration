@@ -146,8 +146,14 @@ def test_price_change_fields_translated() -> None:
     # VAT and base price period under "More", Modul 3 in its own section.
     add_change = step["add_change"]
     sections = add_change["sections"]
-    assert set(sections) == {"details_section", "modul3_section"}
+    assert set(sections) == {"details_section", "modul3_section", "bonus_section"}
     assert set(sections["details_section"]["data"]) == {"vat", "base_period"}
+    # The bonus of a new contract, as in the tariff form.
+    assert (
+        sections["bonus_section"]["data"]
+        == step["fixed"]["sections"]["bonus_section"]["data"]
+    )
+    sections = {k: v for k, v in sections.items() if k != "bonus_section"}
     assert set(sections["modul3_section"]["data"]) == set(step["modul3_fixed"]["data"])
     shown = set(add_change["data"])
     assert not shown & {"vat", "base_period", "modul3_active", "nt", "ht"}
