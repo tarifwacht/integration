@@ -81,9 +81,9 @@ Hinweis: Im alten HACS-Dashboard (vor Home Assistant 2026.11) fehlt das Icon ([H
 
 ## Einrichtung
 
-1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler.
+1. **Bezugszähler:** Name (z. B. „Haus“) und Zähler. Ist im Energie-Dashboard ein Netzbezug eingetragen, steht dieser Zähler schon im Feld.
 2. **Festpreistarif:** Arbeitspreis (ct/kWh, brutto), optional der Grundpreis pro Monat. Er wird „Mein aktueller Tarif“.
-3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (auch eigener Tarif; rechnet nur ab der Einrichtung) –, dann die Preise.
+3. **Dynamischer Tarif:** erst die Art wählen – **Börsenpreis plus Aufschläge** (empfohlen, siehe [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen)) oder Sensor mit Gesamtpreis (auch eigener Tarif; rechnet nur ab der Einrichtung) –, dann die Preise. Den Preissensor schlägt Tarifwacht vor, wenn sie ihn findet: beim Börsenpreis den der Einspeisewacht oder den Marktpreis von EPEX Spot, beim Gesamtpreis den Gesamtpreis von EPEX Spot. Ein neuer Tarif unter *Tarif hinzufügen* bekommt zuerst den Sensor eines Tarifs derselben Art. Jeder Vorschlag lässt sich ändern.
 
 Daraus entstehen die ersten beiden Tarife. Hast du Tarifwacht vor 0.1.0 mit einem Gesamtpreis-Sensor eingerichtet: den dynamischen Tarif zusätzlich als „Börsenpreis plus Aufschläge“ anlegen, danach kannst du den alten löschen.
 

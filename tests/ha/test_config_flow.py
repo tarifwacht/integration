@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -869,3 +870,142 @@ async def test_price_change_without_modul3(hass: HomeAssistant) -> None:
     assert change["grid_fee"] == 8.0
     assert change["vat"] == 19.0 and change["base_period"] == "month"
     assert "modul3" not in change
+
+
+# --- suggestions -------------------------------------------------------------------
+
+
+def epex_sensor(hass: HomeAssistant, key: str, object_id: str) -> str:
+    """A registry entry as EPEX Spot creates it (unique id f"{source} {key}")."""
+    return (
+        er.async_get(hass)
+        .async_get_or_create(
+            "sensor",
+            "epex_spot",
+            f"epex_spot SMARD.de DE-LU {key}",
+            suggested_object_id=object_id,
+        )
+        .entity_id
+    )
+
+
+def energy_prefs(hass: HomeAssistant, prefs: dict):
+    """The energy dashboard with these preferences."""
+    hass.config.components.add("energy")
+    return patch(
+        "homeassistant.components.energy.data.async_get_manager",
+        AsyncMock(return_value=SimpleNamespace(data=prefs)),
+    )
+
+
+async def test_meter_suggested_from_energy_dashboard(hass: HomeAssistant) -> None:
+    prefs = {"energy_sources": [{"type": "grid", "stat_energy_from": METER}]}
+    with energy_prefs(hass, prefs):
+        result = await start(hass)
+    assert shown_values(result)["meter_entity"] == METER
+    # Also in the older format with a list of import meters.
+    legacy = {
+        "energy_sources": [
+            {"type": "grid", "flow_from": [{"stat_energy_from": METER}], "flow_to": []}
+        ]
+    }
+    with energy_prefs(hass, legacy):
+        result = await start(hass)
+    assert shown_values(result)["meter_entity"] == METER
+
+
+async def test_no_meter_suggestion_when_in_use_or_unknown(hass: HomeAssistant) -> None:
+    prefs = {
+        "energy_sources": [
+            {"type": "grid", "stat_energy_from": "sensor.not_there"},
+            {"type": "grid", "stat_energy_from": "external:import"},
+        ]
+    }
+    with energy_prefs(hass, prefs):
+        result = await start(hass)
+    assert shown_values(result)["meter_entity"] is None
+    # Read by an entry already: not suggested again.
+    added_entry(hass)
+    prefs = {"energy_sources": [{"type": "grid", "stat_energy_from": METER}]}
+    with energy_prefs(hass, prefs):
+        result = await start(hass)
+    assert shown_values(result)["meter_entity"] is None
+
+
+async def test_meter_suggestion_never_blocks(hass: HomeAssistant) -> None:
+    hass.config.components.add("energy")
+    with patch(
+        "homeassistant.components.energy.data.async_get_manager",
+        AsyncMock(side_effect=RuntimeError("broken")),
+    ):
+        result = await start(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert shown_values(result)["meter_entity"] is None
+
+
+async def test_epex_price_suggested_at_setup(hass: HomeAssistant) -> None:
+    market = epex_sensor(hass, "MarketPrice", "epex_spot_data_market_price")
+    total = epex_sensor(hass, "Total Price", "epex_spot_data_total_price")
+    result = await dynamic_step(hass, "dynamic_market")
+    assert shown_values(result)["price_entity"] == market
+    result = await dynamic_step(hass, "dynamic_total")
+    assert shown_values(result)["price_entity"] == total
+
+
+async def test_einspeisewacht_price_comes_first(hass: HomeAssistant) -> None:
+    epex_sensor(hass, "MarketPrice", "epex_spot_data_market_price")
+    hass.states.async_set("sensor.own_market", "0.1", price_attributes())
+    MockConfigEntry(
+        domain="einspeisewacht", data={"price_entity": "sensor.own_market"}
+    ).add_to_hass(hass)
+    result = await dynamic_step(hass, "dynamic_market")
+    assert shown_values(result)["price_entity"] == "sensor.own_market"
+
+
+async def test_no_price_suggestion_without_a_source(hass: HomeAssistant) -> None:
+    result = await dynamic_step(hass, "dynamic_market")
+    assert shown_values(result)["price_entity"] is None
+
+
+async def test_new_tariff_takes_the_sensor_of_the_same_kind(
+    hass: HomeAssistant,
+) -> None:
+    epex_sensor(hass, "Total Price", "epex_total")
+    entry = added_entry(hass)
+    # The entry's total-price tariff reads PRICE: a second one gets it too.
+    result = await start_tariff(hass, entry, "dynamic_total")
+    assert shown_values(result)["price_entity"] == PRICE
+    # No exchange tariff in the entry yet: nothing from EPEX Spot's market
+    # price either (not registered here).
+    result = await start_tariff(hass, entry, "dynamic_market")
+    assert shown_values(result)["price_entity"] is None
+
+
+async def test_unavailable_price_sensor(hass: HomeAssistant) -> None:
+    """A sensor of an integration that is not loaded: unavailable, but with the
+    unit from the registry. The error says so instead of "no price found"."""
+    hass.states.async_set(
+        "sensor.epex_down",
+        "unavailable",
+        {"unit_of_measurement": "€/kWh", "restored": True},
+    )
+    hass.states.async_set(
+        "sensor.epex_starting", "unknown", {"unit_of_measurement": "€/kWh"}
+    )
+    result = await dynamic_step(hass, "dynamic_market")
+    for price in ("sensor.epex_down", "sensor.epex_starting"):
+        result = await configure(hass, result, {"price_entity": price})
+        assert result["errors"] == {"price_entity": "price_unavailable"}
+    entry = added_entry(hass)
+    result = await start_tariff(hass, entry, "dynamic_total")
+    result = await configure_tariff(
+        hass,
+        result,
+        {
+            "name": "Neu",
+            "price_entity": "sensor.epex_down",
+            "base_period": "month",
+            "current": False,
+        },
+    )
+    assert result["errors"] == {"price_entity": "price_unavailable"}

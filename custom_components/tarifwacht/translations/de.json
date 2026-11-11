@@ -96,6 +96,7 @@
       "meter_state_class": "Der Zähler muss fortlaufend zählen (Zustandsklasse total oder total_increasing).",
       "price_required": "Bitte den Arbeitspreis eingeben.",
       "price_unit": "Der Preissensor muss €/kWh liefern.",
+      "price_unavailable": "Der Preissensor ist gerade nicht verfügbar. Läuft die Integration, die ihn liefert (z. B. EPEX Spot)? Siehe Einstellungen → Geräte & Dienste.",
       "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
       "own_entity": "Als Quelle ist ein Sensor von Tarifwacht selbst gewählt: Der Eintrag würde seine eigenen Ergebnisse lesen. Bitte den Bezugszähler bzw. den Preissensor der Preis-Integration wählen."
     },
@@ -373,6 +374,7 @@
         "price_required": "Bitte den Arbeitspreis eingeben.",
         "entity_missing": "Die Entität existiert nicht oder hat noch keinen Zustand.",
         "price_unit": "Der Preissensor muss €/kWh liefern.",
+        "price_unavailable": "Der Preissensor ist gerade nicht verfügbar. Läuft die Integration, die ihn liefert (z. B. EPEX Spot)? Siehe Einstellungen → Geräte & Dienste.",
         "price_invalid": "Kein Preis gefunden: Der Sensor hat weder ein Prognose-Attribut `data` noch einen Zahlenwert.",
         "own_entity": "Als Preissensor ist ein Sensor von Tarifwacht selbst gewählt: Der Tarif würde seine eigenen Ergebnisse lesen. Bitte den Preissensor der Preis-Integration wählen (z. B. EPEX Spot).",
         "change_exists": "Zu diesem Datum gibt es schon eine Preisänderung.",

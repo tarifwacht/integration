@@ -29,7 +29,11 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
-from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
+from homeassistant.const import (
+    ATTR_UNIT_OF_MEASUREMENT,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
@@ -81,6 +85,7 @@ from .runtime import (
     tariff_subentries,
 )
 from .solar_flow import SolarSubentryFlow
+from .suggest import async_suggested_meter, suggested_price
 from .tariff_config import (
     MODUL3_STANDARD,
     MODUL3_VAT,
@@ -128,6 +133,10 @@ def validate_price_entity(hass: HomeAssistant, entity_id: str) -> str | None:
     state = hass.states.get(entity_id)
     if state is None:
         return "entity_missing"
+    # Before the unit: a sensor of an integration that is not loaded keeps
+    # its unit from the registry, and "no price found" would mislead.
+    if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+        return "price_unavailable"
     if not price_unit_ok(state):
         return "price_unit"
     parsed = parse_price_state(state)
@@ -145,6 +154,8 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
+        # Meter of the energy dashboard, looked up once when the form opens.
+        self._suggested_meter: str | None = None
 
     @classmethod
     @callback
@@ -156,7 +167,13 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 1: name and meter."""
+        """Step 1: name and meter, the grid import of the energy dashboard
+        suggested."""
+        if user_input is None and CONF_METER not in self._data:
+            self._suggested_meter = await async_suggested_meter(
+                self.hass,
+                {entry.unique_id for entry in self._async_current_entries()},
+            )
         return await self._async_meter_step("user", user_input)
 
     async def async_step_reconfigure(
@@ -213,11 +230,12 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                 ),
             }
         )
+        suggested = user_input or self._data
+        if user_input is None and self._suggested_meter and CONF_METER not in suggested:
+            suggested = {**suggested, CONF_METER: self._suggested_meter}
         return self.async_show_form(
             step_id=step_id,
-            data_schema=self.add_suggested_values_to_schema(
-                schema, user_input or self._data
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, suggested),
             errors=errors,
         )
 
@@ -311,11 +329,13 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 )
 
+        suggested: dict[str, Any] = {SECTION_DETAILS: {CONF_VAT: DEFAULT_VAT}}
+        if price := suggested_price(self.hass, kind):
+            suggested[CONF_PRICE_ENTITY] = price
         return self.async_show_form(
             step_id=kind,
             data_schema=self.add_suggested_values_to_schema(
-                _tariff_schema(kind, setup=True),
-                user_input or {SECTION_DETAILS: {CONF_VAT: DEFAULT_VAT}},
+                _tariff_schema(kind, setup=True), user_input or suggested
             ),
             errors=errors,
         )
@@ -908,6 +928,12 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 CONF_CURRENT: False,
                 CONF_SMARD_FILL: True,
             }
+            if kind != KIND_FIXED and (
+                price := suggested_price(
+                    self.hass, kind, (s.data for s in tariff_subentries(entry))
+                )
+            ):
+                suggested[CONF_PRICE_ENTITY] = price
         return self.async_show_form(
             step_id=kind,
             data_schema=self.add_suggested_values_to_schema(

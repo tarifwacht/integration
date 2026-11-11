@@ -1,5 +1,15 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Neu
+
+- **Zähler und Preissensor vorgeschlagen.** Beim Einrichten steht der Netzbezug aus dem Energie-Dashboard schon im Feld „Bezugszähler“, sofern ihn noch kein Eintrag liest. Beim dynamischen Tarif schlägt Tarifwacht den Preissensor vor: für „Börsenpreis plus Aufschläge“ den der Einspeisewacht oder den Marktpreis von EPEX Spot, für den Sensor mit Gesamtpreis den Gesamtpreis von EPEX Spot; unter *Tarif hinzufügen* zuerst den Sensor eines Tarifs derselben Art. Jeder Vorschlag lässt sich ändern, die Prüfungen bleiben. *(danke an @RoTheKing)*
+
+### Geändert
+
+- **Klare Meldung bei einem nicht verfügbaren Preissensor.** Läuft die Integration des Preissensors gerade nicht (etwa EPEX Spot), meldete das Formular „Kein Preis gefunden …“. Jetzt heißt es: „Der Preissensor ist gerade nicht verfügbar. Läuft die Integration, die ihn liefert (z. B. EPEX Spot)?“ *(danke an @RoTheKing)*
+
 ## 0.2.7 – 2026-11-10
 
 ### Neu
