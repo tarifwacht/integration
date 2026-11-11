@@ -914,7 +914,7 @@ async def test_meter_suggested_from_energy_dashboard(hass: HomeAssistant) -> Non
     assert shown_values(result)["meter_entity"] == METER
 
 
-async def test_no_meter_suggestion_when_in_use_or_unknown(hass: HomeAssistant) -> None:
+async def test_no_meter_suggestion_for_unknown_statistics(hass: HomeAssistant) -> None:
     prefs = {
         "energy_sources": [
             {"type": "grid", "stat_energy_from": "sensor.not_there"},
@@ -924,12 +924,24 @@ async def test_no_meter_suggestion_when_in_use_or_unknown(hass: HomeAssistant) -
     with energy_prefs(hass, prefs):
         result = await start(hass)
     assert shown_values(result)["meter_entity"] is None
-    # Read by an entry already: not suggested again.
+
+
+async def test_second_entry_points_to_add_tariff(hass: HomeAssistant) -> None:
+    """With an entry set up, more tariffs belong there: the form says so and
+    suggests no meter, not even another one of the energy dashboard (it
+    mostly measures the same grid connection)."""
     added_entry(hass)
-    prefs = {"energy_sources": [{"type": "grid", "stat_energy_from": METER}]}
+    other = "sensor.second_meter"
+    hass.states.async_set(other, "1.0", METER_ATTRIBUTES)
+    prefs = {"energy_sources": [{"type": "grid", "stat_energy_from": other}]}
     with energy_prefs(hass, prefs):
         result = await start(hass)
+    assert result["step_id"] == "user_more"
+    assert result["description_placeholders"] == {"entries": "Haus"}
     assert shown_values(result)["meter_entity"] is None
+    # A second meter still works.
+    result = await configure(hass, result, {"name": "Wohnung", "meter_entity": other})
+    assert result["step_id"] == "tariffs"
 
 
 async def test_meter_suggestion_never_blocks(hass: HomeAssistant) -> None:

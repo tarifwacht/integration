@@ -13,6 +13,18 @@
           "meter_entity": "Aus dem Netz bezogene Energie (Wh, kWh oder MWh, fortlaufend). Am besten der Zähler am Netzanschlusspunkt."
         }
       },
+      "user_more": {
+        "title": "Bezugszähler",
+        "description": "**Schon eingerichtet:** {entries}. Weitere Tarife für einen dieser Zähler legst du dort unter „Tarif hinzufügen“ an – hier nur für einen weiteren Zähler.\n\nTarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Bezugszähler"
+        },
+        "data_description": {
+          "name": "Zum Beispiel „Haus“. Wird in den Entitätsnamen verwendet.",
+          "meter_entity": "Aus dem Netz bezogene Energie (Wh, kWh oder MWh, fortlaufend). Am besten der Zähler am Netzanschlusspunkt."
+        }
+      },
       "reconfigure": {
         "title": "Bezugszähler",
         "description": "Tarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",

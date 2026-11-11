@@ -13,6 +13,18 @@
           "meter_entity": "Energy drawn from the grid (Wh, kWh or MWh, cumulative). Best: the meter at the grid connection point."
         }
       },
+      "user_more": {
+        "title": "Grid purchase meter",
+        "description": "**Already set up:** {entries}. More tariffs for one of these meters go there under “Add tariff” – here only for another meter.\n\nTarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",
+        "data": {
+          "name": "Name",
+          "meter_entity": "Grid purchase meter"
+        },
+        "data_description": {
+          "name": "For example “House”. Used in entity names.",
+          "meter_entity": "Energy drawn from the grid (Wh, kWh or MWh, cumulative). Best: the meter at the grid connection point."
+        }
+      },
       "reconfigure": {
         "title": "Grid purchase meter",
         "description": "Tarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",

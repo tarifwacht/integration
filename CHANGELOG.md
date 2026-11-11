@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Geändert
+
+- **Zweiter Eintrag: Hinweis auf „Tarif hinzufügen“.** Wer schon einen Eintrag hat und noch einmal *Integration hinzufügen* wählt, sieht oben im Schritt „Bezugszähler“, dass weitere Tarife für denselben Zähler am bestehenden Eintrag unter *Tarif hinzufügen* angelegt werden – ein neuer Eintrag ist nur für einen weiteren Zähler gedacht. Einen Zähler aus dem Energie-Dashboard schlägt Tarifwacht dann nicht mehr vor: Er misst meist denselben Anschluss, und ein zweiter Eintrag würde alles doppelt rechnen.
+
 ## 0.2.8 – 2026-11-11
 
 ### Neu

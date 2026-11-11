@@ -169,12 +169,25 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Step 1: name and meter, the grid import of the energy dashboard
         suggested."""
+        if self._async_current_entries(include_ignore=False):
+            return await self.async_step_user_more(user_input)
         if user_input is None and CONF_METER not in self._data:
-            self._suggested_meter = await async_suggested_meter(
-                self.hass,
-                {entry.unique_id for entry in self._async_current_entries()},
-            )
+            self._suggested_meter = await async_suggested_meter(self.hass, set())
         return await self._async_meter_step("user", user_input)
+
+    async def async_step_user_more(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 1 with an entry set up already: more tariffs for its meter
+        belong under "Add tariff" there, so the form says so and suggests no
+        meter (one from the energy dashboard mostly measures the same grid
+        connection, and a second entry would compute everything twice)."""
+        entries = self._async_current_entries(include_ignore=False)
+        return await self._async_meter_step(
+            "user_more",
+            user_input,
+            {"entries": ", ".join(entry.title for entry in entries)},
+        )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -185,7 +198,10 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
         return await self._async_meter_step("reconfigure", user_input)
 
     async def _async_meter_step(
-        self, step_id: str, user_input: dict[str, Any] | None
+        self,
+        step_id: str,
+        user_input: dict[str, Any] | None,
+        placeholders: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -237,6 +253,7 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(schema, suggested),
             errors=errors,
+            description_placeholders=placeholders,
         )
 
     def _validate_meter(self, meter: str) -> dict[str, str]:
