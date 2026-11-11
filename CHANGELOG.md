@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.8 – 2026-11-11
 
 ### Neu
 
