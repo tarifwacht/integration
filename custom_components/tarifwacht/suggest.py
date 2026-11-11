@@ -1,5 +1,7 @@
 """Suggested values for the setup forms, from what is set up already.
 
+Copies: einspeisewacht/custom_components/einspeisewacht/suggest.py (derived).
+
 Nothing new to fill in: the meter comes from the grid import of the energy
 dashboard, the price sensor from another tariff of the same kind in the entry,
 the Einspeisewacht (exchange price) or the EPEX Spot integration. A suggestion
