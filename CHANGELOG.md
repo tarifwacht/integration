@@ -2,7 +2,9 @@
 
 ## 0.2.7 – 2026-11-10
 
-- **Bonus je Preisänderung: ein Bonus pro Vertrag.** Bisher hatte jeder Tarif genau einen einmaligen Bonus. Wer alle ein, zwei Jahre den Anbieter wechselt und den eigenen Strom als einen Tarif mit Preisänderungen führt, bekam so nur einen Bonus unter. Jetzt hat das Formular *Preisänderung ab einem Datum hinzufügen* einen eingeklappten Abschnitt **Bonus (optional)** mit Betrag und Datum der Gutschrift; jeder Bonus senkt die Kosten gesamt einmal an seinem Tag. Die Übersicht im Zahnrad nennt alle Boni, das Attribut `bonus` von „Arbeitspreis jetzt“ den jüngsten, `bonuses` (ab zwei) alle. Anlass: Rückmeldung aus dem simon42-Forum.
+### Neu
+
+- **Ein Bonus je Vertrag.** Bisher hatte jeder Tarif genau einen einmaligen Bonus; wer alle ein, zwei Jahre wechselt und seinen Strom als einen Tarif mit Preisänderungen führt, bekam nur einen unter. Jetzt hat *Preisänderung ab einem Datum hinzufügen* einen eingeklappten Abschnitt **Bonus (optional)** mit Betrag und Datum der Gutschrift; jeder Bonus senkt „Kosten gesamt“ einmal an seinem Tag. Die Übersicht im Zahnrad nennt alle Boni, das Attribut `bonus` von „Arbeitspreis jetzt“ den jüngsten, `bonuses` (ab zwei) alle. *(danke an MelleD, simon42-Forum)*
 
 ## 0.2.6 – 2026-11-10
 
