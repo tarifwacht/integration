@@ -36,7 +36,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 - **Beliebig viele Tarife:** Festpreis, dynamisch mit einem Gesamtpreis-Sensor oder dynamisch aus Börsenpreis plus Netzentgelt, Steuern/Abgaben, Anbieteraufschlag und Mehrwertsteuer.
 - **Modul 3** (§ 14a EnWG): zeitvariables Netzentgelt mit Niedrig- und Hochlastfenstern je Quartal.
 - **Ersparnis durch PV und Speicher** je Tarif (€): was PV-Anlage und Speicher gegenüber dem Bezug des ganzen Verbrauchs gespart haben, mit Einspeisevergütung und § 51 EEG – Hybrid-Wechselrichter und eigene Speicher-Wechselrichter, siehe [PV und Speicher](#pv-und-speicher). Mit den Anschaffungskosten auch, wann sich PV und Speicher bezahlt gemacht haben bzw. voraussichtlich bezahlt machen.
-- **Eigene Karte fürs Dashboard:** dein Tarif, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen – heute, im Monat und im Jahr, dazu Säulen je Monat. Ohne Zusatzkarten aus HACS, siehe [Karte](#karte).
+- **Eigene Karte fürs Dashboard:** dein Tarif, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen – heute, im Monat und im Jahr, dazu Säulen je Monat. Ohne Zusatzkarten aus dem Marketplace, siehe [Karte](#karte).
 - **Preisänderungen ab einem Datum**, z. B. neue Netzentgelte zum 1. Januar – davor gelten die alten Preise weiter.
 - **Einmaliger Bonus** je Tarif und je Preisänderung (neuer Vertrag), z. B. 250 € Wechselbonus – senkt die Kosten gesamt einmal, am Tag der Gutschrift.
 - **Grundpreise** optional, pro Monat oder pro Jahr, tageweise anteilig.
@@ -61,8 +61,8 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 | Quelle (Integration) | Gesamtpreis | Börsenpreis | Status |
 |---|---|---|---|
 | [EPEX Spot](https://github.com/mampfes/ha_epex_spot) | `…_total_price` | `…_market_price` | erprobt |
-| [Nord Pool](https://github.com/custom-components/nordpool) (HACS) | Sensor mit MwSt. und Zusatzkosten | Sensor ohne MwSt. und Zusatzkosten | experimentell |
-| [ENTSO-E](https://github.com/JaccoR/hass-entso-e) (HACS) | Durchschnittspreis-Sensor mit Aufschlägen | Durchschnittspreis-Sensor ohne Aufschläge | experimentell |
+| [Nord Pool](https://github.com/custom-components/nordpool) (Marketplace) | Sensor mit MwSt. und Zusatzkosten | Sensor ohne MwSt. und Zusatzkosten | experimentell |
+| [ENTSO-E](https://github.com/JaccoR/hass-entso-e) (Marketplace) | Durchschnittspreis-Sensor mit Aufschlägen | Durchschnittspreis-Sensor ohne Aufschläge | experimentell |
 
 „Experimentell“ heißt: Das Format ist aus dem Quellcode der Integration und echten Marktdaten nachgebildet, aber noch nicht an einer laufenden Installation geprüft. Wenn du eine davon nutzt, freue ich mich über eine Rückmeldung mit der Diagnose-Datei. Die Nord-Pool-Integration von Home Assistant selbst liefert keine Prognose als Attribut und wird nicht unterstützt.
 
@@ -252,7 +252,7 @@ Bei dynamischen Tarifen wartet der Verbrauch einer Viertelstunde bis zu 24 Stund
 
 ## Karte
 
-Tarifwacht bringt eine eigene Karte mit, ganz ohne Zusatzkarten aus HACS. Sie zeigt auf einen Blick, **was dein Tarif kostet, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen** – heute, im Monat und im Kalenderjahr. Ausprobieren: [Demo](https://tarifwacht.github.io/integration/?lang=de).
+Tarifwacht bringt eine eigene Karte mit, ganz ohne Zusatzkarten aus dem Marketplace. Sie zeigt auf einen Blick, **was dein Tarif kostet, ob ein anderer günstiger gewesen wäre und was PV und Speicher sparen** – heute, im Monat und im Kalenderjahr. Ausprobieren: [Demo](https://tarifwacht.github.io/integration/?lang=de).
 
 <img alt="Karte „Tarifwacht“ mit drei Tarifen, PV und Speicher und Säulen je Monat (Demo, erfundene Werte)" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/karte.png" width="640">
 

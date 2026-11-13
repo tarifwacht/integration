@@ -38,7 +38,7 @@ The user interface is available in German and English and follows the language o
 - **Any number of tariffs:** fixed price, dynamic with a total-price sensor, or dynamic from exchange price plus grid fee, taxes/levies, supplier surcharge and VAT.
 - **Modul 3** (§ 14a EnWG): time-variable grid fee with low-load and high-load windows per quarter.
 - **Saving by PV and battery** per tariff (€): what the PV system and battery saved against buying all consumption, with feed-in tariff and § 51 EEG – hybrid inverters and batteries with their own inverter, see [PV and battery](#pv-and-battery). With the purchase costs also when PV and battery have paid for themselves, or are expected to.
-- **A card of its own for the dashboard:** your tariff, whether another one would have been cheaper and what PV and battery save – today, this month and this year, plus bars per month. No extra cards from HACS, see [Card](#card).
+- **A card of its own for the dashboard:** your tariff, whether another one would have been cheaper and what PV and battery save – today, this month and this year, plus bars per month. No extra cards from the Marketplace, see [Card](#card).
 - **Price changes from a date**, e.g. new grid fees on 1 January – the old prices still apply before that date.
 - **One-off bonus** per tariff and per price change (a new contract), e.g. a 250 € switching bonus – lowers the total cost once, on the day it is credited.
 - **Base prices** optional, per month or per year, booked pro rata per day.
@@ -63,8 +63,8 @@ The user interface is available in German and English and follows the language o
 | Source (integration) | Total price | Exchange price | Status |
 |---|---|---|---|
 | [EPEX Spot](https://github.com/mampfes/ha_epex_spot) | `…_total_price` | `…_market_price` | tested |
-| [Nord Pool](https://github.com/custom-components/nordpool) (HACS) | sensor with VAT and additional costs | sensor without VAT and additional costs | experimental |
-| [ENTSO-E](https://github.com/JaccoR/hass-entso-e) (HACS) | average price sensor with surcharges | average price sensor without surcharges | experimental |
+| [Nord Pool](https://github.com/custom-components/nordpool) (Marketplace) | sensor with VAT and additional costs | sensor without VAT and additional costs | experimental |
+| [ENTSO-E](https://github.com/JaccoR/hass-entso-e) (Marketplace) | average price sensor with surcharges | average price sensor without surcharges | experimental |
 
 "Experimental" means: the format was reproduced from the integration's source code and real market data, but has not yet been checked on a running installation. If you use one of them, I'd appreciate feedback with the diagnostics file. Home Assistant's own Nord Pool integration does not provide a forecast attribute and is not supported.
 
@@ -254,7 +254,7 @@ For dynamic tariffs the consumption of a quarter hour waits up to 24 hours for i
 
 ## Card
 
-Tarifwacht brings a card of its own, no extra cards from HACS needed. At a glance it shows **what your tariff costs, whether another one would have been cheaper and what PV and battery save** – today, this month and this calendar year. Try it: [demo](https://tarifwacht.github.io/integration/?lang=en).
+Tarifwacht brings a card of its own, no extra cards from the Marketplace needed. At a glance it shows **what your tariff costs, whether another one would have been cheaper and what PV and battery save** – today, this month and this calendar year. Try it: [demo](https://tarifwacht.github.io/integration/?lang=en).
 
 <img alt="The Tarifwacht card with three tariffs, PV and battery and bars per month (demo, made-up values)" src="https://raw.githubusercontent.com/tarifwacht/integration/main/assets/screenshots/karte-en.png" width="640">
 
