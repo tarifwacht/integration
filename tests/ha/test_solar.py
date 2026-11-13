@@ -361,8 +361,12 @@ async def test_compare_action_reports_the_saving(hass: HomeAssistant) -> None:
         return hourly
 
     async def fake_lookback(self: MeterRuntime, start: datetime) -> Lookback:
+        # The meter's statistics reach back to May: the compare period is
+        # not clipped (Lookback.data_from), as with the PV values above.
         return Lookback(
-            consumption={}, tariffs=self.engine.tariffs, until=self.engine.started
+            consumption={datetime(2026, 5, 1, tzinfo=UTC): 0.0},
+            tariffs=self.engine.tariffs,
+            until=self.engine.started,
         )
 
     with (
