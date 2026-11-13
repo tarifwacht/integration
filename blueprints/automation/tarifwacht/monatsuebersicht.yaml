@@ -6,8 +6,9 @@ blueprint:
     günstigsten Tarif. Grundlage ist die Aktion „Tarife vergleichen“ von
     Tarifwacht. Die Nachricht kommt als Benachrichtigung in Home Assistant und
     auf Wunsch aufs Handy mit der Home-Assistant-App; unter „Weitere Aktionen“
-    gehen auch Telegram und andere Dienste. Im Titel steht der Name des
-    Eintrags, die Nachricht gibt es auf Deutsch oder Englisch.
+    gehen auch Telegram und andere Dienste. Hast du mehrere Zähler
+    eingerichtet, steht im Titel der Name des Eintrags; die Nachricht gibt es
+    auf Deutsch oder Englisch.
 
 
     Sends a summary of the previous month on the first of every month: grid
@@ -15,8 +16,8 @@ blueprint:
     the cheapest tariff. It uses the Tarifwacht action "Compare tariffs". The
     message comes as a notification in Home Assistant and, optionally, on the
     phone with the Home Assistant app; Telegram and other services go under
-    "More actions". The title names the entry, the message comes in German or
-    English.
+    "More actions". If you have set up several meters, the title names the
+    entry; the message comes in German or English.
   domain: automation
   author: Tarifwacht
   homeassistant:
@@ -108,8 +109,14 @@ variables:
   phone_action: >-
     {%- set d = device_attr(notify_device, 'name') if notify_device else none -%}
     {{ 'notify.mobile_app_' ~ (d | slugify) if d else '' }}
-  # The entry's name (several meters are possible), else just Tarifwacht.
-  entry_name: "{{ (config_entry_attr(entry, 'title') or '') if entry else '' }}"
+  # The entry's name only with several meters, else just Tarifwacht. One
+  # meter is one config entry; its tariffs are subentries (and devices) of
+  # it, so counting the entries of Tarifwacht's entities counts the meters.
+  several: >-
+    {{ integration_entities('tarifwacht') | map('config_entry_id')
+       | reject('none') | unique | list | count > 1 }}
+  entry_name: >-
+    {{ (config_entry_attr(entry, 'title') or '') if entry and several else '' }}
   head: "{{ 'Tarifwacht' ~ (' · ' ~ entry_name if entry_name else '') }}"
 
 actions:

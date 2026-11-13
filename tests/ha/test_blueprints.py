@@ -20,7 +20,15 @@ from pytest_homeassistant_custom_component.common import (
     async_mock_service,
 )
 
-from custom_components.tarifwacht.const import DOMAIN
+from custom_components.tarifwacht.const import CONF_METER, CONF_NAME, DOMAIN
+
+from .conftest import (
+    METER_ATTRIBUTES,
+    PRICE,
+    entry_data,
+    price_attributes,
+    subentries_data,
+)
 
 BLUEPRINT = (
     Path(__file__).parent.parent.parent
@@ -131,6 +139,33 @@ async def setup_automation(
     return compare, notify
 
 
+async def set_up_meters(hass: HomeAssistant, *names: str) -> list[MockConfigEntry]:
+    """Real Tarifwacht entries, one per meter, each with two tariffs
+    (subentries with a device each). Set up before the automation, so the
+    mocked compare replaces the real one."""
+    hass.states.async_set(PRICE, "0.04577", price_attributes())
+    entries = []
+    for number, name in enumerate(names, 1):
+        meter = f"sensor.grid_import_{number}"
+        hass.states.async_set(meter, "1000000", METER_ATTRIBUTES)
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            unique_id=meter,
+            title=name,
+            data=entry_data(**{CONF_NAME: name, CONF_METER: meter}),
+            version=2,
+            subentries_data=[
+                {**s, "subentry_id": f"{s['subentry_id'][:-1]}{number}"}
+                for s in subentries_data()
+            ],
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        entries.append(entry)
+    return entries
+
+
 async def first_of_month(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
     # 1 November, 08:00 CET: the summary of October.
     freezer.move_to(datetime(2026, 11, 1, 7, 0, tzinfo=UTC))
@@ -149,21 +184,24 @@ async def turn_off(hass: HomeAssistant) -> None:
 async def test_monthly_summary(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
-    """An automation with the inputs of before: German, own action, the
-    title with the entry's name."""
-    MockConfigEntry(domain=DOMAIN, entry_id=ENTRY, title="Haus").add_to_hass(hass)
+    """An automation with the inputs of before: German, own action. One
+    meter: the title without the entry's name, although its two tariffs
+    bring their own devices."""
+    (entry,) = await set_up_meters(hass, "Haus")
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert len(devices) > 1
     compare, notify = await setup_automation(
-        hass, {"meter": ENTRY, "notify_actions": OWN_ACTION}
+        hass, {"meter": entry.entry_id, "notify_actions": OWN_ACTION}
     )
     await first_of_month(hass, freezer)
     assert len(compare) == 1
     assert compare[0].data == {
-        "config_entry": ENTRY,
+        "config_entry": entry.entry_id,
         "start": "2026-10-01 00:00:00",
         "end": "2026-11-01 00:00:00",
     }
     assert len(notify) == 1
-    assert notify[0].data["title"] == "Tarifwacht · Haus: Strom im Oktober 2026"
+    assert notify[0].data["title"] == "Tarifwacht: Strom im Oktober 2026"
     assert notify[0].data["message"] == GERMAN
 
     # Any other day: nothing.
@@ -175,11 +213,27 @@ async def test_monthly_summary(
 
 
 @pytest.mark.freeze_time(datetime(2026, 11, 1, 6, 59, tzinfo=UTC))
+async def test_monthly_summary_names_the_entry_with_two_meters(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Two meters (two entries): the title names the chosen one."""
+    _, flat = await set_up_meters(hass, "Haus", "Wohnung")
+    _, notify = await setup_automation(
+        hass, {"meter": flat.entry_id, "notify_actions": OWN_ACTION}
+    )
+    await first_of_month(hass, freezer)
+    assert [c.data["title"] for c in notify] == [
+        "Tarifwacht · Wohnung: Strom im Oktober 2026"
+    ]
+    await turn_off(hass)
+
+
+@pytest.mark.freeze_time(datetime(2026, 11, 1, 6, 59, tzinfo=UTC))
 async def test_monthly_summary_english_to_the_phone(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
     """English, the default notification in Home Assistant and the phone;
-    without a known entry the title says just Tarifwacht."""
+    without a loaded entry the title says just Tarifwacht."""
     phone_entry = MockConfigEntry(domain="mobile_app")
     phone_entry.add_to_hass(hass)
     phone = dr.async_get(hass).async_get_or_create(

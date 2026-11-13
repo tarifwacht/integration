@@ -503,7 +503,7 @@ You can also use the response in scripts and automations (`response_variable`) �
 | --- | --- | --- |
 | **Monthly summary** (Monatsübersicht) | on the first of each month, sends the previous month's grid purchase, the cost of each tariff, the difference to the current tariff and the cheapest tariff – as a notification in Home Assistant, on your phone or with actions of your own (e.g. Telegram), in German or English | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftarifwacht%2Fmonatsuebersicht.yaml) |
 
-The message comes in **German or English** (field *Language of the message*), the title names the entry, e.g. “Tarifwacht · Haus: Electricity in October 2026”. It arrives as a notification in Home Assistant and – if you pick one under *Phone (optional)* – on your phone with the Home Assistant app. Connect **Telegram** or other services under **More actions (optional)**; the title is there as `{{ title }}` and the text as `{{ message }}`:
+The message comes in **German or English** (field *Language of the message*), the title reads “Tarifwacht: Electricity in October 2026” – if you have set up several meters, with the entry's name, e.g. “Tarifwacht · Haus: Electricity in October 2026”. It arrives as a notification in Home Assistant and – if you pick one under *Phone (optional)* – on your phone with the Home Assistant app. Connect **Telegram** or other services under **More actions (optional)**; the title is there as `{{ title }}` and the text as `{{ message }}`:
 
 ```yaml
 - action: telegram_bot.send_message
@@ -511,7 +511,7 @@ The message comes in **German or English** (field *Language of the message*), th
     message: "{{ title }}: {{ message }}"
 ```
 
-The notification in Home Assistant is the default there; remove it and the summary only comes through your actions. Existing automations keep working unchanged; phone, language and the name in the title come after importing the blueprint again.
+The notification in Home Assistant is the default there; remove it and the summary only comes through your actions. Existing automations keep working unchanged; phone, language and the name in the title (with several meters) come after importing the blueprint again.
 
 ## Import statistics
 
