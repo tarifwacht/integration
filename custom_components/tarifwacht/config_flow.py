@@ -8,8 +8,9 @@ name and meter; reconfiguring a tariff shows its form again. Every change
 reloads the entry (update listener), which recomputes the whole period.
 
 Forms show the prices at first glance; what is rarely changed (VAT, base
-price per year, bonus, Modul 3 in a price change) sits in collapsed
-sections. Sections only shape the form: the stored keys stay flat.
+price per year, bonus and credit per year, Modul 3 in a price change) sits
+in collapsed sections. Sections only shape the form: the stored keys stay
+flat.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from .const import (
     CONF_BONUS,
     CONF_BONUS_DATE,
     CONF_CHANGES,
+    CONF_CREDIT,
     CONF_CURRENT,
     CONF_FIXED_BASE,
     CONF_FIXED_PRICE,
@@ -455,13 +457,15 @@ def _tariff_schema(kind: str, *, setup: bool = False) -> vol.Schema:
 
 
 def _bonus_section() -> Any:
-    """The collapsed section "Bonus": amount and the day it is credited on.
-    In the tariff form and in a price change (the bonus of a new contract)."""
+    """The collapsed section "Bonus and credit": amount and the day it is
+    credited on, and the credit per year. In the tariff form and in a price
+    change (the bonus of a new contract, the credit from its date)."""
     return section(
         vol.Schema(
             {
                 vol.Optional(CONF_BONUS): BASE_NUMBER,
                 vol.Optional(CONF_BONUS_DATE): selector.DateSelector(),
+                vol.Optional(CONF_CREDIT): BASE_NUMBER,
             }
         ),
         {"collapsed": True},
@@ -487,6 +491,15 @@ def bonus_data(user_input: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def credit_of(user_input: dict[str, Any], fallback: Mapping[str, Any]) -> float:
+    """The credit per year of the form's section; without the section (not
+    sent back) the `fallback` value: the stored one when editing, today's
+    in a price change."""
+    if SECTION_BONUS not in user_input:
+        return float(fallback.get(CONF_CREDIT) or 0)
+    return float((user_input[SECTION_BONUS] or {}).get(CONF_CREDIT) or 0)
+
+
 def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     """What a tariff subentry stores (the name is its title)."""
     data: dict[str, Any] = {CONF_KIND: kind}
@@ -504,6 +517,9 @@ def _tariff_data(kind: str, user_input: dict[str, Any]) -> dict[str, Any]:
     if kind == KIND_DYNAMIC_MARKET and CONF_SMARD_FILL in user_input:
         data[CONF_SMARD_FILL] = bool(user_input[CONF_SMARD_FILL])
     data.update(bonus_data(user_input))
+    # Only when set: a tariff without a credit stays as before.
+    if credit := credit_of(user_input, {}):
+        data[CONF_CREDIT] = credit
     return data
 
 
@@ -758,6 +774,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 # A new contract may bring its own bonus.
                 change: dict[str, Any] = {CONF_FROM: valid_from}
                 change.update(bonus_data(user_input))
+                # The credit per year applies from the date, like the base
+                # price; kept out of changes of tariffs that never had one.
+                credit = credit_of(user_input, today)
+                if credit or today.get(CONF_CREDIT):
+                    change[CONF_CREDIT] = credit
                 for key in change_fields(kind):
                     if key == CONF_MODUL3:
                         # Without the section (or, for a fixed price, its
@@ -808,6 +829,11 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 **today,
                 SECTION_DETAILS: details_suggested(today),
                 SECTION_MODUL3: _modul3_suggested(modul3_today, kind),
+                # The bonus empty (it stays with its tariff or change), the
+                # credit per year as valid today.
+                SECTION_BONUS: {CONF_CREDIT: today[CONF_CREDIT]}
+                if today.get(CONF_CREDIT)
+                else {},
             }
         return self.async_show_form(
             step_id="add_change",
@@ -908,7 +934,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                     # its section did not come back.
                     keeps = [CONF_KEY, CONF_CHANGES, CONF_MODUL3]
                     if SECTION_BONUS not in raw:
-                        keeps += [CONF_BONUS, CONF_BONUS_DATE]
+                        keeps += [CONF_BONUS, CONF_BONUS_DATE, CONF_CREDIT]
                     for keep in keeps:
                         if subentry.data.get(keep):
                             data[keep] = subentry.data[keep]
@@ -931,7 +957,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
                 SECTION_DETAILS: details_suggested(subentry.data),
                 SECTION_BONUS: {
                     key: subentry.data[key]
-                    for key in (CONF_BONUS, CONF_BONUS_DATE)
+                    for key in (CONF_BONUS, CONF_BONUS_DATE, CONF_CREDIT)
                     if key in subentry.data
                 },
             }

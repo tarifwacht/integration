@@ -3,9 +3,10 @@ and the attributes of its sensor "Energy price now". Pure Python.
 
 A tariff is a subentry with its values from the start and later price
 states (`changes`). The menu text names the kind, what applies today, every
-price state (future ones marked), the bonus, Modul 3 and whether it is the
-current tariff - in German or English after the language of Home Assistant
-(like the dates of "Remove a price change"). Menu descriptions render
+price state (future ones marked; with base price and credit per year), the
+bonus, Modul 3 and whether it is the current tariff - in German or English
+after the language of Home Assistant (like the dates of "Remove a price
+change"). Menu descriptions render
 markdown: one paragraph per part, the price states as a list.
 """
 
@@ -20,6 +21,7 @@ from .const import (
     CONF_BASE_PERIOD,
     CONF_BASE_PRICE,
     CONF_CHANGES,
+    CONF_CREDIT,
     CONF_CURRENT,
     CONF_FROM,
     CONF_GRID_FEE,
@@ -57,6 +59,7 @@ _WORDS: dict[str, dict[str, str]] = {
         "vat": "MwSt.",
         "base": "Grundpreis",
         "no_base": "ohne Grundpreis",
+        "credit": "Gutschrift {amount}/Jahr",
         "sensor": "Preissensor „{name}“",
         "bonus": "Bonus: {items}",
         "bonus_item": "{amount} am {date}",
@@ -92,6 +95,7 @@ _WORDS: dict[str, dict[str, str]] = {
         "vat": "VAT",
         "base": "base price",
         "no_base": "no base price",
+        "credit": "credit {amount}/year",
         "sensor": "price sensor “{name}”",
         "bonus": "Bonus: {items}",
         "bonus_item": "{amount} on {date}",
@@ -197,6 +201,14 @@ def _base(values: Mapping[str, Any], german: bool, *, label: bool) -> str:
     return f"{words['base']} {text}" if label else text
 
 
+def _credit(values: Mapping[str, Any], german: bool) -> str:
+    """ ", Gutschrift 140,00 €/Jahr": the credit per year, "" without one."""
+    amount = float(values.get(CONF_CREDIT) or 0)
+    if not amount:
+        return ""
+    return ", " + _words(german)["credit"].format(amount=_euro(amount, german))
+
+
 def _market_parts(values: Mapping[str, Any], german: bool) -> str:
     """ "Netzentgelt 9 + Abgaben 5 + Aufschlag 2 ct (netto)": the surcharges
     that are set; "" without any."""
@@ -233,15 +245,16 @@ def state_text(
         price = f"{_number(float(values.get(CONF_PRICE) or 0), german)} ct/kWh"
         base = float(values.get(CONF_BASE_PRICE) or 0)
         text = f"{price} + {_base(values, german, label=False)}" if base else price
-        return text + modul3
+        return text + _credit(values, german) + modul3
     if kind == KIND_DYNAMIC_MARKET:
         parts = [words["exchange"]] if today else []
         if surcharges := _market_parts(values, german):
             parts.append(surcharges)
         parts.append(_vat(values, german))
         joined = " + ".join(parts)
-        return f"{joined}, {_base(values, german, label=True)}{modul3}"
-    base = _base(values, german, label=True)
+        base = _base(values, german, label=True) + _credit(values, german)
+        return f"{joined}, {base}{modul3}"
+    base = _base(values, german, label=True) + _credit(values, german)
     if not today:
         return base
     name = (sensor or "?").translate(_MARKDOWN)
@@ -312,8 +325,16 @@ def edit_hint(german: bool) -> str:
     return "\n\n" + _words(german)["edit_hint"]
 
 
-def _values(kind: str, values: Mapping[str, Any]) -> dict[str, Any]:
-    """The values of a price state for attributes, with their units."""
+def has_credit(data: Mapping[str, Any]) -> bool:
+    """Whether any price state of the tariff has a credit per year."""
+    return any(float(v.get(CONF_CREDIT) or 0) for _, v in price_states(data))
+
+
+def _values(
+    kind: str, values: Mapping[str, Any], credit: bool = False
+) -> dict[str, Any]:
+    """The values of a price state for attributes, with their units;
+    `credit`: with the credit per year (if the tariff ever has one)."""
     result: dict[str, Any] = {}
     if kind == KIND_FIXED:
         result["price_ct"] = float(values.get(CONF_PRICE) or 0)
@@ -323,6 +344,8 @@ def _values(kind: str, values: Mapping[str, Any]) -> dict[str, Any]:
         result["vat_percent"] = float(values.get(CONF_VAT) or 0)
     result["base_price_eur"] = float(values.get(CONF_BASE_PRICE) or 0)
     result["base_period"] = str(values.get(CONF_BASE_PERIOD) or "month")
+    if credit:
+        result["yearly_credit_eur"] = float(values.get(CONF_CREDIT) or 0)
     if kind != KIND_DYNAMIC_TOTAL:
         result["modul3"] = modul3_on(values)
     return result
@@ -332,7 +355,8 @@ def price_now_attributes(data: Mapping[str, Any], moment: datetime) -> dict[str,
     """Attributes of "Energy price now" at `moment`: base price and period
     valid today, since when the price state applies (None: from the start),
     the next price change, the bonus and whether Modul 3 applies in this
-    calendar quarter."""
+    calendar quarter. The credit per year next to the base price, only for
+    a tariff that has one in any price state."""
     kind = data[CONF_KIND]
     local = moment.astimezone(BERLIN)
     today = local.date()
@@ -343,9 +367,15 @@ def price_now_attributes(data: Mapping[str, Any], moment: datetime) -> dict[str,
         "base_period": str(values.get(CONF_BASE_PERIOD) or "month"),
         "valid_since": since.isoformat() if since is not None else None,
     }
+    credit = has_credit(data)
+    if credit:
+        attributes["yearly_credit_eur"] = float(values.get(CONF_CREDIT) or 0)
     if (upcoming := next_change(data, today)) is not None:
         day, later = upcoming
-        attributes["next_change"] = {"from": day.isoformat(), **_values(kind, later)}
+        attributes["next_change"] = {
+            "from": day.isoformat(),
+            **_values(kind, later, credit),
+        }
     if bonuses := bonus_list(data):
         # "bonus": the latest (the current contract's); "bonuses": all.
         items = [{"amount_eur": a, "date": day.isoformat()} for day, a in bonuses]

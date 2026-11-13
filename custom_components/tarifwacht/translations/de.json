@@ -159,15 +159,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "name": "Bonus und Gutschrift (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus, und eine Gutschrift pro Jahr, z. B. Modul 1 nach § 14a EnWG.",
               "data": {
                 "bonus": "Einmaliger Bonus",
-                "bonus_date": "Bonus gutgeschrieben am"
+                "bonus_date": "Bonus gutgeschrieben am",
+                "yearly_credit": "Gutschrift pro Jahr"
               },
               "data_description": {
                 "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
-                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres.",
+                "yearly_credit": "Brutto in € pro Jahr, z. B. die pauschale Netzentgeltreduzierung nach § 14a EnWG (Modul 1) vom Preisblatt deines Netzbetreibers. Wird wie der Grundpreis tageweise anteilig abgezogen – die Kosten können so auch unter den Grundpreis fallen. Leer: keine."
               }
             }
           }
@@ -199,15 +201,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "name": "Bonus und Gutschrift (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus, und eine Gutschrift pro Jahr, z. B. Modul 1 nach § 14a EnWG.",
               "data": {
                 "bonus": "Einmaliger Bonus",
-                "bonus_date": "Bonus gutgeschrieben am"
+                "bonus_date": "Bonus gutgeschrieben am",
+                "yearly_credit": "Gutschrift pro Jahr"
               },
               "data_description": {
                 "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
-                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres.",
+                "yearly_credit": "Brutto in € pro Jahr, z. B. die pauschale Netzentgeltreduzierung nach § 14a EnWG (Modul 1) vom Preisblatt deines Netzbetreibers. Wird wie der Grundpreis tageweise anteilig abgezogen – die Kosten können so auch unter den Grundpreis fallen. Leer: keine."
               }
             }
           }
@@ -249,15 +253,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus.",
+              "name": "Bonus und Gutschrift (optional)",
+              "description": "Einmalige Gutschrift des Angebots, z. B. Neukunden- oder Wechselbonus, und eine Gutschrift pro Jahr, z. B. Modul 1 nach § 14a EnWG.",
               "data": {
                 "bonus": "Einmaliger Bonus",
-                "bonus_date": "Bonus gutgeschrieben am"
+                "bonus_date": "Bonus gutgeschrieben am",
+                "yearly_credit": "Gutschrift pro Jahr"
               },
               "data_description": {
                 "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
-                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres.",
+                "yearly_credit": "Brutto in € pro Jahr, z. B. die pauschale Netzentgeltreduzierung nach § 14a EnWG (Modul 1) vom Preisblatt deines Netzbetreibers. Wird wie der Grundpreis tageweise anteilig abgezogen – die Kosten können so auch unter den Grundpreis fallen. Leer: keine."
               }
             }
           }
@@ -323,15 +329,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "Bonus des neuen Vertrags, z. B. Neukunden- oder Wechselbonus. Frühere Boni bleiben.",
+              "name": "Bonus und Gutschrift (optional)",
+              "description": "Bonus des neuen Vertrags, z. B. Neukunden- oder Wechselbonus. Frühere Boni bleiben. Die Gutschrift pro Jahr gilt ab dem Datum dieser Preisänderung; vorbelegt ist die heute gültige.",
               "data": {
                 "bonus": "Einmaliger Bonus",
-                "bonus_date": "Bonus gutgeschrieben am"
+                "bonus_date": "Bonus gutgeschrieben am",
+                "yearly_credit": "Gutschrift pro Jahr"
               },
               "data_description": {
                 "bonus": "Brutto in €. Senkt die Gesamtkosten dieses Tarifs einmal, um Mitternacht des Datums (nicht die Verbrauchskosten). Leer: kein Bonus.",
-                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres."
+                "bonus_date": "Meist der Vertragsbeginn oder das Ende des ersten Vertragsjahres.",
+                "yearly_credit": "Brutto in € pro Jahr, z. B. die pauschale Netzentgeltreduzierung nach § 14a EnWG (Modul 1) vom Preisblatt deines Netzbetreibers. Wird wie der Grundpreis tageweise anteilig abgezogen – die Kosten können so auch unter den Grundpreis fallen. Leer: keine."
               }
             }
           }

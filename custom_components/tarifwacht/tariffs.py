@@ -85,7 +85,8 @@ class Tariff:
     chronological order (e.g. new grid fees from 1 January). `bonuses` are
     one-off credits in EUR (new-customer or switching bonus), each at its
     UTC instant: the tariff's own and those of its price changes (a new
-    contract with its own bonus).
+    contract with its own bonus). `credit` is a credit per year in EUR
+    (e.g. Modul 1 under § 14a EnWG), spread like a yearly base price.
     """
 
     prices: PriceSource
@@ -93,6 +94,7 @@ class Tariff:
     base_period: BasePeriod = BasePeriod.MONTH
     changes: tuple[tuple[datetime, Tariff], ...] = ()
     bonuses: tuple[tuple[datetime, float], ...] = ()
+    credit: float = 0.0
 
     def at(self, moment: datetime) -> Tariff:
         """The price state valid at `moment`."""
@@ -116,18 +118,25 @@ class Tariff:
         return sum((a for at, a in self.bonuses if start <= at < end), 0.0)
 
     def base_between(self, start: datetime, end: datetime, tz: tzinfo) -> float:
-        """Base price of [start, end), split at every change."""
+        """Base price of [start, end) less the credit per year, split at
+        every change. Negative if the credit is larger than the base price."""
         bounds = [start, *(s for s, _ in self.changes if start < s < end), end]
         total = 0.0
         for segment_start, segment_end in pairwise(bounds):
             state = self.at(segment_start)
-            if state.base_price and segment_start < segment_end:
+            if segment_start >= segment_end:
+                continue
+            if state.base_price:
                 total += base_price_between(
                     segment_start,
                     segment_end,
                     state.base_price,
                     state.base_period,
                     tz,
+                )
+            if state.credit:
+                total -= base_price_between(
+                    segment_start, segment_end, state.credit, BasePeriod.YEAR, tz
                 )
         return total
 
@@ -138,6 +147,7 @@ class TariffTotals:
 
     energy: float = 0.0
     consumption_cost: float = 0.0
+    # Base price less the credit per year (negative if the credit is larger).
     base_cost: float = 0.0
     # One-off bonus credited in the period (EUR, positive; lowers the cost).
     bonus: float = 0.0

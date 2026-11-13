@@ -159,15 +159,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "name": "Bonus and credit (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus, and a credit per year, e.g. Modul 1 under § 14a EnWG.",
               "data": {
                 "bonus": "One-off bonus",
-                "bonus_date": "Bonus credited on"
+                "bonus_date": "Bonus credited on",
+                "yearly_credit": "Credit per year"
               },
               "data_description": {
                 "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
-                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+                "bonus_date": "Usually the start of the contract or the end of the first contract year.",
+                "yearly_credit": "Gross, in € per year, e.g. the flat grid fee reduction under § 14a EnWG (Modul 1) from your grid operator's price sheet. Deducted pro rata per day like the base price, so the costs may even fall below the base price. Empty: none."
               }
             }
           }
@@ -199,15 +201,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "name": "Bonus and credit (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus, and a credit per year, e.g. Modul 1 under § 14a EnWG.",
               "data": {
                 "bonus": "One-off bonus",
-                "bonus_date": "Bonus credited on"
+                "bonus_date": "Bonus credited on",
+                "yearly_credit": "Credit per year"
               },
               "data_description": {
                 "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
-                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+                "bonus_date": "Usually the start of the contract or the end of the first contract year.",
+                "yearly_credit": "Gross, in € per year, e.g. the flat grid fee reduction under § 14a EnWG (Modul 1) from your grid operator's price sheet. Deducted pro rata per day like the base price, so the costs may even fall below the base price. Empty: none."
               }
             }
           }
@@ -249,15 +253,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus.",
+              "name": "Bonus and credit (optional)",
+              "description": "A one-off credit of the offer, e.g. a new-customer or switching bonus, and a credit per year, e.g. Modul 1 under § 14a EnWG.",
               "data": {
                 "bonus": "One-off bonus",
-                "bonus_date": "Bonus credited on"
+                "bonus_date": "Bonus credited on",
+                "yearly_credit": "Credit per year"
               },
               "data_description": {
                 "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
-                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+                "bonus_date": "Usually the start of the contract or the end of the first contract year.",
+                "yearly_credit": "Gross, in € per year, e.g. the flat grid fee reduction under § 14a EnWG (Modul 1) from your grid operator's price sheet. Deducted pro rata per day like the base price, so the costs may even fall below the base price. Empty: none."
               }
             }
           }
@@ -323,15 +329,17 @@
               }
             },
             "bonus_section": {
-              "name": "Bonus (optional)",
-              "description": "The bonus of the new contract, e.g. a new-customer or switching bonus. Earlier bonuses stay.",
+              "name": "Bonus and credit (optional)",
+              "description": "The bonus of the new contract, e.g. a new-customer or switching bonus. Earlier bonuses stay. The credit per year applies from the date of this price change; it is prefilled with today's.",
               "data": {
                 "bonus": "One-off bonus",
-                "bonus_date": "Bonus credited on"
+                "bonus_date": "Bonus credited on",
+                "yearly_credit": "Credit per year"
               },
               "data_description": {
                 "bonus": "Gross, in €. Lowers the total cost of this tariff once, at midnight of the date (not the consumption cost). Empty: no bonus.",
-                "bonus_date": "Usually the start of the contract or the end of the first contract year."
+                "bonus_date": "Usually the start of the contract or the end of the first contract year.",
+                "yearly_credit": "Gross, in € per year, e.g. the flat grid fee reduction under § 14a EnWG (Modul 1) from your grid operator's price sheet. Deducted pro rata per day like the base price, so the costs may even fall below the base price. Empty: none."
               }
             }
           }

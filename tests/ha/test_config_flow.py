@@ -729,7 +729,11 @@ async def test_bonus_in_a_collapsed_section(hass: HomeAssistant) -> None:
         str(k): (k.description or {}).get("suggested_value")
         for k in schema[key].schema.schema
     }
-    assert suggested == {"bonus": 250.0, "bonus_date": "2027-02-01"}
+    assert suggested == {
+        "bonus": 250.0,
+        "bonus_date": "2027-02-01",
+        "yearly_credit": None,
+    }
     # Saved without opening the section: the bonus stays.
     result = await configure_tariff(hass, result, {**fields, "current": True})
     assert result["type"] is FlowResultType.ABORT
@@ -741,6 +745,60 @@ async def test_bonus_in_a_collapsed_section(hass: HomeAssistant) -> None:
     )
     data = entry.subentries[FIXED_SUBENTRY].data
     assert "bonus" not in data and "bonus_date" not in data
+
+
+@pytest.mark.freeze_time("2026-11-13 12:00:00+00:00")
+async def test_yearly_credit(hass: HomeAssistant) -> None:
+    """The credit per year (e.g. Modul 1) sits in the bonus section: stored
+    only when set, kept without the section, prefilled and dated in a price
+    change, named in the gear summary."""
+    entry = added_entry(hass)
+    flows = hass.config_entries.subentries
+
+    async def reconfigure(choice: str) -> dict:
+        result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+        return await flows.async_configure(result["flow_id"], {"next_step_id": choice})
+
+    fields = {"name": "Fixed price", "price": 30.0, "base_period": "month"}
+    result = await reconfigure("edit")
+    result = await configure_tariff(
+        hass, result, {**fields, "current": True, "bonus_section": {}}
+    )
+    assert "yearly_credit" not in entry.subentries[FIXED_SUBENTRY].data
+    result = await reconfigure("edit")
+    result = await configure_tariff(
+        hass,
+        result,
+        {**fields, "current": True, "bonus_section": {"yearly_credit": 140}},
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[FIXED_SUBENTRY].data["yearly_credit"] == 140.0
+    # Saved without the section: the credit stays.
+    result = await reconfigure("edit")
+    result = await configure_tariff(hass, result, {**fields, "current": True})
+    assert entry.subentries[FIXED_SUBENTRY].data["yearly_credit"] == 140.0
+
+    result = await entry.start_subentry_reconfigure_flow(hass, FIXED_SUBENTRY)
+    assert "140.00 €/year" in result["description_placeholders"]["summary"]
+
+    # A price change: prefilled with today's credit, stored with its date.
+    result = await reconfigure("add_change")
+    schema = result["data_schema"].schema
+    (key,) = [k for k in schema if str(k) == "bonus_section"]
+    suggested = {
+        str(k): (k.description or {}).get("suggested_value")
+        for k in schema[key].schema.schema
+    }
+    assert suggested["yearly_credit"] == 140.0
+    change = {"from": "2027-01-01", "price": 30.0, "base_period": "month"}
+    result = await configure_tariff(hass, result, {**change, "yearly_credit": 160.0})
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.subentries[FIXED_SUBENTRY].data["changes"][0]["yearly_credit"] == 160
+    # Without the section: today's credit carries on.
+    result = await reconfigure("add_change")
+    result = await configure_tariff(hass, result, {**change, "from": "2028-01-01"})
+    later = entry.subentries[FIXED_SUBENTRY].data["changes"][1]
+    assert later["yearly_credit"] == 140.0
 
 
 async def test_rare_fields_in_collapsed_sections(hass: HomeAssistant) -> None:

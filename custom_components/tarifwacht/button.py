@@ -32,6 +32,7 @@ from .const import (
     CONF_BONUS,
     CONF_BONUS_DATE,
     CONF_CHANGES,
+    CONF_CREDIT,
     CONF_CURRENT,
     CONF_FROM,
     CONF_GRID_FEE,
@@ -70,6 +71,7 @@ PRICE_FIELDS = (
     CONF_VAT,
     CONF_BASE_PRICE,
     CONF_BASE_PERIOD,
+    CONF_CREDIT,
 )
 
 

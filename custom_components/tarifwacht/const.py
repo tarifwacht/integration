@@ -47,6 +47,11 @@ CONF_MODUL3: Final = "modul3"  # time-variable grid fee (§ 14a EnWG Modul 3)
 CONF_BONUS: Final = "bonus"
 CONF_BONUS_DATE: Final = "bonus_date"
 SECTION_BONUS: Final = "bonus_section"
+# Credit per year (EUR incl. VAT), e.g. Modul 1 under § 14a EnWG: spread
+# like a yearly base price, with the opposite sign; a price state's value
+# like the base price (also in price changes). In the bonus section; stored
+# only when set (missing = 0).
+CONF_CREDIT: Final = "yearly_credit"
 # Form sections only (nothing stored under these keys): VAT and base price
 # period ("More"), Modul 3 in a price change.
 SECTION_DETAILS: Final = "details_section"

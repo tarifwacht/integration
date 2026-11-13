@@ -2,14 +2,20 @@
 
 ## Unveröffentlicht
 
+### Neu
+
+- **Gutschrift pro Jahr, z. B. für Modul 1 (§ 14a EnWG).** Im eingeklappten Abschnitt **Bonus und Gutschrift (optional)** jedes Tarifs gibt es das Feld **Gutschrift pro Jahr** (€, brutto): ein Betrag, den du jedes Jahr zurückbekommst, etwa die pauschale Netzentgeltreduzierung von Modul 1 laut Preisblatt deines Netzbetreibers. Tarifwacht zieht ihn wie einen Grundpreis pro Jahr tageweise anteilig ab – in Kosten gesamt, Differenz, Günstigstem Tarif, Statistik und „Tarife vergleichen“; die Kosten dürfen dabei auch unter den Grundpreis fallen. Ändert sich der Betrag, als *Preisänderung ab einem Datum*. Leer gelassen ändert sich nichts.
+
 ### Behoben
 
 - **Tarife vergleichen: kein Grundpreis vor der ersten Zählerstatistik.** Begann der Zeitraum von *Tarife vergleichen* vor der ersten Stunde, für die die Langzeitstatistik des Zählers Werte hat, rechnete Tarifwacht für die Tage davor den Grundpreis (und einen Bonus aus dieser Zeit) mit, ohne Verbrauch dazu – die Kosten waren zu hoch, die Differenzen zwischen Tarifen mit verschiedenem Grundpreis verzerrt. Jetzt beginnt der Zeitraum mit der ersten Stunde mit Daten; `start` in der Antwort zeigt das. *Statistik nachtragen* und *Statistik neu berechnen* hielten es schon so.
 
+### Geändert
+
 - **Zweiter Eintrag: Hinweis auf „Tarif hinzufügen“.** Wer schon einen Eintrag hat und noch einmal *Integration hinzufügen* wählt, sieht oben im Schritt „Bezugszähler“, dass weitere Tarife für denselben Zähler am bestehenden Eintrag unter *Tarif hinzufügen* angelegt werden – ein neuer Eintrag ist nur für einen weiteren Zähler gedacht. Einen Zähler aus dem Energie-Dashboard schlägt Tarifwacht dann nicht mehr vor: Er misst meist denselben Anschluss, und ein zweiter Eintrag würde alles doppelt rechnen.
 - **Preisbestandteile erklärt: netto eintragen.** Beim Tarif „Börsenpreis plus Aufschläge“ sagt jedes Feld jetzt ausdrücklich „netto (ohne MwSt.)“ – die Mehrwertsteuer rechnet Tarifwacht selbst dazu; ein Bruttowert gehört durch 1,19 geteilt. Arbeitspreis, Grundpreis und Bonus sind als „brutto“ beschriftet, auch unter *Preisänderung ab einem Datum hinzufügen*. Wer Netzentgelt, Steuern und Abgaben oder Anbieteraufschlag mit MwSt. eingetragen hat, korrigiert das unter *Preise ab Beginn bearbeiten*. Was in welches Feld gehört und wo man die Werte findet, steht mit Rechenbeispiel im README unter [Preisbestandteile](README.md#preisbestandteile-was-gehört-wohin). *(danke an MelleD, simon42-Forum)*
 - **Prozentualer Aufschlag von EPEX Spot nachgerechnet.** Das README erklärt, wie EPEX Spot ihn verrechnet, dass Tarifwacht ihn nur ungefähr nachbilden kann und dass EPEX Spot ohne gespeicherte Optionen 3 % aufschlägt.
-- **Modul 1 (§ 14a EnWG) im README.** Die pauschale Netzentgeltreduzierung lässt sich schon heute über einen niedrigeren Grundpreis eintragen; Modul 2 (eigener Zähler fürs Gerät) bildet Tarifwacht nicht ab.
+- **Modul 1 und 2 (§ 14a EnWG) im README.** Modul 1 trägst du als Gutschrift pro Jahr ein (siehe oben); Modul 2 (eigener Zähler fürs Gerät) bildet Tarifwacht nicht ab.
 
 ## 0.2.8 – 2026-11-11
 

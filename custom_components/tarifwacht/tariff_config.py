@@ -19,6 +19,7 @@ from .const import (
     CONF_BONUS,
     CONF_BONUS_DATE,
     CONF_CHANGES,
+    CONF_CREDIT,
     CONF_CURRENT,
     CONF_DYNAMIC_BASE,
     CONF_DYNAMIC_PRICE,
@@ -249,6 +250,7 @@ def _single_tariff(
         prices,
         float(data.get(CONF_BASE_PRICE) or 0),
         BasePeriod(data.get(CONF_BASE_PERIOD) or BasePeriod.MONTH),
+        credit=float(data.get(CONF_CREDIT) or 0),
     )
 
 
