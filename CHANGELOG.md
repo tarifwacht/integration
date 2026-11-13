@@ -5,6 +5,9 @@
 ### Geändert
 
 - **Zweiter Eintrag: Hinweis auf „Tarif hinzufügen“.** Wer schon einen Eintrag hat und noch einmal *Integration hinzufügen* wählt, sieht oben im Schritt „Bezugszähler“, dass weitere Tarife für denselben Zähler am bestehenden Eintrag unter *Tarif hinzufügen* angelegt werden – ein neuer Eintrag ist nur für einen weiteren Zähler gedacht. Einen Zähler aus dem Energie-Dashboard schlägt Tarifwacht dann nicht mehr vor: Er misst meist denselben Anschluss, und ein zweiter Eintrag würde alles doppelt rechnen.
+- **Preisbestandteile erklärt: netto eintragen.** Beim Tarif „Börsenpreis plus Aufschläge“ sagt jedes Feld jetzt ausdrücklich „netto (ohne MwSt.)“ – die Mehrwertsteuer rechnet Tarifwacht selbst dazu; ein Bruttowert gehört durch 1,19 geteilt. Arbeitspreis, Grundpreis und Bonus sind als „brutto“ beschriftet, auch unter *Preisänderung ab einem Datum hinzufügen*. Wer Netzentgelt, Steuern und Abgaben oder Anbieteraufschlag mit MwSt. eingetragen hat, korrigiert das unter *Preise ab Beginn bearbeiten*. Was in welches Feld gehört und wo man die Werte findet, steht mit Rechenbeispiel im README unter [Preisbestandteile](README.md#preisbestandteile-was-gehört-wohin). *(danke an MelleD, simon42-Forum)*
+- **Prozentualer Aufschlag von EPEX Spot nachgerechnet.** Das README erklärt, wie EPEX Spot ihn verrechnet, dass Tarifwacht ihn nur ungefähr nachbilden kann und dass EPEX Spot ohne gespeicherte Optionen 3 % aufschlägt.
+- **Modul 1 (§ 14a EnWG) im README.** Die pauschale Netzentgeltreduzierung lässt sich schon heute über einen niedrigeren Grundpreis eintragen; Modul 2 (eigener Zähler fürs Gerät) bildet Tarifwacht nicht ab.
 
 ## 0.2.8 – 2026-11-11
 

@@ -24,7 +24,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 ## Inhalt
 
 - [Was Tarifwacht kann](#was-tarifwacht-kann) · [Hinweise zum Vergleich](#hinweise-zum-vergleich) · [Was Tarifwacht nicht kann](#was-tarifwacht-nicht-kann)
-- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Wo sehe ich meine Tarife?](#wo-sehe-ich-meine-tarife) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
+- **Loslegen:** [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Einrichtung](#einrichtung) · [Weitere Tarife](#weitere-tarife) · [Dynamischen Tarif anlegen](#dynamischen-tarif-anlegen) · [Preisbestandteile](#preisbestandteile-was-gehört-wohin) · [Wo sehe ich meine Tarife?](#wo-sehe-ich-meine-tarife) · [Tarif ändern](#tarif-ändern) · [Modul 3](#modul-3--14a-enwg) · [PV und Speicher](#pv-und-speicher)
 - **Nutzen:** [Entitäten](#entitäten) · [Karte](#karte) · [Dashboard](#dashboard-tarifvergleich) · [Vergleich für einen Zeitraum](#vergleich-für-einen-zeitraum) · [Rückblick vor der Einrichtung](#rückblick-vor-der-einrichtung) · [Statistik nachtragen](#statistik-nachtragen) · [Statistik neu berechnen](#statistik-neu-berechnen)
 - **Mehr:** [Datenschutz](#datenschutz) · [Fehlerbehebung](#fehlerbehebung) · [Entfernen](#entfernen) · [Fehler melden](#fehler-melden) · [Danke](#danke) · [Weitere Wachten](#weitere-wachten)
 
@@ -49,7 +49,7 @@ Die Oberfläche gibt es auf Deutsch und Englisch; sie folgt der Sprache deines H
 ## Hinweise zum Vergleich
 
 - Der Vergleich unterstellt das **gleiche Verbrauchsverhalten**. Mit einem dynamischen Tarif verschieben viele ihren Verbrauch in günstige Stunden – das kann der Vergleich nicht abbilden. Er zeigt also eher, was ein dynamischer Tarif *mindestens* bringt.
-- Erfasse **alle Preisbestandteile auf beiden Seiten** gleich, sonst ist der Vergleich verzerrt. Der Gesamtpreis eines dynamischen Tarifs ist Börsenpreis plus Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer und Anbieteraufschlag, dazu Mehrwertsteuer. Die Werte stehen in den Preisblättern von Anbieter und Netzbetreiber.
+- Erfasse **alle Preisbestandteile auf beiden Seiten** gleich, sonst ist der Vergleich verzerrt. Der Gesamtpreis eines dynamischen Tarifs ist Börsenpreis plus Netzentgelt, Konzessionsabgabe, Umlagen, Stromsteuer und Anbieteraufschlag, dazu Mehrwertsteuer. Die Werte stehen in den Preisblättern von Anbieter und Netzbetreiber; was wohin gehört, steht unter [Preisbestandteile](#preisbestandteile-was-gehört-wohin).
 - Home Assistant misst meist mit einem eigenen Zähler (Lesekopf, Energiemessgerät), der Anbieter mit dem Zähler des Netzbetreibers. Kleine Abweichungen sind normal.
 
 ## Voraussetzungen
@@ -115,7 +115,47 @@ Hast du in **EPEX Spot** einen Aufschlag und eine Steuer eingestellt, übernimm 
 | Aufschlag absolut, z. B. 0,15 €/kWh | Anbieteraufschlag **15** ct/kWh (Tarifwacht rechnet in Cent: € × 100) |
 | Steuer, z. B. 19 % | Mehrwertsteuer 19 % |
 
-Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Geprüft für einen absoluten Aufschlag; einen prozentualen haben wir noch nicht nachgerechnet. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Preise ab Beginn bearbeiten*).
+Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Preise ab Beginn bearbeiten*, siehe [Preisbestandteile](#preisbestandteile-was-gehört-wohin)).
+
+**Prozentualer Aufschlag in EPEX Spot:** EPEX Spot rechnet den Gesamtpreis als (Marktpreis + Prozent × |Marktpreis| + Aufschlag absolut) × (1 + Steuer) – nachgelesen im Quellcode von EPEX Spot 4.1.0. Tarifwacht kennt nur feste Aufschläge in ct/kWh und kann einen prozentualen nicht genau nachbilden.
+
+- Steht dort **0 %**, rechnen beide genau gleich.
+- **Vorgabe von EPEX Spot ist 3 %:** Hast du die Optionen von EPEX Spot (Zahnrad am Eintrag) nie gespeichert, rechnet der Gesamtpreis mit 3 %, 0,1193 €/kWh und 19 %. Schau einmal nach, was dort steht.
+- Sonst ungefähr: Prozent × durchschnittlicher Börsenpreis zum Anbieteraufschlag dazuzählen. Beispiel (erfundene Zahlen): 3 % bei im Schnitt 10 ct/kWh → Anbieteraufschlag 0,3 ct höher. In teuren Viertelstunden rechnet Tarifwacht dann etwas zu wenig, in günstigen etwas zu viel – bei 3 % und einer Viertelstunde 20 ct über dem Schnitt rund 0,7 ct/kWh.
+
+### Preisbestandteile: was gehört wohin?
+
+Bei **Börsenpreis plus Aufschläge** setzt Tarifwacht den Preis jeder Viertelstunde aus seinen Teilen zusammen:
+
+**Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + Mehrwertsteuer)**
+
+> **Netto eintragen – die Mehrwertsteuer rechnet Tarifwacht selbst.** Netzentgelt, Steuern und Abgaben und Anbieteraufschlag gehören **ohne Mehrwertsteuer** ins Formular; Tarifwacht schlägt sie einmal auf die Summe auf. Hast du nur einen Bruttowert (mit MwSt.), teile ihn durch 1,19 (bei 19 %). Grundpreis, Festpreis und Bonus trägst du dagegen **brutto** ein, so wie im Vertrag.
+
+| Feld | Was hineingehört | Wo du den Wert findest |
+|---|---|---|
+| Sensor mit Börsenpreis | Day-Ahead-Börsenpreis der Viertelstunde, ohne MwSt. – kommt vom Sensor, z. B. dem Marktpreis von EPEX Spot | – |
+| Netzentgelt | Arbeitspreis des Netzentgelts in ct/kWh (für Haushalte: Entnahme ohne Leistungsmessung, Niederspannung) | Preisblatt deines Netzbetreibers |
+| Steuern, Abgaben und Konzessionsabgabe | zusammengezählt: Stromsteuer, Konzessionsabgabe und die Umlagen (KWKG-Umlage, Offshore-Netzumlage, Aufschlag für besondere Netznutzung nach § 19 StromNEV) | Stromsteuer: 2,05 ct/kWh (§ 3 StromStG). Konzessionsabgabe: Preisblatt des Netzbetreibers (für Haushalte je nach Größe der Gemeinde höchstens 1,32 bis 2,39 ct/kWh, § 2 KAV). Umlagen: [Netztransparenz](https://www.netztransparenz.de/de-de/Erneuerbare-Energien-und-Umlagen), jedes Jahr neu |
+| Anbieteraufschlag | was der Anbieter je kWh für sich berechnet | Vertrag oder Preisblatt des Anbieters |
+| Mehrwertsteuer (unter **Weitere Angaben**) | 19 % | Vorgabe; nur ändern, wenn dein Vertrag etwas anderes sagt |
+| Grundpreis | Grundpreis deines Vertrags, **brutto** | Vertrag |
+
+Oft steht vieles davon auch in der Preisaufstellung deines Anbieters. Nennt er nur einen Aufschlag auf den Börsenpreis für alles zusammen, trag ihn netto als Anbieteraufschlag ein und lass Netzentgelt sowie Steuern und Abgaben leer. Wichtig ist nur: Jeder Bestandteil kommt genau einmal vor.
+
+**Beispiel** (alle Zahlen erfunden, nur zum Nachrechnen):
+
+| | ct/kWh |
+|---|---|
+| Börsenpreis in einer Viertelstunde | 8,00 |
+| + Netzentgelt (netto) | 9,00 |
+| + Steuern und Abgaben (netto) | 5,00 |
+| + Anbieteraufschlag (netto) | 2,00 |
+| = Summe netto | 24,00 |
+| × 1,19 (19 % MwSt.) | **28,56** |
+
+Steht für Steuern und Abgaben 5,95 ct brutto da, gehören 5,95 ÷ 1,19 = **5,00** ct ins Feld. Trägst du 5,95 ein, rechnet Tarifwacht 29,69 ct – auf diesen Teil käme die Mehrwertsteuer zweimal, gut 1 ct je kWh zu viel.
+
+Zur Kontrolle: Das Zahnrad am Tarif zeigt, was eingetragen ist (netto, plus MwSt.); der Sensor **Arbeitspreis jetzt** zeigt den Preis der laufenden Viertelstunde brutto – den kannst du mit dem Preis in der App deines Anbieters vergleichen. Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ### Wo sehe ich meine Tarife?
 
@@ -152,7 +192,9 @@ Mit einer steuerbaren Verbrauchseinrichtung (Wärmepumpe, Wallbox) kannst du bei
 - Modul 3 gilt für den **gesamten** Netzbezug der Marktlokation, nicht nur für Wärmepumpe oder Wallbox. Das passt, solange das Gerät nicht über einen eigenen Zähler läuft.
 - **Beim Festpreis:** Auch ein Anbieter mit festem Arbeitspreis kann Modul 3 weitergeben – der Energiepreis bleibt fest, nur der Netzentgelt-Anteil ändert sich. Dafür fragt das Formular zusätzlich das **im Festpreis enthaltene Netzentgelt** (die normale Stufe aus dem Preisblatt, ct/kWh netto) und die Mehrwertsteuer (Vorschlag 19 %). In den Fenstern der gewählten Quartale gilt dann Festpreis + (Netzentgelt des Fensters − enthaltenes Netzentgelt) × (1 + MwSt.), sonst der Festpreis. Beispiel: Festpreis 30 ct, enthalten 7,91 ct, NT 3,16 ct → in einem NT-Fenster im Januar 30 + (3,16 − 7,91) × 1,19 = 24,35 ct; im Mai 30 ct. Ein neues Preisblatt (z. B. ab 1. Januar) trägst du wie beim Börsenpreis-Tarif als Preisänderung ein, mit Festpreis und den Modul-3-Werten im Abschnitt **Modul 3 (optional)**.
 
-Grundlage: Festlegung der Bundesnetzagentur BK8-22/010-A; Einzelheiten und Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
+**Modul 1 und 2:** Modul 1 (pauschale Netzentgeltreduzierung, Voraussetzung für Modul 3) ist eine feste Ermäßigung im Jahr – 80 € plus eine Stabilitätsprämie deines Netzbetreibers, brutto; den Betrag nennt sein Preisblatt. Das geht schon heute: in jedem Tarif, den du vergleichst, den **Grundpreis** pro Jahr um diesen Betrag senken (bei Grundpreis pro Monat um ein Zwölftel; unter 0 geht das Feld nicht). **Modul 2** (ermäßigter Arbeitspreis für ein Gerät mit eigenem Zähler) kann Tarifwacht nicht abbilden – dafür bräuchte sie einen zweiten Zähler.
+
+Grundlage: Festlegung der Bundesnetzagentur [BK8-22/010-A](https://www.bundesnetzagentur.de/DE/Beschlusskammern/1_GZ/BK8-GZ/2022/2022_4-Steller/BK8-22-0010/BK8-22-0010-A_Festlegung_DL_BF.html) vom 23.11.2023; Einzelheiten und Quellen in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ### PV und Speicher
 
@@ -496,7 +538,7 @@ Tarifwacht rechnet lokal und liest nur die Entitäten, die du auswählst. Einzig
 - **Kein verändertes Verhalten:** Der Vergleich rechnet deinen tatsächlichen Verbrauch – was du mit einem dynamischen Tarif verschieben würdest, sieht er nicht.
 - **Sensoren beginnen bei der Einrichtung:** Die Zeit davor gibt es über die Aktion „Tarife vergleichen“ und – für Statistik-Karten – über [Statistik nachtragen](#statistik-nachtragen).
 - **Keine Netzeinspeisung:** Tarifwacht rechnet nur den Bezug. Für die Einspeisung gibt es das Schwesterprojekt [Einspeisewacht](https://github.com/einspeisewacht/integration).
-- **Module 1 und 2** nach § 14a EnWG bildet Tarifwacht nicht eigens ab.
+- **Modul 2** nach § 14a EnWG (eigener Zähler für Wärmepumpe oder Wallbox) bildet Tarifwacht nicht ab; Modul 1 geht über den Grundpreis, siehe [Modul 3](#modul-3--14a-enwg).
 
 ## Fehlerbehebung
 

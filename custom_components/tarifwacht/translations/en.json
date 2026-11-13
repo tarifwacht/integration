@@ -45,8 +45,8 @@
           "fixed_base": "Base price per month"
         },
         "data_description": {
-          "fixed_price": "Price per kWh from your contract or offer.",
-          "fixed_base": "Optional. Booked pro rata per day."
+          "fixed_price": "Gross (with VAT), as in your contract or offer.",
+          "fixed_base": "Optional, gross. Booked pro rata per day."
         }
       },
       "dynamic": {
@@ -59,7 +59,7 @@
       },
       "dynamic_market": {
         "title": "Dynamic tariff: exchange price plus surcharges",
-        "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.",
+        "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, i.e. without VAT – Tarifwacht adds it itself. If the price sheet only shows a gross value, divide it by 1.19 (at 19 %).",
         "data": {
           "price_entity": "Exchange price sensor",
           "grid_fee": "Grid fee",
@@ -69,9 +69,9 @@
         },
         "data_description": {
           "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast: the market price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS, each without VAT and surcharges.",
-          "grid_fee": "Energy-related grid fee of your grid operator, net.",
-          "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
-          "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
+          "grid_fee": "Energy-related grid fee of your grid operator, net (without VAT), from its price sheet.",
+          "levies": "Electricity tax, concession fee and levies added up, net (without VAT).",
+          "margin": "What the supplier adds per kWh, net (without VAT). With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
           "base_price": "Optional, incl. VAT. Booked pro rata per day."
         },
         "sections": {
@@ -214,7 +214,7 @@
         },
         "dynamic_market": {
           "title": "Dynamic tariff: exchange price plus surcharges",
-          "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, as on the price sheets of supplier and grid operator.{edit_hint}",
+          "description": "Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT). Enter the surcharges net, i.e. without VAT – Tarifwacht adds it itself. If the price sheet only shows a gross value, divide it by 1.19 (at 19 %).{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Exchange price sensor",
@@ -228,9 +228,9 @@
           "data_description": {
             "name": "For example the supplier. Used in entity names.",
             "price_entity": "Day-ahead price in €/kWh without VAT, ideally with a forecast: the market price of the EPEX Spot integration, or (experimental) Nord Pool or ENTSO-E from HACS, each without VAT and surcharges.",
-            "grid_fee": "Energy-related grid fee of your grid operator, net.",
-            "levies": "Electricity tax, concession fee and levies, net – as listed on the price sheet.",
-            "margin": "What the supplier adds per kWh, net. With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
+            "grid_fee": "Energy-related grid fee of your grid operator, net (without VAT), from its price sheet.",
+            "levies": "Electricity tax, concession fee and levies added up, net (without VAT).",
+            "margin": "What the supplier adds per kWh, net (without VAT). With EPEX Spot: its absolute surcharge in cent (0.15 €/kWh = 15 ct); then leave grid fee and taxes empty.",
             "base_price": "Optional, gross. Per month; per year under “More”. Booked pro rata per day.",
             "current": "The other tariffs show their difference to this one.",
             "smard_fill": "Fetches public exchange prices from SMARD.de (Bundesnetzagentur) once for the time since the setup that the sensor does not know, so the tariff counts from the setup like the others. Nothing about you is transmitted. Without it, the comparison leaves that time out."
@@ -283,7 +283,13 @@
             "margin": "Supplier surcharge",
             "base_price": "Base price"
           },
-          "data_description": {},
+          "data_description": {
+            "price": "Gross (with VAT), as in your contract.",
+            "grid_fee": "Net (without VAT), from your grid operator's price sheet.",
+            "levies": "Electricity tax, concession fee and levies added up, net (without VAT).",
+            "margin": "Net (without VAT). Tarifwacht adds the VAT itself.",
+            "base_price": "Gross. Per month; per year under “More”."
+          },
           "sections": {
             "details_section": {
               "name": "More (optional)",
@@ -311,7 +317,7 @@
                 "vat": "VAT"
               },
               "data_description": {
-                "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
+                "standard_fee": "ct/kWh net (without VAT): your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
                 "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
                 "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
               }
@@ -349,8 +355,8 @@
             "ht_windows": "High-load windows (HT)"
           },
           "data_description": {
-            "nt": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
-            "ht": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "nt": "ct/kWh net (without VAT), from your grid operator's price sheet (Modul 3).",
+            "ht": "ct/kWh net (without VAT), from your grid operator's price sheet (Modul 3).",
             "quarters": "Outside these quarters the standard grid fee applies all day.",
             "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
             "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."
@@ -370,10 +376,10 @@
             "ht_windows": "High-load windows (HT)"
           },
           "data_description": {
-            "standard_fee": "ct/kWh net: your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
+            "standard_fee": "ct/kWh net (without VAT): your grid operator's normal grid fee (energy rate) that is part of the fixed price, from its price sheet.",
             "vat": "On the difference of the grid fee, in percent.",
-            "nt": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
-            "ht": "ct/kWh net, from your grid operator's price sheet (Modul 3).",
+            "nt": "ct/kWh net (without VAT), from your grid operator's price sheet (Modul 3).",
+            "ht": "ct/kWh net (without VAT), from your grid operator's price sheet (Modul 3).",
             "quarters": "Outside these quarters the standard grid fee applies all day.",
             "nt_windows": "Local time, quarter-hour grid, several separated by commas, e.g. 10:00-14:00 or 01:45-06:15, 22:30-24:00. A window may run past midnight (23:00-06:00).",
             "ht_windows": "As above, e.g. 17:00-22:00. Outside all windows the standard grid fee applies."

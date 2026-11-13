@@ -26,7 +26,7 @@ The user interface is available in German and English and follows the language o
 ## Contents
 
 - [Features](#features) · [Notes on the comparison](#notes-on-the-comparison) · [What Tarifwacht does not do](#what-tarifwacht-does-not-do)
-- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Where do I see my tariffs?](#where-do-i-see-my-tariffs) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
+- **Getting started:** [Requirements](#requirements) · [Installation](#installation) · [Setup](#setup) · [More tariffs](#more-tariffs) · [Adding a dynamic tariff](#adding-a-dynamic-tariff) · [Price components](#price-components-what-goes-where) · [Where do I see my tariffs?](#where-do-i-see-my-tariffs) · [Changing a tariff](#changing-a-tariff) · [Modul 3](#modul-3--14a-enwg) · [PV and battery](#pv-and-battery)
 - **Using it:** [Entities](#entities) · [Card](#card) · [Dashboard](#dashboard-tariff-comparison) · [Comparison for a period](#comparison-for-a-period) · [Looking back before the setup](#looking-back-before-the-setup) · [Import statistics](#import-statistics) · [Recalculate statistics](#recalculate-statistics)
 - **More:** [Privacy](#privacy) · [Troubleshooting](#troubleshooting) · [Removal](#removal) · [Reporting issues](#reporting-issues) · [Thanks](#thanks) · [Sister integrations](#sister-integrations)
 
@@ -51,7 +51,7 @@ The user interface is available in German and English and follows the language o
 ## Notes on the comparison
 
 - The comparison assumes the **same consumption behaviour**. With a dynamic tariff many people shift consumption into cheap hours – the comparison cannot reflect that. It rather shows what a dynamic tariff brings *at least*.
-- Enter **all price components on both sides** in the same way, otherwise the comparison is skewed. The total price of a dynamic tariff is the exchange price plus grid fee, concession fee, levies, electricity tax and supplier surcharge, plus VAT. The figures are in the price sheets of your supplier and grid operator.
+- Enter **all price components on both sides** in the same way, otherwise the comparison is skewed. The total price of a dynamic tariff is the exchange price plus grid fee, concession fee, levies, electricity tax and supplier surcharge, plus VAT. The figures are in the price sheets of your supplier and grid operator; what goes where is under [Price components](#price-components-what-goes-where).
 - Home Assistant usually measures with its own meter (optical reader, energy meter), your supplier with the grid operator's meter. Small differences are normal.
 
 ## Requirements
@@ -117,7 +117,47 @@ If you set a surcharge and a tax in **EPEX Spot**, simply copy these values – 
 | absolute surcharge, e.g. 0.15 €/kWh | supplier surcharge **15** ct/kWh (Tarifwacht uses cents: € × 100) |
 | tax, e.g. 19 % | VAT 19 % |
 
-Leave grid fee and taxes/levies empty – they are already in the surcharge. Checked for an absolute surcharge; a percentage surcharge has not been verified yet. Once you have the price sheets, you can split the surcharge later (*Edit prices from the start*).
+Leave grid fee and taxes/levies empty – they are already in the surcharge. Once you have the price sheets, you can split the surcharge later (*Edit prices from the start*, see [Price components](#price-components-what-goes-where)).
+
+**Percentage surcharge in EPEX Spot:** EPEX Spot calculates the total price as (market price + percentage × |market price| + absolute surcharge) × (1 + tax) – read in the source code of EPEX Spot 4.1.0. Tarifwacht only knows fixed surcharges in ct/kWh and cannot reproduce a percentage one exactly.
+
+- If it says **0 %** there, both calculate exactly the same.
+- **EPEX Spot's default is 3 %:** if you never saved the EPEX Spot options (gear icon at its entry), the total price uses 3 %, 0.1193 €/kWh and 19 %. Have a look at what it says there.
+- Otherwise, roughly: add percentage × average exchange price to the supplier surcharge. Example (invented figures): 3 % at an average of 10 ct/kWh → supplier surcharge 0.3 ct higher. In expensive quarter hours Tarifwacht then calculates a little too little, in cheap ones a little too much – at 3 % and a quarter hour 20 ct above average about 0.7 ct/kWh.
+
+### Price components: what goes where?
+
+With **Exchange price plus surcharges** Tarifwacht builds the price of every quarter hour from its parts:
+
+**Price per kWh = (exchange price + grid fee + taxes and levies + supplier surcharge) × (1 + VAT)**
+
+> **Enter net values – Tarifwacht adds the VAT itself.** Grid fee, taxes and levies and supplier surcharge go into the form **without VAT**; Tarifwacht adds it once on the sum. If you only have a gross value (with VAT), divide it by 1.19 (at 19 %). Base price, fixed price and bonus, on the other hand, are entered **gross**, as in your contract.
+
+| Field | What goes in | Where to find it |
+|---|---|---|
+| Exchange price sensor | day-ahead exchange price of the quarter hour, without VAT – comes from the sensor, e.g. the market price of EPEX Spot | – |
+| Grid fee | energy rate of the grid fee in ct/kWh (for households: consumption without power metering, low voltage) | your grid operator's price sheet |
+| Taxes, levies and concession fee | added up: electricity tax, concession fee and the levies (KWKG levy, offshore grid levy, surcharge for special grid use under § 19 StromNEV) | Electricity tax: 2.05 ct/kWh (§ 3 StromStG). Concession fee: your grid operator's price sheet (for households, depending on the size of the municipality, at most 1.32 to 2.39 ct/kWh, § 2 KAV). Levies: [Netztransparenz](https://www.netztransparenz.de/de-de/Erneuerbare-Energien-und-Umlagen), new every year |
+| Supplier surcharge | what the supplier charges per kWh for itself | contract or price sheet of the supplier |
+| VAT (under **More**) | 19 % | default; only change it if your contract says otherwise |
+| Base price | base price of your contract, **gross** | contract |
+
+Much of this is often also listed in your supplier's price breakdown. If it only names one surcharge on the exchange price for everything, enter it net as the supplier surcharge and leave grid fee and taxes and levies empty. All that matters: every component appears exactly once.
+
+**Example** (all figures invented, just to follow the arithmetic):
+
+| | ct/kWh |
+|---|---|
+| exchange price in one quarter hour | 8.00 |
+| + grid fee (net) | 9.00 |
+| + taxes and levies (net) | 5.00 |
+| + supplier surcharge (net) | 2.00 |
+| = sum net | 24.00 |
+| × 1.19 (19 % VAT) | **28.56** |
+
+If taxes and levies are given as 5.95 ct gross, the field gets 5.95 ÷ 1.19 = **5.00** ct. If you enter 5.95, Tarifwacht calculates 29.69 ct – VAT would be added twice on this part, a good 1 ct per kWh too much.
+
+To check: the gear icon at the tariff shows what is entered (net, plus VAT); the sensor **Energy price now** shows the price of the current quarter hour gross – compare it with the price in your supplier's app. Sources (German) in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ### Where do I see my tariffs?
 
@@ -154,7 +194,9 @@ With a controllable consumer (heat pump, wallbox) you can choose Modul 3 with yo
 - Modul 3 applies to the **entire** grid consumption of the metering point, not only to the heat pump or wallbox. That fits as long as the device does not have its own meter.
 - **With a fixed price:** a supplier with a fixed energy price can pass Modul 3 on as well – the energy price stays fixed, only the grid fee part changes. For this the form also asks for the **grid fee contained in the fixed price** (the normal level from the price sheet, ct/kWh net) and the VAT (suggested 19 %). In the windows of the chosen quarters the price is then fixed price + (grid fee of the window − grid fee contained) × (1 + VAT), otherwise the fixed price. Example: fixed price 30 ct, contained 7.91 ct, NT 3.16 ct → in a low-load window in January 30 + (3.16 − 7.91) × 1.19 = 24.35 ct; in May 30 ct. A new price sheet (e.g. from 1 January) is entered as a price change, as for the exchange price tariff, with fixed price and the Modul 3 values in the section **Modul 3 (optional)**.
 
-Basis: Bundesnetzagentur determination BK8-22/010-A; details and sources (German) in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
+**Modul 1 and 2:** Modul 1 (flat-rate grid fee reduction, required for Modul 3) is a fixed reduction per year – 80 € plus a stability bonus of your grid operator, gross; its price sheet states the amount. This works today: in every tariff you compare, lower the **base price** per year by this amount (with a base price per month by a twelfth; the field does not go below 0). **Modul 2** (reduced energy rate for a device with its own meter) cannot be modelled by Tarifwacht – it would need a second meter.
+
+Basis: Bundesnetzagentur determination [BK8-22/010-A](https://www.bundesnetzagentur.de/DE/Beschlusskammern/1_GZ/BK8-GZ/2022/2022_4-Steller/BK8-22-0010/BK8-22-0010-A_Festlegung_DL_BF.html) of 23 November 2023; details and sources (German) in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ### PV and battery
 
@@ -498,7 +540,7 @@ Tarifwacht calculates locally and only reads the entities you select. Only excep
 - **No changed behaviour:** the comparison prices your actual consumption – what you would shift with a dynamic tariff is not visible to it.
 - **Sensors start at setup:** the time before is available through the action Compare tariffs and – for statistics cards – through [Import statistics](#import-statistics).
 - **No grid feed-in:** Tarifwacht only prices grid consumption. For feed-in there is the sister project [Einspeisewacht](https://github.com/einspeisewacht/integration).
-- **Modul 1 and 2** under § 14a EnWG are not modelled separately.
+- **Modul 2** under § 14a EnWG (own meter for heat pump or wallbox) is not modelled; Modul 1 works via the base price, see [Modul 3](#modul-3--14a-enwg).
 
 ## Troubleshooting
 

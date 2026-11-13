@@ -45,8 +45,8 @@
           "fixed_base": "Grundpreis pro Monat"
         },
         "data_description": {
-          "fixed_price": "Preis je kWh aus deinem Vertrag oder Angebot.",
-          "fixed_base": "Optional. Wird tageweise anteilig gebucht."
+          "fixed_price": "Brutto (mit MwSt.), wie in deinem Vertrag oder Angebot.",
+          "fixed_base": "Optional, brutto. Wird tageweise anteilig gebucht."
         }
       },
       "dynamic": {
@@ -59,7 +59,7 @@
       },
       "dynamic_market": {
         "title": "Dynamischer Tarif: Börsenpreis plus Aufschläge",
-        "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.",
+        "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, also ohne Mehrwertsteuer – die rechnet Tarifwacht selbst dazu. Steht im Preisblatt nur ein Bruttowert, ihn durch 1,19 teilen (bei 19 %).",
         "data": {
           "price_entity": "Sensor mit Börsenpreis",
           "grid_fee": "Netzentgelt",
@@ -69,9 +69,9 @@
         },
         "data_description": {
           "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose: der Marktpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS, jeweils ohne MwSt. und Aufschläge.",
-          "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
-          "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
-          "margin": "Was der Anbieter je kWh aufschlägt, netto. Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
+          "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto (ohne MwSt.), aus dessen Preisblatt.",
+          "levies": "Stromsteuer, Konzessionsabgabe und Umlagen zusammengezählt, netto (ohne MwSt.).",
+          "margin": "Was der Anbieter je kWh aufschlägt, netto (ohne MwSt.). Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
           "base_price": "Optional, brutto. Wird tageweise anteilig gebucht."
         },
         "sections": {
@@ -214,7 +214,7 @@
         },
         "dynamic_market": {
           "title": "Dynamischer Tarif: Börsenpreis plus Aufschläge",
-          "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, wie in den Preisblättern von Anbieter und Netzbetreiber.{edit_hint}",
+          "description": "Preis je kWh = (Börsenpreis + Netzentgelt + Steuern und Abgaben + Anbieteraufschlag) × (1 + MwSt.). Aufschläge netto eintragen, also ohne Mehrwertsteuer – die rechnet Tarifwacht selbst dazu. Steht im Preisblatt nur ein Bruttowert, ihn durch 1,19 teilen (bei 19 %).{edit_hint}",
           "data": {
             "name": "Name",
             "price_entity": "Sensor mit Börsenpreis",
@@ -228,9 +228,9 @@
           "data_description": {
             "name": "Zum Beispiel der Anbieter. Wird in den Entitätsnamen verwendet.",
             "price_entity": "Day-Ahead-Preis in €/kWh ohne MwSt., am besten mit Prognose: der Marktpreis der Integration EPEX Spot, oder (experimentell) Nord Pool bzw. ENTSO-E aus HACS, jeweils ohne MwSt. und Aufschläge.",
-            "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto.",
-            "levies": "Stromsteuer, Konzessionsabgabe und Umlagen, netto – wie im Preisblatt aufgeführt.",
-            "margin": "Was der Anbieter je kWh aufschlägt, netto. Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
+            "grid_fee": "Arbeitspreis des Netzentgelts deines Netzbetreibers, netto (ohne MwSt.), aus dessen Preisblatt.",
+            "levies": "Stromsteuer, Konzessionsabgabe und Umlagen zusammengezählt, netto (ohne MwSt.).",
+            "margin": "Was der Anbieter je kWh aufschlägt, netto (ohne MwSt.). Bei EPEX Spot: dessen absoluter Aufschlag in Cent (0,15 €/kWh = 15 ct); Netzentgelt und Abgaben dann leer lassen.",
             "base_price": "Optional, brutto. Pro Monat; pro Jahr unter „Weitere Angaben“. Wird tageweise anteilig gebucht.",
             "current": "Die anderen Tarife zeigen ihre Differenz zu diesem.",
             "smard_fill": "Lädt einmalig öffentliche Börsenpreise von SMARD.de (Bundesnetzagentur) für die Zeit seit der Einrichtung, die der Sensor nicht kennt – so rechnet der Tarif wie die anderen ab der Einrichtung. Über dich wird nichts übertragen. Ohne Haken lässt der Vergleich diese Zeit aus."
@@ -283,7 +283,13 @@
             "margin": "Anbieteraufschlag",
             "base_price": "Grundpreis"
           },
-          "data_description": {},
+          "data_description": {
+            "price": "Brutto (mit MwSt.), wie im Vertrag.",
+            "grid_fee": "Netto (ohne MwSt.), aus dem Preisblatt deines Netzbetreibers.",
+            "levies": "Stromsteuer, Konzessionsabgabe und Umlagen zusammengezählt, netto (ohne MwSt.).",
+            "margin": "Netto (ohne MwSt.). Die Mehrwertsteuer rechnet Tarifwacht selbst dazu.",
+            "base_price": "Brutto. Pro Monat; pro Jahr unter „Weitere Angaben“."
+          },
           "sections": {
             "details_section": {
               "name": "Weitere Angaben (optional)",
@@ -311,7 +317,7 @@
                 "vat": "Mehrwertsteuer"
               },
               "data_description": {
-                "standard_fee": "ct/kWh netto: das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
+                "standard_fee": "ct/kWh netto (ohne MwSt.): das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
                 "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
                 "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
               }
@@ -349,8 +355,8 @@
             "ht_windows": "Zeitfenster Hochlast (HT)"
           },
           "data_description": {
-            "nt": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
-            "ht": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "nt": "ct/kWh netto (ohne MwSt.), aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "ht": "ct/kWh netto (ohne MwSt.), aus dem Preisblatt deines Netzbetreibers (Modul 3).",
             "quarters": "Außerhalb dieser Quartale gilt den ganzen Tag das normale Netzentgelt.",
             "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
             "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
@@ -370,10 +376,10 @@
             "ht_windows": "Zeitfenster Hochlast (HT)"
           },
           "data_description": {
-            "standard_fee": "ct/kWh netto: das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
+            "standard_fee": "ct/kWh netto (ohne MwSt.): das normale Netzentgelt (Arbeitspreis) deines Netzbetreibers, das im Festpreis steckt, aus dessen Preisblatt.",
             "vat": "Auf den Unterschied des Netzentgelts, in Prozent.",
-            "nt": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
-            "ht": "ct/kWh netto, aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "nt": "ct/kWh netto (ohne MwSt.), aus dem Preisblatt deines Netzbetreibers (Modul 3).",
+            "ht": "ct/kWh netto (ohne MwSt.), aus dem Preisblatt deines Netzbetreibers (Modul 3).",
             "quarters": "Außerhalb dieser Quartale gilt den ganzen Tag das normale Netzentgelt.",
             "nt_windows": "Ortszeit, im Viertelstundenraster, mehrere mit Komma getrennt, z. B. 10:00-14:00 oder 01:45-06:15, 22:30-24:00. Ein Fenster darf über Mitternacht gehen (23:00-06:00).",
             "ht_windows": "Wie oben, z. B. 17:00-22:00. Außerhalb aller Fenster gilt das normale Netzentgelt."
