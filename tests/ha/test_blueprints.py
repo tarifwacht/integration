@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.automation.config import AUTOMATION_BLUEPRINT_SCHEMA
 from homeassistant.components.blueprint.models import Blueprint, BlueprintInputs
-from homeassistant.core import HomeAssistant, SupportsResponse
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.helpers import device_registry as dr
 from homeassistant.setup import async_setup_component
 from homeassistant.util.yaml import load_yaml
 from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
     async_fire_time_changed,
     async_mock_service,
 )
@@ -52,12 +55,63 @@ RESPONSE = {
         },
     ],
 }
+GERMAN = (
+    "Strombezug: 312,5 kWh\n"
+    "Festpreis: 100,00 €\n"
+    "Börsentarif: 104,50 € (+4,50 € gegenüber dem aktuellen Tarif)\n"
+    "Dynamisch: 7,25 € (Preise fehlen)\n"
+    "Günstigster Tarif: Festpreis"
+)
+ENGLISH = (
+    "Grid purchase: 312.5 kWh\n"
+    "Festpreis: 100.00 €\n"
+    "Börsentarif: 104.50 € (+4.50 € compared with the current tariff)\n"
+    "Dynamisch: 7.25 € (prices missing)\n"
+    "Cheapest tariff: Festpreis"
+)
+# The actions of an automation set up before the blueprint was bilingual.
+OWN_ACTION = [
+    {
+        "action": "test.notify",
+        "data": {"title": "{{ title }}", "message": "{{ message }}"},
+    }
+]
 
 
-@pytest.mark.freeze_time(datetime(2026, 11, 1, 6, 59, tzinfo=UTC))
-async def test_monthly_summary(
-    hass: HomeAssistant, freezer: FrozenDateTimeFactory
-) -> None:
+def load_blueprint() -> Blueprint:
+    return Blueprint(
+        load_yaml(BLUEPRINT),
+        expected_domain="automation",
+        schema=AUTOMATION_BLUEPRINT_SCHEMA,
+    )
+
+
+def test_inputs_bilingual_and_compatible() -> None:
+    """Every input named in German and English; the inputs of before keep
+    their keys, nothing new is required; the actions sit in a collapsed
+    section."""
+    blueprint = load_blueprint()
+    metadata = blueprint.data["blueprint"]
+    assert " / " in metadata["name"]
+    assert "\n\n" in metadata["description"]
+    inputs = blueprint.inputs
+    assert {"meter", "time", "notify_actions"} <= set(inputs)
+    assert {"notify_device", "language"} <= set(inputs)
+    for key, spec in inputs.items():
+        assert " / " in spec["name"], key
+        if key != "meter":
+            assert "default" in spec, key
+    assert inputs["notify_device"]["default"] == ""
+    assert inputs["language"]["default"] == "de"
+    section = metadata["input"]["more"]
+    assert section["collapsed"] is True
+    assert set(section["input"]) == {"notify_actions"}
+
+
+async def setup_automation(
+    hass: HomeAssistant, inputs: dict[str, Any]
+) -> tuple[list[ServiceCall], list[ServiceCall]]:
+    """The blueprint as an automation; the mocked compare and test.notify."""
     await hass.config.async_set_time_zone("Europe/Berlin")
     compare = async_mock_service(
         hass,
@@ -67,39 +121,41 @@ async def test_monthly_summary(
         supports_response=SupportsResponse.ONLY,
     )
     notify = async_mock_service(hass, "test", "notify")
-    blueprint = Blueprint(
-        load_yaml(BLUEPRINT),
-        expected_domain="automation",
-        schema=AUTOMATION_BLUEPRINT_SCHEMA,
-    )
     config = BlueprintInputs(
-        blueprint,
-        {
-            "use_blueprint": {
-                "path": BLUEPRINT.name,
-                "input": {
-                    "meter": ENTRY,
-                    "notify_actions": [
-                        {
-                            "action": "test.notify",
-                            "data": {
-                                "title": "{{ title }}",
-                                "message": "{{ message }}",
-                            },
-                        }
-                    ],
-                },
-            }
-        },
+        load_blueprint(),
+        {"use_blueprint": {"path": BLUEPRINT.name, "input": inputs}},
     ).async_substitute()
     config.pop("use_blueprint", None)
     assert await async_setup_component(hass, "automation", {"automation": config})
     await hass.async_block_till_done()
+    return compare, notify
 
+
+async def first_of_month(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
     # 1 November, 08:00 CET: the summary of October.
     freezer.move_to(datetime(2026, 11, 1, 7, 0, tzinfo=UTC))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
+
+
+async def turn_off(hass: HomeAssistant) -> None:
+    # Detach the time trigger, or its next timer outlives the test.
+    await hass.services.async_call(
+        "automation", "turn_off", {"entity_id": "all"}, blocking=True
+    )
+
+
+@pytest.mark.freeze_time(datetime(2026, 11, 1, 6, 59, tzinfo=UTC))
+async def test_monthly_summary(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """An automation with the inputs of before: German, own action, the
+    title with the entry's name."""
+    MockConfigEntry(domain=DOMAIN, entry_id=ENTRY, title="Haus").add_to_hass(hass)
+    compare, notify = await setup_automation(
+        hass, {"meter": ENTRY, "notify_actions": OWN_ACTION}
+    )
+    await first_of_month(hass, freezer)
     assert len(compare) == 1
     assert compare[0].data == {
         "config_entry": ENTRY,
@@ -107,22 +163,38 @@ async def test_monthly_summary(
         "end": "2026-11-01 00:00:00",
     }
     assert len(notify) == 1
-    assert notify[0].data["title"] == "Strom im Oktober 2026"
-    assert notify[0].data["message"] == (
-        "Strombezug: 312,5 kWh\n"
-        "Festpreis: 100,00 €\n"
-        "Börsentarif: 104,50 € (+4,50 € gegenüber dem aktuellen Tarif)\n"
-        "Dynamisch: 7,25 € (Preise fehlen)\n"
-        "Günstigster Tarif: Festpreis"
-    )
+    assert notify[0].data["title"] == "Tarifwacht · Haus: Strom im Oktober 2026"
+    assert notify[0].data["message"] == GERMAN
 
     # Any other day: nothing.
     freezer.move_to(datetime(2026, 11, 2, 7, 0, tzinfo=UTC))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert (len(compare), len(notify)) == (1, 1)
+    await turn_off(hass)
 
-    # Detach the time trigger, or its next timer outlives the test.
-    await hass.services.async_call(
-        "automation", "turn_off", {"entity_id": "all"}, blocking=True
+
+@pytest.mark.freeze_time(datetime(2026, 11, 1, 6, 59, tzinfo=UTC))
+async def test_monthly_summary_english_to_the_phone(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """English, the default notification in Home Assistant and the phone;
+    without a known entry the title says just Tarifwacht."""
+    phone_entry = MockConfigEntry(domain="mobile_app")
+    phone_entry.add_to_hass(hass)
+    phone = dr.async_get(hass).async_get_or_create(
+        config_entry_id=phone_entry.entry_id,
+        identifiers={("mobile_app", "phone-1")},
+        name="Andys Handy",
     )
+    _, notify = await setup_automation(
+        hass, {"meter": ENTRY, "notify_device": phone.id, "language": "en"}
+    )
+    bell = async_mock_service(hass, "persistent_notification", "create")
+    to_phone = async_mock_service(hass, "notify", "mobile_app_andys_handy")
+    await first_of_month(hass, freezer)
+    title = "Tarifwacht: Electricity in October 2026"
+    assert [c.data for c in bell] == [{"title": title, "message": ENGLISH}]
+    assert [c.data for c in to_phone] == [{"title": title, "message": ENGLISH}]
+    assert not notify
+    await turn_off(hass)

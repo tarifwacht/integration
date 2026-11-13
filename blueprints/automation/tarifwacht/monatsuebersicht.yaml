@@ -1,9 +1,22 @@
 blueprint:
-  name: Tarifwacht – Monatsübersicht
+  name: Tarifwacht – Monatsübersicht / Monthly summary
   description: >-
-    Schickt am Ersten jedes Monats eine Übersicht über den Vormonat: Strombezug,
-    Kosten jedes Tarifs, die Differenz zum aktuellen Tarif und den günstigsten
-    Tarif. Grundlage ist die Aktion „Tarife vergleichen“ von Tarifwacht.
+    Schickt am Ersten jedes Monats eine Übersicht über den Vormonat:
+    Strombezug, Kosten jedes Tarifs, die Differenz zum aktuellen Tarif und den
+    günstigsten Tarif. Grundlage ist die Aktion „Tarife vergleichen“ von
+    Tarifwacht. Die Nachricht kommt als Benachrichtigung in Home Assistant und
+    auf Wunsch aufs Handy mit der Home-Assistant-App; unter „Weitere Aktionen“
+    gehen auch Telegram und andere Dienste. Im Titel steht der Name des
+    Eintrags, die Nachricht gibt es auf Deutsch oder Englisch.
+
+
+    Sends a summary of the previous month on the first of every month: grid
+    purchase, cost of every tariff, the difference to the current tariff and
+    the cheapest tariff. It uses the Tarifwacht action "Compare tariffs". The
+    message comes as a notification in Home Assistant and, optionally, on the
+    phone with the Home Assistant app; Telegram and other services go under
+    "More actions". The title names the entry, the message comes in German or
+    English.
   domain: automation
   author: Tarifwacht
   homeassistant:
@@ -11,30 +24,70 @@ blueprint:
   source_url: https://github.com/tarifwacht/integration/blob/main/blueprints/automation/tarifwacht/monatsuebersicht.yaml
   input:
     meter:
-      name: Zähler
-      description: Der Tarifwacht-Eintrag, der ausgewertet wird.
+      name: Zähler / Meter
+      description: >-
+        Der Tarifwacht-Eintrag, der ausgewertet wird. / The Tarifwacht entry
+        to summarise.
       selector:
         config_entry:
           integration: tarifwacht
     time:
-      name: Uhrzeit
-      description: Wann am Monatsersten die Übersicht kommt.
+      name: Uhrzeit / Time
+      description: >-
+        Wann am Monatsersten die Übersicht kommt. / When the summary comes on
+        the first of the month.
       default: "08:00:00"
       selector:
         time: {}
-    notify_actions:
-      name: Benachrichtigung
+    notify_device:
+      name: Handy (optional) / Phone (optional)
       description: >-
-        Was mit der Übersicht geschieht. Text und Überschrift stehen in den
-        Variablen `message` und `title`, z. B. für eine Aktion
-        `notify.mobile_app_…` mit `message: "{{ message }}"`.
-      default:
-        - action: persistent_notification.create
-          data:
-            title: "{{ title }}"
-            message: "{{ message }}"
+        Ein Handy mit der Home-Assistant-App, zusätzlich zur Benachrichtigung
+        in Home Assistant. Leer lassen, wenn nicht gebraucht. / A phone with
+        the Home Assistant app, in addition to the notification in Home
+        Assistant. Leave empty if not needed.
+      default: ""
       selector:
-        action: {}
+        device:
+          filter:
+            integration: mobile_app
+    language:
+      name: Sprache der Nachricht / Language of the message
+      default: de
+      selector:
+        select:
+          options:
+            - label: Deutsch
+              value: de
+            - label: English
+              value: en
+    more:
+      name: Weitere Aktionen (optional) / More actions (optional)
+      icon: mdi:send
+      description: >-
+        Was sonst mit der Übersicht geschieht, z. B. Telegram. / What else
+        happens with the summary, e.g. Telegram.
+      collapsed: true
+      input:
+        notify_actions:
+          name: Aktionen mit der Übersicht / Actions with the summary
+          description: >-
+            Laufen mit dem fertigen Text. Vorgabe: eine Benachrichtigung in Home
+            Assistant (Glocke); ersetzen oder ergänzen. Nutzbar sind {{ title }}
+            und {{ message }}. Beispiel Telegram: Aktion
+            telegram_bot.send_message mit message: "{{ title }}: {{ message
+            }}". / Run with the finished text. Default: a notification in Home
+            Assistant (bell); replace it or add to it. You can use {{ title }}
+            and {{ message }}. Example Telegram: action
+            telegram_bot.send_message with message: "{{ title }}: {{ message
+            }}".
+          default:
+            - action: persistent_notification.create
+              data:
+                title: "{{ title }}"
+                message: "{{ message }}"
+          selector:
+            action: {}
 
 mode: single
 
@@ -46,6 +99,18 @@ conditions:
   # No native condition for the day of the month.
   - condition: template
     value_template: "{{ now().day == 1 }}"
+
+variables:
+  entry: !input meter
+  notify_device: !input notify_device
+  lang: !input language
+  # The phone's notify action: mobile_app names it after the registered device.
+  phone_action: >-
+    {%- set d = device_attr(notify_device, 'name') if notify_device else none -%}
+    {{ 'notify.mobile_app_' ~ (d | slugify) if d else '' }}
+  # The entry's name (several meters are possible), else just Tarifwacht.
+  entry_name: "{{ (config_entry_attr(entry, 'title') or '') if entry else '' }}"
+  head: "{{ 'Tarifwacht' ~ (' · ' ~ entry_name if entry_name else '') }}"
 
 actions:
   - action: tarifwacht.compare
@@ -59,26 +124,44 @@ actions:
   - variables:
       title: >-
         {%- set last_day = now().replace(day=1) - timedelta(days=1) -%}
-        {%- set names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
-          'August', 'September', 'Oktober', 'November', 'Dezember'] -%}
-        Strom im {{ names[last_day.month - 1] }} {{ last_day.year }}
+        {%- if lang == 'en' -%}
+          {%- set names = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'] -%}
+          {{ head }}: Electricity in {{ names[last_day.month - 1] }} {{ last_day.year }}
+        {%- else -%}
+          {%- set names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+            'August', 'September', 'Oktober', 'November', 'Dezember'] -%}
+          {{ head }}: Strom im {{ names[last_day.month - 1] }} {{ last_day.year }}
+        {%- endif -%}
       message: >-
-        {%- set ns = namespace(lines=['Strombezug: '
-          ~ ('%.1f' | format(result.energy_kwh) | replace('.', ',')) ~ ' kWh']) -%}
+        {%- set de = lang != 'en' -%}
+        {%- macro n(x, f) -%}
+          {{- f | format(x) | replace('.', '.' if lang == 'en' else ',') -}}
+        {%- endmacro -%}
+        {%- set ns = namespace(lines=[('Strombezug: ' if de else 'Grid purchase: ')
+          ~ n(result.energy_kwh, '%.1f') ~ ' kWh']) -%}
         {%- for t in result.tariffs -%}
-          {%- set text = t.tariff ~ ': '
-            ~ ('%.2f' | format(t.cost) | replace('.', ',')) ~ ' €' -%}
+          {%- set text = t.tariff ~ ': ' ~ n(t.cost, '%.2f') ~ ' €' -%}
           {%- if t.energy_without_price_kwh > 0 -%}
-            {%- set text = text ~ ' (Preise fehlen)' -%}
+            {%- set text = text ~ (' (Preise fehlen)' if de else ' (prices missing)') -%}
           {%- elif t.difference_to_current -%}
-            {%- set text = text ~ ' ('
-              ~ ('%+.2f' | format(t.difference_to_current) | replace('.', ','))
-              ~ ' € gegenüber dem aktuellen Tarif)' -%}
+            {%- set text = text ~ ' (' ~ n(t.difference_to_current, '%+.2f')
+              ~ (' € gegenüber dem aktuellen Tarif)' if de
+                 else ' € compared with the current tariff)') -%}
           {%- endif -%}
           {%- set ns.lines = ns.lines + [text] -%}
         {%- endfor -%}
         {%- if result.cheapest -%}
-          {%- set ns.lines = ns.lines + ['Günstigster Tarif: ' ~ result.cheapest] -%}
+          {%- set ns.lines = ns.lines
+            + [('Günstigster Tarif: ' if de else 'Cheapest tariff: ') ~ result.cheapest] -%}
         {%- endif -%}
         {{ ns.lines | join('\n') }}
   - sequence: !input notify_actions
+  - if:
+      - condition: template
+        value_template: "{{ phone_action != '' }}"
+    then:
+      - action: "{{ phone_action }}"
+        data:
+          title: "{{ title }}"
+          message: "{{ message }}"

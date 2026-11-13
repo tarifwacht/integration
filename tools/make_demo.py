@@ -515,27 +515,59 @@ def compare(engine: Engine, keys: tuple[str, ...], start: datetime, end: datetim
     return response
 
 
-def _de(value: float, digits: int, sign: bool = False) -> str:
+MONTHS_EN = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]  # fmt: skip
+# The blueprint's words, German and English.
+WORDS = {
+    "de": {
+        "energy": "Strombezug",
+        "missing": "Preise fehlen",
+        "difference": "€ gegenüber dem aktuellen Tarif",
+        "cheapest": "Günstigster Tarif",
+        "title": "Strom im {month} {year}",
+        "months": MONTHS_DE,
+    },
+    "en": {
+        "energy": "Grid purchase",
+        "missing": "prices missing",
+        "difference": "€ compared with the current tariff",
+        "cheapest": "Cheapest tariff",
+        "title": "Electricity in {month} {year}",
+        "months": MONTHS_EN,
+    },
+}
+
+
+def _num(value: float, digits: int, lang: str, sign: bool = False) -> str:
     text = f"{value:+.{digits}f}" if sign else f"{value:.{digits}f}"
-    return text.replace(".", ",")
+    return text.replace(".", ",") if lang == "de" else text
 
 
-def month_notification(result: dict[str, Any], month_start: datetime) -> dict[str, str]:
-    """Title and message of the blueprint "Monatsübersicht" (its template)."""
-    lines = [f"Strombezug: {_de(result['energy_kwh'], 1)} kWh"]
-    for row in result["tariffs"]:
-        text = f"{row['tariff']}: {_de(row['cost'], 2)} €"
-        if row["energy_without_price_kwh"] > 0:
-            text += " (Preise fehlen)"
-        elif row["difference_to_current"]:
-            text += f" ({_de(row['difference_to_current'], 2, sign=True)} € gegenüber dem aktuellen Tarif)"
-        lines.append(text)
-    if result["cheapest"]:
-        lines.append(f"Günstigster Tarif: {result['cheapest']}")
-    return {
-        "title": f"Strom im {MONTHS_DE[month_start.month - 1]} {month_start.year}",
-        "message": "\n".join(lines),
-    }
+def month_notification(result: dict[str, Any], month_start: datetime, entry: str) -> dict[str, dict[str, str]]:  # fmt: skip
+    """Title and message of the blueprint "Monatsübersicht" (its template),
+    in German and English; the title names the entry."""
+    texts = {}
+    for lang, w in WORDS.items():
+        lines = [f"{w['energy']}: {_num(result['energy_kwh'], 1, lang)} kWh"]
+        for row in result["tariffs"]:
+            text = f"{row['tariff']}: {_num(row['cost'], 2, lang)} €"
+            if row["energy_without_price_kwh"] > 0:
+                text += f" ({w['missing']})"
+            elif row["difference_to_current"]:
+                text += f" ({_num(row['difference_to_current'], 2, lang, sign=True)} {w['difference']})"
+            lines.append(text)
+        if result["cheapest"]:
+            lines.append(f"{w['cheapest']}: {result['cheapest']}")
+        title = w["title"].format(
+            month=w["months"][month_start.month - 1], year=month_start.year
+        )
+        texts[lang] = {
+            "title": f"Tarifwacht · {entry}: {title}",
+            "message": "\n".join(lines),
+        }
+    return texts
 
 
 def _next_month(start: datetime) -> datetime:
@@ -582,7 +614,7 @@ def card_statistics(engine: Engine, keys: tuple[str, ...], now: datetime, solar:
     }
 
 
-def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[datetime, float], solar: dict[datetime, HourFlows] | None) -> dict[str, Any]:  # fmt: skip
+def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[datetime, float], solar: dict[datetime, HourFlows] | None, entry: str) -> dict[str, Any]:  # fmt: skip
     """What Home Assistant shows at this moment."""
     utc_now = now.astimezone(UTC)
     day = now.replace(hour=0, minute=0)
@@ -626,7 +658,7 @@ def snapshot(engine: Engine, keys: tuple[str, ...], now: datetime, energy: dict[
         slot += QUARTER
     last_month = (month - timedelta(days=1)).replace(day=1)
     notification = month_notification(
-        compare(engine, keys, last_month, month, now), last_month
+        compare(engine, keys, last_month, month, now), last_month, entry
     )
     extra: dict[str, Any] = {}
     if solar is not None:
@@ -686,7 +718,9 @@ def main() -> None:
             engine.tick(end)
             while pending and end >= pending[0][1].astimezone(UTC):
                 key, now = pending.pop(0)
-                moments[key] = snapshot(engine, keys, now, energy, solar)
+                moments[key] = snapshot(
+                    engine, keys, now, energy, solar, household.capitalize()
+                )
         result = {
             "name": name,
             "device": household.capitalize(),

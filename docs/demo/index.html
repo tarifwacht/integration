@@ -284,7 +284,7 @@
           since: (d) => `seit der Einrichtung am ${d}`,
           notification: "Benachrichtigung",
           notificationNote:
-            "Am Monatsersten schickt der Blueprint „Monatsübersicht“ den Vergleich des Vormonats – Text wie in seiner Vorlage.",
+            "Am Monatsersten schickt der Blueprint „Monatsübersicht“ den Vergleich des Vormonats – Text wie in seiner Vorlage, auf Deutsch oder Englisch.",
           importBlueprint: "Blueprint importieren →",
           year: "Jahresrückblick",
           yearTitle: "Kosten je Monat (Aktion „Tarife vergleichen“)",
@@ -375,7 +375,7 @@
           since: (d) => `since setup on ${d}`,
           notification: "Notification",
           notificationNote:
-            "On the first of the month the blueprint “Monatsübersicht” sends last month's comparison – text as in its template (German).",
+            "On the first of the month the blueprint “Monatsübersicht” sends last month's comparison – text as in its template, in German or English.",
           importBlueprint: "Import blueprint →",
           year: "Year in review",
           yearTitle: "Costs per month (action “Compare tariffs”)",
@@ -694,12 +694,13 @@
       function notificationSection(view) {
         const tx = t();
         const n = view.notification;
+        const text = n[state.lang] || n.de;
         const when = dateFmt(n.at, { day: "numeric", month: "short" }) + ", " + timeFmt(n.at);
         return `
           <section class="section">
             <div class="heading">${icon("bell-ring-outline")}<span>${tx.notification}</span></div>
             <div class="card">
-              <div class="phone"><div class="push"><div class="app">${icon("bell-ring-outline")}<span>Home Assistant</span><span>${when}</span></div><b>${escapeHtml(n.title)}</b>${escapeHtml(n.message)}</div></div>
+              <div class="phone"><div class="push"><div class="app">${icon("bell-ring-outline")}<span>Home Assistant</span><span>${when}</span></div><b>${escapeHtml(text.title)}</b>${escapeHtml(text.message)}</div></div>
               <div class="blueprint">${tx.notificationNote}<br /><a href="${BLUEPRINT_URL}" target="_blank" rel="noopener">${tx.importBlueprint}</a></div>
             </div>
           </section>`;

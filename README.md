@@ -499,7 +499,17 @@ Die Antwort lässt sich auch in Skripten und Automationen verwenden (`response_v
 
 | Blueprint | Was er tut | |
 | --- | --- | --- |
-| **Monatsübersicht** | schickt am Ersten jedes Monats Strombezug, Kosten jedes Tarifs, Differenz zum aktuellen Tarif und den günstigsten Tarif des Vormonats – als Benachrichtigung in Home Assistant oder mit einer eigenen Aktion (z. B. ans Handy) | [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftarifwacht%2Fmonatsuebersicht.yaml) |
+| **Monatsübersicht** | schickt am Ersten jedes Monats Strombezug, Kosten jedes Tarifs, Differenz zum aktuellen Tarif und den günstigsten Tarif des Vormonats – als Benachrichtigung in Home Assistant, aufs Handy oder mit eigenen Aktionen (z. B. Telegram), auf Deutsch oder Englisch | [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Ftarifwacht%2Fintegration%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ftarifwacht%2Fmonatsuebersicht.yaml) |
+
+Die Nachricht gibt es auf **Deutsch oder Englisch** (Feld *Sprache der Nachricht*), im Titel steht der Name des Eintrags, z. B. „Tarifwacht · Haus: Strom im Oktober 2026“. Sie kommt als Benachrichtigung in Home Assistant und – wenn du unter *Handy (optional)* eins auswählst – aufs Handy mit der Home-Assistant-App. **Telegram** oder andere Dienste schließt du unter **Weitere Aktionen (optional)** an; dort stehen der Titel als `{{ title }}` und der Text als `{{ message }}` bereit:
+
+```yaml
+- action: telegram_bot.send_message
+  data:
+    message: "{{ title }}: {{ message }}"
+```
+
+Die Benachrichtigung in Home Assistant ist dort die Vorgabe; nimmst du sie heraus, kommt die Übersicht nur noch über deine Aktionen. Bestehende Automationen laufen unverändert weiter; Handy, Sprache und Name im Titel gibt es nach einem erneuten Import des Blueprints.
 
 ## Statistik nachtragen
 
