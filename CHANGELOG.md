@@ -2,7 +2,9 @@
 
 ## Unveröffentlicht
 
-### Geändert
+### Behoben
+
+- **Tarife vergleichen: kein Grundpreis vor der ersten Zählerstatistik.** Begann der Zeitraum von *Tarife vergleichen* vor der ersten Stunde, für die die Langzeitstatistik des Zählers Werte hat, rechnete Tarifwacht für die Tage davor den Grundpreis (und einen Bonus aus dieser Zeit) mit, ohne Verbrauch dazu – die Kosten waren zu hoch, die Differenzen zwischen Tarifen mit verschiedenem Grundpreis verzerrt. Jetzt beginnt der Zeitraum mit der ersten Stunde mit Daten; `start` in der Antwort zeigt das. *Statistik nachtragen* und *Statistik neu berechnen* hielten es schon so.
 
 - **Zweiter Eintrag: Hinweis auf „Tarif hinzufügen“.** Wer schon einen Eintrag hat und noch einmal *Integration hinzufügen* wählt, sieht oben im Schritt „Bezugszähler“, dass weitere Tarife für denselben Zähler am bestehenden Eintrag unter *Tarif hinzufügen* angelegt werden – ein neuer Eintrag ist nur für einen weiteren Zähler gedacht. Einen Zähler aus dem Energie-Dashboard schlägt Tarifwacht dann nicht mehr vor: Er misst meist denselben Anschluss, und ein zweiter Eintrag würde alles doppelt rechnen.
 - **Preisbestandteile erklärt: netto eintragen.** Beim Tarif „Börsenpreis plus Aufschläge“ sagt jedes Feld jetzt ausdrücklich „netto (ohne MwSt.)“ – die Mehrwertsteuer rechnet Tarifwacht selbst dazu; ein Bruttowert gehört durch 1,19 geteilt. Arbeitspreis, Grundpreis und Bonus sind als „brutto“ beschriftet, auch unter *Preisänderung ab einem Datum hinzufügen*. Wer Netzentgelt, Steuern und Abgaben oder Anbieteraufschlag mit MwSt. eingetragen hat, korrigiert das unter *Preise ab Beginn bearbeiten*. Was in welches Feld gehört und wo man die Werte findet, steht mit Rechenbeispiel im README unter [Preisbestandteile](README.md#preisbestandteile-was-gehört-wohin). *(danke an MelleD, simon42-Forum)*

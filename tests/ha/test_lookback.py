@@ -205,6 +205,32 @@ async def test_compare_before_setup(
 
 
 @pytest.mark.freeze_time(START)
+async def test_compare_from_before_the_meters_statistics(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """A start before the meter's first statistic: the period begins there,
+    no base price for the days without data (as the import)."""
+    entry = await setup_entry(hass, market=False)
+    await import_meter_statistics(hass)
+
+    result = await compare(hass, entry, start="2026-10-20 00:00:00")
+    # The first row with a change starts it: 24.10. 12:00 UTC (change 0) or
+    # 13:00 UTC, depending on how the recorder reports the first change.
+    start = datetime.fromisoformat(result["start"])
+    assert utc(2026, 10, 24, 12) <= start <= utc(2026, 10, 24, 13)
+    assert result["energy_kwh"] == pytest.approx(4.0)
+    assert result["estimate"]["hours_without_energy"] == 24
+    tariffs = {t["tariff"]: t for t in result["tariffs"]}
+    # 1 €/day: 24.10. from the start (of 96 quarter hours), 25.10. up to
+    # 17:00 (72 of 100) - not 4 days more from 20.10.
+    quarters = (utc(2026, 10, 24, 22) - start) / QUARTER
+    assert tariffs["Fixed price"]["base_cost"] == pytest.approx(
+        quarters / 96 + 0.72, abs=1e-4
+    )
+    assert [m["month"] for m in result["months"]] == ["2026-10"]
+
+
+@pytest.mark.freeze_time(START)
 async def test_compare_before_setup_without_market_tariff(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
 ) -> None:

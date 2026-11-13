@@ -419,11 +419,15 @@ class MeterRuntime:
         if market:
             end = max(until, *(self._smard_until(data) for data in market))
             smard = await smard_cache(self.hass).async_prices(start, end)
+        consumption = spread_hours(hourly, start, until)
+        # The look-back starts with the meter's first statistic (data_from):
+        # the hours before it are not missing, they are not in the period.
+        data_from = max(start, min(consumption, default=until))
         return Lookback(
-            consumption=spread_hours(hourly, start, until),
+            consumption=consumption,
             tariffs=self._build_tariffs(smard),
             until=until,
-            hours_without_energy=hours_without_energy(changes, start, until),
+            hours_without_energy=hours_without_energy(changes, data_from, until),
             uses_smard=bool(market),
             implausible_hours=[h for h in implausible if h >= hour_start(start)],
         )

@@ -119,6 +119,14 @@ class Lookback:
     # Hours of the meter's statistics left out as implausible (plausible_hours).
     implausible_hours: list[datetime] = field(default_factory=list)
 
+    @property
+    def data_from(self) -> datetime:
+        """First quarter hour with consumption data: the meter's first
+        statistic, else the setup. A look-back starts here, so that the
+        days before the meter's statistics carry no base price (as the
+        import and the recalculation of statistics)."""
+        return min(self.consumption, default=self.until)
+
 
 def spread_hours(
     hourly: Iterable[tuple[datetime, float]], start: datetime, end: datetime

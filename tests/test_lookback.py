@@ -245,6 +245,34 @@ def test_costs_before_setup() -> None:
     assert month.totals["fixed"].cost == pytest.approx(fixed.cost)
 
 
+def test_no_base_price_before_the_meters_first_statistic() -> None:
+    """The meter's statistics begin on 25.10. at 15:00 (CET): a comparison
+    from 1 October charges no base price for the 24 days without data."""
+    engine, lookback = engine_with_lookback()
+    assert lookback.data_from == utc(2026, 10, 25, 14)
+    end = STARTED + QUARTER
+    early = engine.costs_between(utc(2026, 9, 30, 22), end, NOW, lookback)
+    exact = engine.costs_between(utc(2026, 10, 25, 14), end, NOW, lookback)
+    assert early.start == utc(2026, 10, 25, 14)
+    assert early.totals["fixed"].base_cost == pytest.approx(0.09)
+    assert early.totals["fixed"].cost == pytest.approx(exact.totals["fixed"].cost)
+    assert list(early.months) == ["2026-10"]
+    # A period that ends before the first statistic is empty.
+    empty = engine.costs_between(utc(2026, 10, 1, 0), utc(2026, 10, 2), NOW, lookback)
+    assert empty.start == empty.end == utc(2026, 10, 2)
+    assert empty.totals["fixed"].cost == 0
+    assert not empty.months
+
+
+def test_without_statistics_the_lookback_starts_at_setup() -> None:
+    engine, lookback = engine_with_lookback()
+    lookback.consumption = {}
+    assert lookback.data_from == STARTED
+    result = engine.costs_between(utc(2026, 10, 1), STARTED + QUARTER, NOW, lookback)
+    assert result.start == STARTED
+    assert result.totals["fixed"].base_cost == pytest.approx(0.01)
+
+
 def test_missing_price_before_setup_does_not_wait() -> None:
     """Right after the setup: the total price sensor never had these prices."""
     engine, lookback = engine_with_lookback()

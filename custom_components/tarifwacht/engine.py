@@ -150,16 +150,20 @@ class Engine:
 
         Same rules as the running totals. Without `lookback` the period is
         clipped to the accounting period (`started` up to the running quarter
-        hour); with it, the quarter hours before `started` come from there.
+        hour); with it, the quarter hours before `started` come from there,
+        but not before the meter's first statistic (`data_from`): before it
+        there would only be base prices, charged against no consumption.
         """
         tariffs = lookback.tariffs if lookback is not None else self.tariffs
         first = slot_start(start)
-        if lookback is None:
-            first = max(first, self.started or slot_start(now))
         # A quarter hour that begins before `end` belongs to the period.
         end_slot = slot_start(end)
         if end_slot < end:
             end_slot += QUARTER
+        if lookback is None:
+            first = max(first, self.started or slot_start(now))
+        else:
+            first = max(first, min(lookback.data_from, end_slot))
         last = max(first, min(end_slot, slot_start(now) + QUARTER))
 
         def costs(a: datetime, b: datetime) -> PeriodCosts:

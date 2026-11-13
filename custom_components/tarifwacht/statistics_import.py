@@ -278,7 +278,7 @@ async def _async_import_history(
     if lookback is None:  # only if the start were not before the setup
         raise StatisticsImportError("start_after_setup")
     # No base prices for the time before the meter's first statistic.
-    start = max(start, hour_start(min(lookback.consumption, default=started)))
+    start = max(start, hour_start(lookback.data_from))
     with_energy = {hour_start(slot) for slot in lookback.consumption}
     hours_missing, hour = 0, start
     while hour < started:
@@ -583,9 +583,7 @@ async def _async_recalculate(
             lookback := await runtime.async_lookback(requested)
         ):
             # Not before the meter's first statistic (only base prices there).
-            requested = max(
-                requested, hour_start(min(lookback.consumption, default=started))
-            )
+            requested = max(requested, hour_start(lookback.data_from))
 
     plans: dict[str, _Plan] = {}
     with_rows = False
