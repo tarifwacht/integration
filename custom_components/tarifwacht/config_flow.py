@@ -78,12 +78,16 @@ from .const import (
     SUBENTRY_TARIFF,
     TARIFF_DYNAMIC,
 )
+from .entry_summary import Tariff, entry_summary
 from .meter import UNIT_FACTORS
 from .modul3 import WindowError, overlaps, parse_windows
 from .runtime import (
+    entity_source,
     own_entity,
     parse_price_state,
     price_unit_ok,
+    solar_subentry,
+    started_day,
     tariff_subentries,
 )
 from .solar_flow import SolarSubentryFlow
@@ -194,10 +198,29 @@ class TarifwachtConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Change name and meter; tariffs are changed in their subentries."""
+        """Change name and meter; tariffs are changed in their subentries.
+        On top a short summary of what is set up and what is missing."""
         if not self._data:
             self._data = dict(self._get_reconfigure_entry().data)
-        return await self._async_meter_step("reconfigure", user_input)
+        return await self._async_meter_step(
+            "reconfigure", user_input, {"summary": self._entry_summary()}
+        )
+
+    def _entry_summary(self) -> str:
+        """The stored meter, the tariffs and PV and battery of the entry,
+        with the current states (nothing read from the statistics)."""
+        entry = self._get_reconfigure_entry()
+        solar = solar_subentry(entry)
+        return entry_summary(
+            entity_source(self.hass, entry.data[CONF_METER]),
+            [
+                Tariff(s.title, bool(s.data.get(CONF_CURRENT)))
+                for s in tariff_subentries(entry)
+            ],
+            solar.data if solar is not None else None,
+            started=started_day(entry),
+            german=self.hass.config.language.startswith("de"),
+        )
 
     async def _async_meter_step(
         self,

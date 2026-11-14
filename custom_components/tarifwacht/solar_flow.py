@@ -45,8 +45,9 @@ from .const import (
     SECTION_PURCHASE,
     SUBENTRY_SOLAR,
 )
+from .entry_summary import solar_summary
 from .meter import UNIT_FACTORS
-from .runtime import own_entity
+from .runtime import entity_source, own_entity, section51_market, started_day
 from .solar import HourFlows, detect_same_inverter
 
 # Section 51 EEG (Solarspitzengesetz): plants commissioned from this day on
@@ -366,8 +367,32 @@ class SolarSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        return await self._async_meters(
-            "reconfigure", user_input, dict(self._get_reconfigure_subentry().data)
+        """The form again, with a short summary on top (as stored)."""
+        data = dict(self._get_reconfigure_subentry().data)
+        if user_input is None:
+            self._placeholders = {"summary": self._summary(data)}
+        return await self._async_meters("reconfigure", user_input, data)
+
+    def _summary(self, data: Mapping[str, Any]) -> str:
+        """What the subentry reads and computes, and what is missing: from
+        the stored data and the current states."""
+        entry = self._get_entry()
+        market, tariff = (
+            section51_market(entry, data)
+            if data.get(CONF_NEGATIVE_UNPAID)
+            else (None, None)
+        )
+        return solar_summary(
+            data,
+            {
+                key: entity_source(self.hass, data[key])
+                for key in METERS
+                if data.get(key)
+            },
+            market=entity_source(self.hass, market) if market else None,
+            market_tariff=tariff.title if tariff is not None else None,
+            started=started_day(entry),
+            german=self.hass.config.language.startswith("de"),
         )
 
     async def _async_meters(

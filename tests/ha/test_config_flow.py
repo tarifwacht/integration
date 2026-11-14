@@ -209,6 +209,16 @@ async def test_reconfigure_meter(hass: HomeAssistant) -> None:
     entry = added_entry(hass)
     result = await entry.start_reconfigure_flow(hass)
     assert result["step_id"] == "reconfigure"
+    # On top what is set up and what is missing (not loaded: no "since").
+    assert result["description_placeholders"]["summary"] == (
+        "**Set up**\n"
+        "- Grid purchase meter: “grid import”\n"
+        "- Tariffs: 2 (“Fixed price”, “Dynamic”)\n"
+        "- My current tariff: “Fixed price”\n\n"
+        "**Missing**\n"
+        "- No “PV and battery”: no sensors “Saving by PV” and “Saving by "
+        "battery” (only needed with an own plant)."
+    )
     # The own meter is not "in use"; tariffs are not asked again.
     result = await configure(hass, result, {**METER_STEP, "name": "Wohnung"})
     assert result["type"] is FlowResultType.ABORT

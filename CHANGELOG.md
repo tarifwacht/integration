@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Geändert
+
+- **Kurze Übersicht auch beim Ändern des Eintrags und von „PV und Speicher“.** Wie schon bei den Tarifen steht jetzt oben in *Neu konfigurieren* des Eintrags und von *PV und Speicher*, was eingerichtet ist – Bezugszähler, seit wann Tarifwacht bucht, die Tarife und dein aktueller Tarif bzw. Zähler, Einspeisevergütung und Anschaffung. Darunter steht, was fehlt und was dir dadurch entgeht, etwa ohne „Mein aktueller Tarif“ keine Differenz zum aktuellen Tarif oder ohne Speicherzähler keine Ersparnis Speicher.
+
 ## 0.3.0 – 2026-11-13
 
 ### Neu

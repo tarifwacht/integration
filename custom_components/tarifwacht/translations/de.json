@@ -27,7 +27,7 @@
       },
       "reconfigure": {
         "title": "Bezugszähler",
-        "description": "Tarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",
+        "description": "{summary}\n\nTarifwacht bucht deinen Strombezug je Viertelstunde in jeden Tarif – den dynamischen mit dem Preis genau dieser Viertelstunde. Der Vergleich unterstellt für alle Tarife das gleiche Verbrauchsverhalten.",
         "data": {
           "name": "Name",
           "meter_entity": "Bezugszähler"
@@ -613,7 +613,7 @@
         },
         "reconfigure": {
           "title": "PV und Speicher",
-          "description": "Was PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.",
+          "description": "{summary}\n\nWas PV und Speicher in jedem Tarif gespart haben: verglichen mit dem Bezug des ganzen Verbrauchs aus dem Netz. Stündlich aus der Langzeitstatistik der Zähler gerechnet.",
           "data": {
             "feed_in_entity": "Einspeisezähler",
             "pv_entity": "PV-Zähler",

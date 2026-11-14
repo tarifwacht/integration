@@ -27,7 +27,7 @@
       },
       "reconfigure": {
         "title": "Grid purchase meter",
-        "description": "Tarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",
+        "description": "{summary}\n\nTarifwacht books your grid purchase per quarter hour under each tariff – the dynamic one with the price of exactly that quarter hour. The comparison assumes the same consumption pattern for every tariff.",
         "data": {
           "name": "Name",
           "meter_entity": "Grid purchase meter"
@@ -613,7 +613,7 @@
         },
         "reconfigure": {
           "title": "PV and battery",
-          "description": "What PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.",
+          "description": "{summary}\n\nWhat PV and battery saved under each tariff: compared with buying all consumption from the grid. Computed every hour from the long-term statistics of the meters.",
           "data": {
             "feed_in_entity": "Feed-in meter",
             "pv_entity": "PV meter",

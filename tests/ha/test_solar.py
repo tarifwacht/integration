@@ -259,7 +259,28 @@ async def test_reconfigure_without_hint(hass: HomeAssistant) -> None:
     )
     result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
     assert result["step_id"] == "reconfigure"
-    assert not result["description_placeholders"]
+    # No hint on the sisters, only the summary of what is set up.
+    assert set(result["description_placeholders"]) == {"summary"}
+    summary = result["description_placeholders"]["summary"]
+    assert summary.startswith("**Set up**\n- Feed-in meter: “grid export”\n")
+    assert (
+        "- Battery: charged “battery charged”, discharged “battery "
+        "discharged”, with its own inverter\n"
+    ) in summary
+    assert "- Feed-in tariff: 8 ct/kWh\n" in summary
+    # Not loaded in this test: no "since".
+    assert "since" not in summary.split("**Missing**")[0]
+    assert summary.endswith(
+        "**Missing**\n- Without the purchase of PV and battery (under "
+        "“Purchase”): no “paid back” for it."
+    )
+
+    # A meter removed meanwhile: named as missing, the form still opens.
+    hass.states.async_remove(PV)
+    result = await entry.start_subentry_reconfigure_flow(hass, solar.subentry_id)
+    summary = result["description_placeholders"]["summary"]
+    assert "- PV meter: `sensor.inverter_energy`" in summary
+    assert "- PV meter `sensor.inverter_energy` does not exist" in summary
 
 
 def solar_entry() -> MockConfigEntry:

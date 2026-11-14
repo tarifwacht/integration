@@ -12,7 +12,7 @@ from typing import Any
 
 from homeassistant.components.recorder import get_instance, history
 from homeassistant.components.recorder.statistics import statistics_during_period
-from homeassistant.config_entries import ConfigEntry, ConfigSubentry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigSubentry
 from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     STATE_UNAVAILABLE,
@@ -63,6 +63,7 @@ from .const import (
     SUBENTRY_TARIFF,
 )
 from .engine import Engine, migrate_v1
+from .entry_summary import Source
 from .lookback import (
     FallbackPrice,
     Lookback,
@@ -176,6 +177,26 @@ def own_entity(hass: HomeAssistant, entity_id: str) -> bool:
     return entry is not None and entry.platform == DOMAIN
 
 
+def entity_source(hass: HomeAssistant, entity_id: str) -> Source:
+    """A source entity for the summaries of "Reconfigure": its name, None
+    without a state."""
+    state = hass.states.get(entity_id)
+    return Source(entity_id, state.name if state is not None else None)
+
+
+def started_day(entry: ConfigEntry) -> date | None:
+    """The German local day the entry started booking; None while it is not
+    loaded."""
+    runtime = (
+        getattr(entry, "runtime_data", None)
+        if entry.state is ConfigEntryState.LOADED
+        else None
+    )
+    if not isinstance(runtime, MeterRuntime) or runtime.engine.started is None:
+        return None
+    return runtime.engine.started.astimezone(BERLIN).date()
+
+
 def price_unit_ok(state: State) -> bool:
     return state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) in PRICE_UNITS
 
@@ -278,6 +299,25 @@ def tariff_subentries(entry: ConfigEntry) -> list[ConfigSubentry]:
     return [s for s in entry.subentries.values() if s.subentry_type == SUBENTRY_TARIFF]
 
 
+def section51_market(
+    entry: ConfigEntry, solar: Mapping[str, Any]
+) -> tuple[str | None, ConfigSubentry | None]:
+    """The exchange price sensor for section 51: the one of the subentry "PV
+    and battery", else that of the first exchange price tariff (returned
+    with it); (None, None) without either."""
+    if entity := solar.get(CONF_MARKET_ENTITY):
+        return entity, None
+    tariff = next(
+        (
+            s
+            for s in tariff_subentries(entry)
+            if s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET
+        ),
+        None,
+    )
+    return (tariff.data[CONF_PRICE_ENTITY], tariff) if tariff else (None, None)
+
+
 class TarifwachtStore(Store[dict[str, Any]]):
     """Storage of one entry; converts the format of 0.1.0b1."""
 
@@ -363,14 +403,7 @@ class MeterRuntime:
         self._payback_before: dict[str, dict[str, dict[date, float]]] | None = None
         self.market_entity: str | None = None
         if self.solar_data is not None and self.solar_data.get(CONF_NEGATIVE_UNPAID):
-            self.market_entity = self.solar_data.get(CONF_MARKET_ENTITY) or next(
-                (
-                    s.data[CONF_PRICE_ENTITY]
-                    for s in tariff_subentries(entry)
-                    if s.data.get(CONF_KIND) == KIND_DYNAMIC_MARKET
-                ),
-                None,
-            )
+            self.market_entity, _ = section51_market(entry, self.solar_data)
             if self.market_entity is not None and not own_entity(
                 hass, self.market_entity
             ):

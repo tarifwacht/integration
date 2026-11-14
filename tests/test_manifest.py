@@ -112,15 +112,24 @@ def test_base_periods_translated() -> None:
 
 
 def test_reconfigure_step_matches_user_step() -> None:
-    steps = load(INTEGRATION / "strings.json")["config"]["step"]
-    assert steps["reconfigure"] == steps["user"]
+    """The same form; reconfigure has the summary of the entry on top."""
+    for name in ("strings.json", "translations/de.json"):
+        steps = load(INTEGRATION / name)["config"]["step"]
+        reconfigure = dict(steps["reconfigure"])
+        description = reconfigure.pop("description")
+        user = dict(steps["user"])
+        assert description == "{summary}\n\n" + user.pop("description"), name
+        assert reconfigure == user, name
 
 
 def test_solar_steps_match() -> None:
     """The steps with and without suggestions differ only in their hint."""
     for name in ("strings.json", "translations/de.json"):
         steps = load(INTEGRATION / name)["config_subentries"]["solar"]["step"]
-        base = steps["reconfigure"]
+        # Reconfigure: the summary of the subentry on top, else the same.
+        base = dict(steps["reconfigure"])
+        assert base["description"].startswith("{summary}\n\n"), name
+        base["description"] = base["description"].removeprefix("{summary}\n\n")
         variants = {
             "user": ("{einspeisewacht_url}", "{speicherwacht_url}"),
             "suggested_einspeisewacht": ("{einspeisewacht}",),
