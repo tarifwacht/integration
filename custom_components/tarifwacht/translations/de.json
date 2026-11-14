@@ -272,7 +272,7 @@
           "title": "Tarif ändern",
           "description": "{summary}",
           "menu_options": {
-            "edit": "Preise ab Beginn bearbeiten (auch Name, aktueller Tarif, Bonus)",
+            "edit": "Tarif bearbeiten: Name, Preise ab Beginn, Bonus, aktueller Tarif",
             "modul3": "Modul 3: zeitvariables Netzentgelt (§ 14a EnWG)",
             "add_change": "Preisänderung ab einem Datum hinzufügen",
             "remove_change": "Preisänderung entfernen"

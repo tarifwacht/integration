@@ -321,7 +321,7 @@ def summary(
 
 
 def edit_hint(german: bool) -> str:
-    """The sentence under the description of "Edit prices from the start"."""
+    """The sentence under the description of "Edit tariff" (prices from the start)."""
     return "\n\n" + _words(german)["edit_hint"]
 
 

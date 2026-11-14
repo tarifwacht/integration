@@ -272,7 +272,7 @@
           "title": "Change tariff",
           "description": "{summary}",
           "menu_options": {
-            "edit": "Edit prices from the start (also name, current tariff, bonus)",
+            "edit": "Edit tariff: name, prices from the start, bonus, current tariff",
             "modul3": "Modul 3: time-variable grid fee (§ 14a EnWG)",
             "add_change": "Add a price change from a date",
             "remove_change": "Remove a price change"

@@ -723,7 +723,7 @@ class TariffSubentryFlow(ConfigSubentryFlow):
     async def async_step_edit(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """ "Edit prices from the start": the form of the tariff's kind,
+        """ "Edit tariff" (prices from the start): the form of the tariff's kind,
         prefilled with the values from the start (also name, current tariff
         and bonus)."""
         kind = self._get_reconfigure_subentry().data[CONF_KIND]

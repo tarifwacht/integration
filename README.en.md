@@ -119,7 +119,7 @@ If you set a surcharge and a tax in **EPEX Spot**, simply copy these values – 
 | absolute surcharge, e.g. 0.15 €/kWh | supplier surcharge **15** ct/kWh (Tarifwacht uses cents: € × 100) |
 | tax, e.g. 19 % | VAT 19 % |
 
-Leave grid fee and taxes/levies empty – they are already in the surcharge. Once you have the price sheets, you can split the surcharge later (*Edit prices from the start*, see [Price components](#price-components-what-goes-where)).
+Leave grid fee and taxes/levies empty – they are already in the surcharge. Once you have the price sheets, you can split the surcharge later (*Edit tariff*, see [Price components](#price-components-what-goes-where)).
 
 **Percentage surcharge in EPEX Spot:** EPEX Spot calculates the total price as (market price + percentage × |market price| + absolute surcharge) × (1 + tax) – read in the source code of EPEX Spot 4.1.0. Tarifwacht only knows fixed surcharges in ct/kWh and cannot reproduce a percentage one exactly.
 
@@ -172,7 +172,7 @@ To check: the gear icon at the tariff shows what is entered (net, plus VAT); the
 
 Click the cog (*Configure*) on the tariff:
 
-- **Edit prices from the start:** name, current tariff, bonus and prices **from the start** of the tariff (not today's if there are price changes) – for typos and corrections. Tarifwacht recalculates the whole period. A new price from a later date goes into the next entry.
+- **Edit tariff:** name, prices **from the start** of the tariff, bonus and current tariff (not today's if there are price changes) – for typos and corrections. Tarifwacht recalculates the whole period. A new price from a later date goes into the next entry.
 - **Add a price change from a date:** new prices from midnight of that day (German local time), e.g. a price increase by your supplier or new grid fees. The previous prices still apply before that. The form is pre-filled with today's prices; VAT and base price period sit collapsed under **More**, Modul 3 in the section **Modul 3 (optional)** – open if the tariff uses Modul 3 today. If the Modul 3 section is left closed, its previous values stay valid. **Bonus and credit (optional)** takes the bonus of a new contract (amount and date credited); earlier bonuses stay. It belongs to the price change and goes with it when you remove it. The **Credit per year** is pre-filled with today's and applies from the date of the price change, like the base price.
 - **Remove a price change:** the prices before it apply again.
 - **Modul 3** (for "exchange price plus surcharges" and for the fixed price), see below.

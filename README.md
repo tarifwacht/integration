@@ -117,7 +117,7 @@ Hast du in **EPEX Spot** einen Aufschlag und eine Steuer eingestellt, übernimm 
 | Aufschlag absolut, z. B. 0,15 €/kWh | Anbieteraufschlag **15** ct/kWh (Tarifwacht rechnet in Cent: € × 100) |
 | Steuer, z. B. 19 % | Mehrwertsteuer 19 % |
 
-Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Preise ab Beginn bearbeiten*, siehe [Preisbestandteile](#preisbestandteile-was-gehört-wohin)).
+Netzentgelt sowie Steuern und Abgaben bleiben leer – sie stecken schon im Aufschlag. Hast du die Preisblätter, kannst du den Aufschlag später aufteilen (*Tarif bearbeiten*, siehe [Preisbestandteile](#preisbestandteile-was-gehört-wohin)).
 
 **Prozentualer Aufschlag in EPEX Spot:** EPEX Spot rechnet den Gesamtpreis als (Marktpreis + Prozent × |Marktpreis| + Aufschlag absolut) × (1 + Steuer) – nachgelesen im Quellcode von EPEX Spot 4.1.0. Tarifwacht kennt nur feste Aufschläge in ct/kWh und kann einen prozentualen nicht genau nachbilden.
 
@@ -170,7 +170,7 @@ Zur Kontrolle: Das Zahnrad am Tarif zeigt, was eingetragen ist (netto, plus MwSt
 
 Beim Tarif auf das Zahnrad (*Konfigurieren*):
 
-- **Preise ab Beginn bearbeiten:** Name, aktueller Tarif, Bonus und Preise **ab Beginn** des Tarifs (nicht die heute gültigen, wenn es Preisänderungen gibt) – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu. Ein neuer Preis ab einem späteren Datum gehört in den nächsten Punkt.
+- **Tarif bearbeiten:** Name, Preise **ab Beginn** des Tarifs, Bonus und aktueller Tarif (nicht die heute gültigen, wenn es Preisänderungen gibt) – für Tippfehler und Korrekturen. Tarifwacht rechnet den ganzen Zeitraum neu. Ein neuer Preis ab einem späteren Datum gehört in den nächsten Punkt.
 - **Preisänderung ab einem Datum hinzufügen:** neue Preise ab Mitternacht dieses Tages (deutsche Ortszeit), z. B. eine Preiserhöhung des Anbieters oder neue Netzentgelte. Davor bleiben die bisherigen Preise. Das Formular ist mit den heute gültigen Preisen vorausgefüllt; Mehrwertsteuer und Grundpreis-Zeitraum stehen eingeklappt unter **Weitere Angaben**, Modul 3 im Abschnitt **Modul 3 (optional)** – aufgeklappt, wenn der Tarif Modul 3 heute nutzt. Bleibt der Abschnitt Modul 3 ungeöffnet, gelten dessen bisherige Werte weiter. Unter **Bonus und Gutschrift (optional)** kommt der Bonus eines neuen Vertrags hin (Betrag und Datum der Gutschrift); frühere Boni bleiben. Er gehört zur Preisänderung und geht mit ihr, wenn du sie entfernst. Die **Gutschrift pro Jahr** ist mit der heute gültigen vorausgefüllt und gilt wie der Grundpreis ab dem Datum der Preisänderung.
 - **Preisänderung entfernen:** danach gelten wieder die Preise davor.
 - **Modul 3** (bei „Börsenpreis plus Aufschläge“ und beim Festpreis), siehe unten.

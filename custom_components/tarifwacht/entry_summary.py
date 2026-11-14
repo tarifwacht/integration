@@ -73,7 +73,7 @@ _WORDS: dict[str, dict[str, str]] = {
         ),
         "hint_no_current": (
             "Kein „Mein aktueller Tarif“: keine Sensoren „Differenz zum "
-            "aktuellen Tarif“ – im Tarif unter „Preise ab Beginn bearbeiten“ "
+            "aktuellen Tarif“ – im Tarif unter „Tarif bearbeiten“ "
             "setzen."
         ),
         "hint_no_solar": (
@@ -149,7 +149,7 @@ _WORDS: dict[str, dict[str, str]] = {
         ),
         "hint_no_current": (
             "No “My current tariff”: no sensors “Difference to current "
-            "tariff” – set it in the tariff under “Edit prices from the start”."
+            "tariff” – set it in the tariff under “Edit tariff”."
         ),
         "hint_no_solar": (
             "No “PV and battery”: no sensors “Saving by PV” and “Saving by "

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Geändert
+
+- **„Preise ab Beginn bearbeiten“ heißt jetzt „Tarif bearbeiten: Name, Preise ab Beginn, Bonus, aktueller Tarif“.** Der Menüpunkt unter *Tarif ändern* beginnt damit mit dem, was man dort am häufigsten sucht; „ab Beginn“ grenzt ihn weiter von der Preisänderung ab einem Datum ab. Sonst ändert sich nichts.
+
 ## 0.3.1 – 2026-11-14
 
 ### Geändert
