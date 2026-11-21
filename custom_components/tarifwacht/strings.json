@@ -1023,6 +1023,17 @@
         }
       }
     },
+    "backfill_price": {
+      "name": "Backfill missing price slots",
+      "description": "Fill only missing quarter-hours for a configured price sensor with a user-confirmed constant price. Start and end must be quarter-hour boundaries after setup; end is exclusive and in the past, the range at most 366 days. Then recalculate statistics.",
+      "fields": {
+        "config_entry": {"name": "Meter", "description": "The Tarifwacht entry."},
+        "price_entity": {"name": "Price sensor", "description": "A price sensor configured in this entry."},
+        "start": {"name": "Start", "description": "First quarter-hour to fill."},
+        "end": {"name": "End", "description": "Exclusive end of the range."},
+        "price": {"name": "Price", "description": "Constant price in €/kWh for the range."}
+      }
+    },
     "simulate_battery": {
       "name": "Simulate battery",
       "description": "What a battery of a given size would have saved under each tariff, from the metered hours of a period: it charges from the PV surplus and covers the consumption the PV does not. Needs “PV and battery” with the feed-in and PV meters. An existing battery is taken out first; its real saving is shown beside. Takes a moment for a year.",
@@ -1084,7 +1095,7 @@
       "message": "Nothing to import: the statistics already reach back to this day."
     },
     "import_prices_missing": {
-      "message": "Nothing imported: every tariff lacks prices in this period. A tariff with a total price sensor has no prices from before the setup – add it as “exchange price plus surcharges” as well."
+      "message": "No statistics could be written because the affected tariffs have missing prices. Skipped: {tariffs}. First quarter hours with consumption but no price: {details}."
     },
     "import_busy": {
       "message": "The statistics of this entry are being imported or recalculated right now – please wait until that is done."
@@ -1104,12 +1115,23 @@
     "recalculated_skipped": {
       "message": "Left out because prices are missing: {tariffs}."
     },
+    "recalculate_prices_missing": {
+      "message": "No statistics were recalculated because prices were missing for the affected sensors. Skipped: {tariffs}."
+    },
+    "recalculated_missing_prices": {
+      "message": "First quarter hours with consumption but no price:"
+    },
+    "recalculated_missing_price": {
+      "message": "- {tariff}: {missing_tariff} first has no price for consumption at {when}."
+    },
     "recalculated_implausible": {
       "message": "{count} hours with an implausible meter change were left out (first: {hours})."
     },
     "recalculate_failed_title": {
       "message": "Tarifwacht: statistics not recalculated"
     },
+    "backfill_price_invalid": {"message": "Choose a configured price sensor and a finite price. The quarter-hour-aligned range must be after setup, in the past and at most 366 days long."},
+    "backfill_price_no_gaps": {"message": "Every quarter-hour in this range already has a price; nothing was changed."},
     "simulation_no_solar": {
       "message": "The simulation needs “PV and battery” with the feed-in and PV meters: Tarifwacht → Add → PV and battery."
     },

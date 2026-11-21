@@ -152,6 +152,8 @@ class HourlyCosts:
     cost: dict[str, dict[datetime, float]]
     # Tariffs without the price of a quarter hour with energy.
     incomplete: set[str]
+    # First quarter hour with energy and no price, per tariff.
+    missing_prices: dict[str, datetime]
 
 
 def period_costs(
@@ -178,6 +180,7 @@ def period_costs(
     energy = dict.fromkeys(periods, 0.0)
     consumption = {key: dict.fromkeys(periods, 0.0) for key in tariffs}
     incomplete: set[str] = set()
+    missing_prices: dict[str, datetime] = {}
     parts = max(1, QUARTER // width)
     for slot, kwh in quarters:
         if not start <= slot < end:
@@ -187,6 +190,7 @@ def period_costs(
             if (price := tariff.price(slot)) is None:
                 if kwh:
                     incomplete.add(key)
+                    missing_prices[key] = min(slot, missing_prices.get(key, slot))
                 continue
             prices[key] = price
         share = kwh / parts
@@ -206,7 +210,7 @@ def period_costs(
         }
         for key, tariff in tariffs.items()
     }
-    return HourlyCosts(energy, consumption, cost, incomplete)
+    return HourlyCosts(energy, consumption, cost, incomplete, missing_prices)
 
 
 def hourly_costs(

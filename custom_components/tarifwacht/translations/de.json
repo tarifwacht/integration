@@ -1023,6 +1023,17 @@
         }
       }
     },
+    "backfill_price": {
+      "name": "Fehlende Preisviertelstunden nachtragen",
+      "description": "Ergänzt ausschließlich fehlende Viertelstunden eines eingerichteten Preissensors mit einem vom Nutzer bestätigten gleichbleibenden Preis. Beginn und Ende müssen Viertelstundengrenzen nach der Einrichtung sein; das Ende ist exklusiv und liegt in der Vergangenheit, der Zeitraum umfasst höchstens 366 Tage. Danach die Statistik neu berechnen.",
+      "fields": {
+        "config_entry": {"name": "Zähler", "description": "Der Tarifwacht-Eintrag."},
+        "price_entity": {"name": "Preissensor", "description": "Ein Preissensor dieses Eintrags."},
+        "start": {"name": "Beginn", "description": "Erste nachzutragende Viertelstunde."},
+        "end": {"name": "Ende", "description": "Exklusives Ende des Zeitraums."},
+        "price": {"name": "Preis", "description": "Gleichbleibender Preis des Zeitraums in €/kWh."}
+      }
+    },
     "simulate_battery": {
       "name": "Speicher simulieren",
       "description": "Was ein Speicher bestimmter Größe mit jedem Tarif gespart hätte, aus den gemessenen Stunden eines Zeitraums: Er lädt aus dem PV-Überschuss und deckt, was die PV nicht schafft. Braucht „PV und Speicher“ mit Einspeise- und PV-Zähler. Ein vorhandener Speicher wird erst herausgerechnet; seine echte Ersparnis steht daneben. Für ein Jahr dauert es einen Moment.",
@@ -1084,7 +1095,7 @@
       "message": "Nichts nachzutragen: Die Statistik reicht bereits bis zu diesem Tag zurück."
     },
     "import_prices_missing": {
-      "message": "Nichts nachgetragen: Allen Tarifen fehlen in diesem Zeitraum Preise. Ein Tarif mit Gesamtpreis-Sensor hat keine Preise von vor der Einrichtung – lege ihn zusätzlich als „Börsenpreis plus Aufschläge“ an."
+      "message": "Es konnte keine Statistik geschrieben werden, weil den betroffenen Tarifen Preise fehlen. Ausgelassen: {tariffs}. Erste Viertelstunden mit Verbrauch, aber ohne Preis: {details}."
     },
     "import_busy": {
       "message": "Die Statistik dieses Eintrags wird gerade nachgetragen oder neu berechnet – bitte warten, bis das fertig ist."
@@ -1104,12 +1115,23 @@
     "recalculated_skipped": {
       "message": "Ausgelassen, weil Preise fehlen: {tariffs}."
     },
+    "recalculate_prices_missing": {
+      "message": "Es wurde keine Statistik neu berechnet, weil den betroffenen Sensoren Preise fehlten. Ausgelassen: {tariffs}."
+    },
+    "recalculated_missing_prices": {
+      "message": "Erste Viertelstunden mit Verbrauch, aber ohne Preis:"
+    },
+    "recalculated_missing_price": {
+      "message": "- {tariff}: Für „{missing_tariff}“ fehlt erstmals um {when} ein Preis für den Verbrauch."
+    },
     "recalculated_implausible": {
       "message": "{count} Stunden mit unplausiblem Zählerwert ausgelassen (zuerst: {hours})."
     },
     "recalculate_failed_title": {
       "message": "Tarifwacht: Statistik nicht neu berechnet"
     },
+    "backfill_price_invalid": {"message": "Wähle einen eingerichteten Preissensor und einen endlichen Preis. Der viertelstündlich ausgerichtete Zeitraum muss nach der Einrichtung liegen, abgeschlossen sein und darf höchstens 366 Tage umfassen."},
+    "backfill_price_no_gaps": {"message": "Jede Viertelstunde dieses Zeitraums hat bereits einen Preis; es wurde nichts geändert."},
     "simulation_no_solar": {
       "message": "Die Simulation braucht „PV und Speicher“ mit Einspeise- und PV-Zähler: Tarifwacht → Hinzufügen → PV und Speicher."
     },

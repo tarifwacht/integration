@@ -162,6 +162,19 @@ async def test_import_statistics(
     assert result["hours_without_energy"] == 25
     # The total price sensor has no prices before the setup: left out entirely.
     assert result["skipped"] == ["Dynamic"]
+    assert result["skipped_details"] == [
+        {
+            "tariff": "Dynamic",
+            "sensors": [ids["dynamic_cost"]],
+            "reason": "missing_price",
+            "missing_prices": [
+                {
+                    "tariff": "Dynamic",
+                    "from": "2026-10-24T15:00:00+02:00",
+                }
+            ],
+        }
+    ]
     assert ids["dynamic_cost"] not in result["sensors"]
     assert "SMARD.de" in result["exchange_prices"]
 

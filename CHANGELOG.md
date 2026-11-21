@@ -1,5 +1,11 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Neu
+
+- **Fehlende Preisviertelstunden manuell nachtragen.** Die Aktion `backfill_price` füllt einen gewählten Zeitraum (höchstens 366 Tage) eines eingerichteten Preissensors mit einem ausdrücklich bestätigten konstanten €/kWh-Preis. Sie überschreibt keine vorhandenen Werte; die betroffenen Sensoren gelten danach als überholt (Reparatur-Hinweis), bis „Statistik neu berechnen“ sie neu rechnet.
+
 ## 0.6.0 – 2026-11-19
 
 ### Neu

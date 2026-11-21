@@ -22,13 +22,16 @@ from homeassistant.components.recorder.statistics import (
     statistics_during_period,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.components.recorder.common import (
     async_wait_recording_done,
 )
 
+from custom_components.tarifwacht.const import DOMAIN
 from custom_components.tarifwacht.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from custom_components.tarifwacht.outdated import TARIFF_SERIES, issue_id
 from custom_components.tarifwacht.runtime import MeterRuntime
 
 from .conftest import PRICE
@@ -85,6 +88,48 @@ async def import_price_statistics(hass: HomeAssistant, unit: str = "€/kWh") ->
         ],
     )
     await async_wait_recording_done(hass)
+
+
+@pytest.mark.freeze_time(START)
+async def test_backfill_price_fills_only_missing_slots(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await setup_entry(hass, market=False)
+    start = datetime(2026, 10, 25, 16, 30, tzinfo=UTC)
+    end = start + timedelta(minutes=30)
+    table = entry.runtime_data.engine.price_table(PRICE)
+    table.days.clear()
+    table.merge({start: 0.25})
+    freezer.move_to(START + timedelta(hours=4))
+
+    result = await hass.services.async_call(
+        "tarifwacht",
+        "backfill_price",
+        {
+            "config_entry": entry.entry_id,
+            "price_entity": PRICE,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "price": 0.1654,
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    assert result["slots_filled"] == 1
+    assert result["already_priced_slots"] == 1
+    assert table.get(start) == pytest.approx(0.25)
+    assert table.get(start + timedelta(minutes=15)) == pytest.approx(0.1654)
+    assert result["statistics_recalculation_required"] is True
+
+    # The sensors of the tariff that reads PRICE are stale from the first
+    # filled quarter hour: the button rewrites exactly those.
+    assert entry.runtime_data.engine.stale_statistics == {
+        f"dynamic_{name}": start for name in TARIFF_SERIES
+    }
+    assert (
+        ir.async_get(hass).async_get_issue(DOMAIN, issue_id(entry.entry_id)) is not None
+    )
 
 
 @pytest.mark.freeze_time(START)

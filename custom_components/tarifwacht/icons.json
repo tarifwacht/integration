@@ -45,6 +45,9 @@
     "import_statistics": {
       "service": "mdi:database-import"
     },
+    "backfill_price": {
+      "service": "mdi:database-import"
+    },
     "simulate_battery": {
       "service": "mdi:home-battery-outline",
       "sections": {

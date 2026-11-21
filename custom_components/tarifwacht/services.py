@@ -1,10 +1,12 @@
 """Actions: tarifwacht.compare (costs of every tariff in a chosen period),
 tarifwacht.import_statistics (history before the statistics; with `replace`
-the statistics from the start on recalculated) and tarifwacht.simulate_battery
-(what an imagined battery would have saved, battery_sim.py)."""
+the statistics from the start on recalculated), tarifwacht.backfill_price (a
+user-confirmed constant price for missing quarter-hours), and
+tarifwacht.simulate_battery (what an imagined battery would have saved)."""
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -54,6 +56,7 @@ if TYPE_CHECKING:
 SERVICE_COMPARE = "compare"
 SERVICE_IMPORT_STATISTICS = "import_statistics"
 SERVICE_SIMULATE_BATTERY = "simulate_battery"
+SERVICE_BACKFILL_PRICE = "backfill_price"
 ATTR_CONFIG_ENTRY = "config_entry"
 ATTR_START = "start"
 ATTR_END = "end"
@@ -63,9 +66,14 @@ ATTR_POWER = "power"
 ATTR_EFFICIENCY = "efficiency"
 ATTR_GRID_CHARGING = "grid_charging"
 ATTR_GRID_POWER = "grid_power"
+ATTR_PRICE_ENTITY = "price_entity"
+ATTR_PRICE = "price"
 # Without a start the simulation looks back a year.
 SIMULATION_DAYS = 365
 MAX_SIZES = 6
+# A backfill builds the whole range in the event loop; more than a year
+# (and a leap day) would block it for no sensible price gap.
+BACKFILL_MAX_SPAN = timedelta(days=366)
 
 COMPARE_SCHEMA = vol.Schema(
     {
@@ -117,6 +125,15 @@ IMPORT_SCHEMA = vol.Schema(
         vol.Required(ATTR_CONFIG_ENTRY): ConfigEntrySelector({"integration": DOMAIN}),
         vol.Required(ATTR_START): cv.date,
         vol.Optional(ATTR_REPLACE, default=False): cv.boolean,
+    }
+)
+BACKFILL_PRICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY): ConfigEntrySelector({"integration": DOMAIN}),
+        vol.Required(ATTR_PRICE_ENTITY): cv.entity_id,
+        vol.Required(ATTR_START): cv.datetime,
+        vol.Required(ATTR_END): cv.datetime,
+        vol.Required(ATTR_PRICE): vol.Coerce(float),
     }
 )
 
@@ -413,8 +430,21 @@ def async_setup_services(hass: HomeAssistant) -> None:
             else:
                 result = await async_import_history(hass, entry, call.data[ATTR_START])
         except StatisticsImportError as err:
+            placeholders: dict[str, str] = {}
+            if err.key == "prices_missing":
+                placeholders = {
+                    "tariffs": ", ".join(err.skipped),
+                    "details": "; ".join(
+                        f"{detail['tariff']}: {missing['tariff']} at {missing['from']}"
+                        for detail in err.skipped_details
+                        for missing in detail.get("missing_prices", [])
+                    )
+                    or "No first missing quarter hour could be identified.",
+                }
             raise ServiceValidationError(
-                translation_domain=DOMAIN, translation_key=f"import_{err.key}"
+                translation_domain=DOMAIN,
+                translation_key=f"import_{err.key}",
+                translation_placeholders=placeholders,
             ) from err
         except SmardError as err:
             raise HomeAssistantError(
@@ -423,6 +453,49 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 translation_placeholders={"error": str(err)},
             ) from err
         return result if call.return_response else None
+
+    async def backfill_price(call: ServiceCall) -> ServiceResponse:
+        entry: TarifwachtConfigEntry = service.async_get_config_entry(
+            hass, DOMAIN, call.data[ATTR_CONFIG_ENTRY]
+        )
+        runtime: MeterRuntime = entry.runtime_data
+        source = call.data[ATTR_PRICE_ENTITY]
+        start, end = _as_utc(call.data[ATTR_START]), _as_utc(call.data[ATTR_END])
+        price = call.data[ATTR_PRICE]
+        started = runtime.engine.started
+        now = dt_util.utcnow()
+        if (
+            started is None
+            or source not in runtime.price_entities
+            or start >= end
+            or end - start > BACKFILL_MAX_SPAN
+            or start < started
+            or end > now
+            or start.minute % 15
+            or start.second
+            or start.microsecond
+            or end.minute % 15
+            or end.second
+            or end.microsecond
+            or not math.isfinite(price)
+        ):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="backfill_price_invalid"
+            )
+        slots, already = await runtime.async_backfill_prices(source, start, end, price)
+        if not slots:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="backfill_price_no_gaps"
+            )
+        return {
+            "price_entity": source,
+            "start": dt_util.as_local(start).isoformat(),
+            "end": dt_util.as_local(end).isoformat(),
+            "price_eur_per_kwh": price,
+            "slots_filled": slots,
+            "already_priced_slots": already,
+            "statistics_recalculation_required": True,
+        }
 
     async def simulate_battery(call: ServiceCall) -> ServiceResponse:
         entry: TarifwachtConfigEntry = service.async_get_config_entry(
@@ -489,6 +562,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_COMPARE,
         compare,
         schema=COMPARE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_BACKFILL_PRICE,
+        backfill_price,
+        schema=BACKFILL_PRICE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(

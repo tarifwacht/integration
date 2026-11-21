@@ -103,7 +103,15 @@ class RecalculateStatistics(MeterEntity, ButtonEntity):
             result = await async_recalculate(hass, entry)
         except StatisticsImportError as err:
             title = texts["recalculate_failed_title"]
-            message = texts[f"import_{err.key}"]
+            if err.key == "prices_missing":
+                message = _fill(
+                    texts["recalculate_prices_missing"],
+                    tariffs=", ".join(err.skipped),
+                )
+                if details := _missing_price_lines(err.skipped_details, texts, german):
+                    message += "\n\n" + details
+            else:
+                message = texts[f"import_{err.key}"]
         except SmardError as err:
             title = texts["recalculate_failed_title"]
             message = texts["smard_failed"].replace("{error}", str(err))
@@ -143,6 +151,27 @@ def _moment(value: str, german: bool) -> str:
     return f"{moment:%d.%m.%Y %H:%M}" if german else f"{moment:%Y-%m-%d %H:%M}"
 
 
+def _missing_price_lines(
+    details: Sequence[Mapping[str, Any]],
+    texts: Mapping[str, str],
+    german: bool,
+) -> str:
+    """Explain each skipped tariff's first quarter hour without a price."""
+    lines = [
+        _fill(
+            texts["recalculated_missing_price"],
+            tariff=detail["tariff"],
+            missing_tariff=missing["tariff"],
+            when=_moment(missing["from"], german),
+        )
+        for detail in details
+        for missing in detail.get("missing_prices", [])
+    ]
+    if not lines:
+        return ""
+    return texts["recalculated_missing_prices"] + "\n" + "\n".join(lines)
+
+
 def recalculated_message(
     hass: HomeAssistant,
     name: str,
@@ -180,6 +209,10 @@ def recalculated_message(
         parts.append(
             _fill(texts["recalculated_skipped"], tariffs=", ".join(result["skipped"]))
         )
+        if details := _missing_price_lines(
+            result.get("skipped_details", []), texts, german
+        ):
+            parts.append(details)
     if implausible := result.get("hours_implausible"):
         parts.append(
             _fill(

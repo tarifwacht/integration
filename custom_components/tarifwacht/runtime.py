@@ -77,7 +77,17 @@ from .lookback import (
     spread_hours,
 )
 from .meter import MeterTracker, to_kwh
-from .outdated import async_clear_outdated
+from .outdated import (
+    ISSUE,
+    MIN_AGE,
+    SAVINGS,
+    TARIFF_SERIES,
+    async_clear_outdated,
+    merge_stale,
+)
+from .outdated import (
+    issue_id as outdated_issue_id,
+)
 from .payback import BATTERY, PV, Payback, merge_days, payback, purchases
 from .prices import (
     ParsedPrices,
@@ -436,6 +446,73 @@ class MeterRuntime:
         self._stopped = False
         # Repair issues currently shown: issue id -> (translation key, placeholders)
         self._issues: dict[str, tuple[str, dict[str, str]]] = {}
+
+    async def async_backfill_prices(
+        self,
+        source: str,
+        start: datetime,
+        end: datetime,
+        price: float,
+    ) -> tuple[int, int]:
+        """Store a user-confirmed constant price over missing quarter hours.
+
+        Existing prices always win. The caller validates the configured source,
+        interval and user-supplied price before this mutation.
+        """
+        table = self.engine.price_table(source)
+        prices: dict[datetime, float] = {}
+        slot = start
+        while slot < end:
+            prices[slot] = price
+            slot += timedelta(minutes=15)
+        missing = {
+            slot: value for slot, value in prices.items() if table.get(slot) is None
+        }
+        already_priced = len(prices) - len(missing)
+        if not missing:
+            return 0, already_priced
+
+        self.engine.add_past_prices(source, missing)
+        now = dt_util.utcnow()
+        # The filled prices change past sums: the statistics of the tariffs
+        # that read `source` (and of the savings under § 51) were computed
+        # without them. Stale from the first filled quarter hour, so the
+        # button rewrites exactly those sensors; the repair issue of
+        # outdated.py names the button.
+        keys = [
+            key
+            for key, info in self.tariffs.items()
+            if price_entity(info.data) == source
+        ]
+        stale: dict[str, datetime | None] = {
+            f"{key}_{name}": start for key in keys for name in TARIFF_SERIES
+        }
+        if (current := self.current) is not None and current.key in keys:
+            # The current tariff feeds every difference sensor.
+            stale |= {f"{other}_difference": start for other in self.tariffs}
+        if source == self.market_entity:
+            # The market prices decide which quarter hours pay for feed-in.
+            stale |= {
+                f"{key}_{name}": start for key in self.tariffs for name in SAVINGS
+            }
+        merge_stale(self.engine.stale_statistics, stale)
+        if (started := self.engine.started) is not None and now - started >= MIN_AGE:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                outdated_issue_id(self.entry.entry_id),
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key=ISSUE,
+                translation_placeholders={"name": self.entry.title},
+            )
+        self.engine.recompute(now)
+        self._update_issues(now)
+        self._notify()
+        self._store.async_delay_save(self.engine.as_dict, SAVE_DELAY)
+        await self._async_archive(now)
+        self._background(self.async_refresh_solar(now), "PV and battery")
+        return len(missing), already_priced
 
     async def async_lookback(self, start: datetime) -> Lookback | None:
         """Consumption and tariffs for the quarter hours from `start` to the setup.

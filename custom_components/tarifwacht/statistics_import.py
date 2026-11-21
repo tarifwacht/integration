@@ -91,16 +91,26 @@ ROW_TOLERANCE = 1e-6
 class StatisticsImportError(Exception):
     """Refused; `key` names the translated reason."""
 
-    def __init__(self, key: str) -> None:
+    def __init__(
+        self,
+        key: str,
+        *,
+        skipped: Iterable[str] = (),
+        skipped_details: Iterable[Mapping[str, Any]] = (),
+    ) -> None:
         super().__init__(key)
         self.key = key
+        self.skipped = list(skipped)
+        self.skipped_details = list(skipped_details)
 
 
 # A sensor's value per hour from the hourly costs (None: not computable).
 Series = Callable[[HourlyCosts], dict[datetime, float] | None]
+Target = tuple[Series, str | None, frozenset[str]]
+SkippedDetails = dict[str, dict[str, Any]]
 
 
-def _series(entry: TarifwachtConfigEntry) -> dict[str, tuple[Series, str | None]]:
+def _series(entry: TarifwachtConfigEntry) -> dict[str, Target]:
     """Unique id -> (value per hour, tariff it belongs to) for every sensor with a sum."""
     runtime = entry.runtime_data
     current = runtime.current
@@ -123,19 +133,21 @@ def _series(entry: TarifwachtConfigEntry) -> dict[str, tuple[Series, str | None]
         return value
 
     prefix = entry.entry_id
-    series: dict[str, tuple[Series, str | None]] = {
-        f"{prefix}_energy": (lambda costs: costs.energy, None)
+    series: dict[str, Target] = {
+        f"{prefix}_energy": (lambda costs: costs.energy, None, frozenset())
     }
     for tariff in runtime.tariffs.values():
         for name in ("consumption_cost", "cost"):
             series[f"{prefix}_{tariff.key}_{name}"] = (
                 tariff_value(tariff.key, name),
                 tariff.title,
+                frozenset({tariff.key}),
             )
         if current is not None and tariff.key != current.key:
             series[f"{prefix}_{tariff.key}_difference"] = (
                 difference(tariff.key, current.key),
                 tariff.title,
+                frozenset({tariff.key, current.key}),
             )
     return series
 
@@ -153,10 +165,10 @@ def _solar_series(entry: TarifwachtConfigEntry) -> dict[str, tuple[str, int, str
 
 def _targets(
     hass: HomeAssistant, entry: TarifwachtConfigEntry
-) -> tuple[dict[str, tuple[Series, str | None]], dict[str, tuple[str, int, str]]]:
+) -> tuple[dict[str, Target], dict[str, tuple[str, int, str]]]:
     """Entity id -> what it is, for the sensors with a sum that exist."""
     registry = er.async_get(hass)
-    targets: dict[str, tuple[Series, str | None]] = {}
+    targets: dict[str, Target] = {}
     for unique_id, target in _series(entry).items():
         if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
             targets[entity_id] = target
@@ -165,6 +177,61 @@ def _targets(
         if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
             solar_targets[entity_id] = solar_target
     return targets, solar_targets
+
+
+def _record_skipped(
+    skipped: list[str],
+    details: SkippedDetails,
+    *,
+    title: str | None,
+    entity_id: str,
+    required: Iterable[str] = (),
+    costs: Iterable[HourlyCosts | None] = (),
+    tariff_titles: Mapping[str, str],
+    reason: str | None = None,
+) -> None:
+    """Record a skipped sensor and the first missing price it depended on."""
+    label = title or entity_id
+    if label not in skipped:
+        skipped.append(label)
+    detail = details.setdefault(
+        label,
+        {"tariff": label, "sensors": set(), "missing_prices": {}, "reason": reason},
+    )
+    detail["sensors"].add(entity_id)
+    if reason is not None:
+        detail["reason"] = reason
+    for part in costs:
+        if part is None:
+            continue
+        for key in required:
+            if (missing := part.missing_prices.get(key)) is not None:
+                previous = detail["missing_prices"].get(key)
+                if previous is None or missing < previous:
+                    detail["missing_prices"][key] = missing
+
+
+def _serialise_skipped(
+    details: SkippedDetails, tariff_titles: Mapping[str, str]
+) -> list[dict[str, Any]]:
+    """Return JSON-safe explanations for skipped tariff sensors."""
+    return [
+        {
+            "tariff": detail["tariff"],
+            "sensors": sorted(detail["sensors"]),
+            "reason": "missing_price"
+            if detail["missing_prices"]
+            else (detail["reason"] or "not_computable"),
+            "missing_prices": [
+                {
+                    "tariff": tariff_titles.get(key, key),
+                    "from": dt_util.as_local(moment).isoformat(),
+                }
+                for key, moment in sorted(detail["missing_prices"].items())
+            ],
+        }
+        for _, detail in sorted(details.items())
+    ]
 
 
 def _suffixes(
@@ -258,6 +325,8 @@ async def _async_import_history(
     if start >= started:
         raise StatisticsImportError("start_after_setup")
     targets, solar_targets = _targets(hass, entry)
+    tariff_titles = {key: tariff.title for key, tariff in runtime.tariffs.items()}
+    skipped_details: SkippedDetails = {}
 
     instance = get_instance(hass)
     existing = await instance.async_add_executor_job(
@@ -308,6 +377,7 @@ async def _async_import_history(
         "hours_without_energy": hours_missing,
         "sensors": {},
         "skipped": [],
+        "skipped_details": [],
     }
     by_first: dict[
         datetime, tuple[HourlyCosts, HourlyCosts | None, HourlyCosts | None]
@@ -333,13 +403,20 @@ async def _async_import_history(
                 extra = costs(first, started)
             by_first[first] = (costs(start, first), extra, own)
         before, extra, own = by_first[first]
-        value, tariff_title = targets[entity_id]
+        value, tariff_title, required = targets[entity_id]
         values = value(before)
         extra_values = value(extra) if extra is not None else {}
         own_values = value(own) if own is not None else {}
         if values is None or extra_values is None or own_values is None:
-            if tariff_title not in result["skipped"]:
-                result["skipped"].append(tariff_title)
+            _record_skipped(
+                result["skipped"],
+                skipped_details,
+                title=tariff_title,
+                entity_id=entity_id,
+                required=required,
+                costs=(before, extra, own),
+                tariff_titles=tariff_titles,
+            )
             continue
         rows, total = _rows(sorted(values.items()))
         if not rows:
@@ -385,8 +462,14 @@ async def _async_import_history(
         key, index, tariff_title = solar_targets[entity_id]
         hourly = solar_by_first[first].get(key)
         if hourly is None:
-            if tariff_title not in result["skipped"]:
-                result["skipped"].append(tariff_title)
+            _record_skipped(
+                result["skipped"],
+                skipped_details,
+                title=tariff_title,
+                entity_id=entity_id,
+                tariff_titles=tariff_titles,
+                reason="saving_data_unavailable",
+            )
             continue
         rows, total = _rows(
             [(hour, v[index]) for hour, v in sorted(hourly.items()) if hour < first]
@@ -406,16 +489,19 @@ async def _async_import_history(
             "added": round(shift, 4),
             "until": dt_util.as_local(first - HOUR).isoformat(),
         }
+    result["skipped_details"] = _serialise_skipped(skipped_details, tariff_titles)
     if used_smard:
         result["exchange_prices"] = ATTRIBUTION
     if summary := implausible_summary(implausible):
         result["hours_implausible"] = summary
     if not result["sensors"]:
-        raise StatisticsImportError(
-            "prices_missing"
-            if result["skipped"] and not done_before
-            else "nothing_to_import"
-        )
+        if result["skipped"] and not done_before:
+            raise StatisticsImportError(
+                "prices_missing",
+                skipped=result["skipped"],
+                skipped_details=result["skipped_details"],
+            )
+        raise StatisticsImportError("nothing_to_import")
     return result
 
 
@@ -567,6 +653,8 @@ async def _async_recalculate(
     started = engine.started
     setup_hour = hour_start(started)
     targets, solar_targets = _targets(hass, entry)
+    tariff_titles = {key: tariff.title for key, tariff in runtime.tariffs.items()}
+    skipped_details: SkippedDetails = {}
     ids = set(targets) | set(solar_targets)
     suffixes = _suffixes(hass, entry, ids)
     # The button: only the sensors a change made stale, each from its moment
@@ -739,6 +827,7 @@ async def _async_recalculate(
         "setup": dt_util.as_local(started).isoformat(),
         "sensors": {},
         "skipped": [],
+        "skipped_details": [],
     }
     from_first = True
     # Stale sensors recalculated: suffix -> from when (None: the first row).
@@ -750,13 +839,20 @@ async def _async_recalculate(
         hourly: dict[datetime, float]
         five: dict[datetime, float] = {}
         if entity_id in targets:
-            value, title = targets[entity_id]
+            value, title, required = targets[entity_id]
             costs = groups[(plan.start, plan.end, plan.short_from)]
             pre = _values(value, costs.pre)
             post = _values(value, costs.post)
             if pre is None or post is None:
-                if title not in result["skipped"]:
-                    result["skipped"].append(title)
+                _record_skipped(
+                    result["skipped"],
+                    skipped_details,
+                    title=title,
+                    entity_id=entity_id,
+                    required=required,
+                    costs=(costs.pre, costs.post),
+                    tariff_titles=tariff_titles,
+                )
                 continue
             hourly = add_values(pre, post)
             before = _values(value, costs.before, complete=False) or {}
@@ -773,8 +869,14 @@ async def _async_recalculate(
             key, index, title = solar_targets[entity_id]
             per_hour = savings.get(key)
             if per_hour is None:
-                if title not in result["skipped"]:
-                    result["skipped"].append(title)
+                _record_skipped(
+                    result["skipped"],
+                    skipped_details,
+                    title=title,
+                    entity_id=entity_id,
+                    tariff_titles=tariff_titles,
+                    reason="saving_data_unavailable",
+                )
                 continue
             values = {hour: pair[index] for hour, pair in per_hour.items()}
             hourly = place_savings(values, setup_hour, HOUR)
@@ -868,6 +970,7 @@ async def _async_recalculate(
         }
     # Written before the next press reads them.
     await instance.async_block_till_done()
+    result["skipped_details"] = _serialise_skipped(skipped_details, tariff_titles)
     if lookback is not None:
         result["hours_without_energy"] = lookback.hours_without_energy
     if used_smard:
@@ -878,8 +981,12 @@ async def _async_recalculate(
     if (none_left := _clear_stale(engine, done, nothing)) or had_stale:
         runtime.save_later()
     if not result["sensors"]:
-        raise StatisticsImportError(
-            "prices_missing" if result["skipped"] else "nothing_to_recalculate"
-        )
+        if result["skipped"]:
+            raise StatisticsImportError(
+                "prices_missing",
+                skipped=result["skipped"],
+                skipped_details=result["skipped_details"],
+            )
+        raise StatisticsImportError("nothing_to_recalculate")
     up_to_date = not result["skipped"] and (from_first or none_left)
     return result, up_to_date

@@ -30,6 +30,7 @@ from pytest_homeassistant_custom_component.components.recorder.common import (
 from custom_components.tarifwacht.const import DOMAIN
 from custom_components.tarifwacht.outdated import issue_id
 from custom_components.tarifwacht.runtime import MeterRuntime
+from custom_components.tarifwacht.statistics_import import StatisticsImportError
 
 from .conftest import (
     FIXED_SUBENTRY,
@@ -305,6 +306,38 @@ async def test_nothing_to_recalculate_without_statistics(
             return_response=True,
         )
     assert err.value.translation_key == "import_no_statistics_yet"
+
+
+@pytest.mark.freeze_time(START)
+async def test_recalculate_missing_prices_notification_names_skipped_tariffs(
+    hass: HomeAssistant,
+) -> None:
+    entry = await setup(hass)
+    error = StatisticsImportError(
+        "prices_missing",
+        skipped=["Dynamic", "Fixed price"],
+        skipped_details=[
+            {
+                "tariff": "Fixed price",
+                "missing_prices": [
+                    {
+                        "tariff": "Dynamic",
+                        "from": "2026-10-25T16:00:00+01:00",
+                    }
+                ],
+            }
+        ],
+    )
+    with patch(
+        "custom_components.tarifwacht.button.async_recalculate",
+        side_effect=error,
+    ):
+        title, message = await press(hass, entry)
+
+    assert title == "Tarifwacht: statistics not recalculated"
+    assert "No statistics were recalculated" in message
+    assert "Dynamic, Fixed price" in message
+    assert "Dynamic first has no price for consumption at 2026-10-25 16:00" in message
 
 
 async def meter_statistics(hass: HomeAssistant, rows: list[tuple[int, float]]) -> None:
